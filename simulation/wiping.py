@@ -18,6 +18,7 @@ PLATE_INNER_RADIUS = 0.095
 SPONGE_HALF_HEIGHT = 0.02
 SPONGE_YAW = 0.33
 LINKS_PER_FINGER = 5  # Four actuated joints and one fixed fingertip.
+MIN_WIPE_STROKE_M = 0.06
 
 
 def sample_object_xy(rng):
@@ -51,7 +52,9 @@ class PlateWipingSimulation(LeapSimulation):
         self._surface_contact_steps = 0
         self._peak_contact_force = 0.0
         self._last_contact_position = None
-        self._last_endpoint = None
+        self._stroke_axis = None
+        self._stroke_extents = None
+        self._stroke_direction = 0
         for _ in range(self.substeps):
             p.stepSimulation(physicsClientId=self.client)
         return self.observation()
@@ -142,10 +145,11 @@ class PlateWipingSimulation(LeapSimulation):
 
     def _update_wipe_metrics(self, contacts):
         plate_pose = p.getBasePositionAndOrientation(self.plate, physicsClientId=self.client)
-        top = np.asarray(p.getMatrixFromQuaternion(plate_pose[1])).reshape(3, 3)[:, 2]
+        rotation = np.asarray(p.getMatrixFromQuaternion(plate_pose[1])).reshape(3, 3)
+        top = rotation[:, 2]
         if not any(contact[9] > 0 and np.dot(contact[7], top) > 0.5 for contact in contacts):
             self._last_contact_position = None
-            self._last_endpoint = None
+            self._stroke_axis = None
             return
         self._surface_contact_steps += 1
         sponge_position = p.getBasePositionAndOrientation(self.sponge, physicsClientId=self.client)[0]
@@ -155,8 +159,31 @@ class PlateWipingSimulation(LeapSimulation):
         if self._last_contact_position is not None:
             self._wipe_distance += float(np.linalg.norm(tangent - self._last_contact_position))
         self._last_contact_position = tangent
-        endpoint = 1 if local[0] > 0.055 else -1 if local[0] < -0.055 else 0
-        if endpoint:
-            if self._last_endpoint is not None and endpoint != self._last_endpoint:
+        self._update_vertical_strokes(tangent, rotation[2, :2])
+
+    def _update_vertical_strokes(self, tangent, projected_up):
+        if self._stroke_axis is None:
+            tilt = np.linalg.norm(projected_up)
+            if tilt <= 1e-3:
+                return
+            self._stroke_axis = projected_up / tilt
+            self._stroke_extents = np.stack((tangent, tangent))
+            self._stroke_direction = 0
+            return
+
+        # Use one vertical axis for the whole contact so plate rotation cannot create a stroke.
+        deltas = tangent - self._stroke_extents
+        vertical = deltas @ self._stroke_axis
+        for index, direction in enumerate((1, -1)):
+            if direction == self._stroke_direction or direction * vertical[index] < MIN_WIPE_STROKE_M:
+                continue
+            across = deltas[index] - vertical[index] * self._stroke_axis
+            if np.linalg.norm(across) <= abs(vertical[index]):
                 self._wipe_passes += 1
-            self._last_endpoint = endpoint
+                self._stroke_direction = direction
+                self._stroke_extents[:] = tangent
+                return
+        if vertical[0] < 0:
+            self._stroke_extents[0] = tangent
+        if vertical[1] > 0:
+            self._stroke_extents[1] = tangent
