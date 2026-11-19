@@ -54,7 +54,7 @@ scripts/run_experiment.sh wiping-setxf full
 scripts/run_experiment.sh packaging-setxf full
 ```
 
-脚本默认使用 GPU 0、1、2，可用 `CUDA_VISIBLE_DEVICES` 指定设备。它先短训并加载第 2 轮权重，随后读取完整训练配置，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种物体各跑 5 回合。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
+三个命令默认分别使用 GPU 0、1、2。换卡时给各命令设置一个 `CUDA_VISIBLE_DEVICES` 编号，训练器将该卡映射为 `cuda:0`。每个命令先短训并加载第 2 轮权重，随后按完整配置训练，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种物体各跑 5 回合。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
 
 只验证训练与离线推理时使用 `smoke`。第三个参数可以指定已提取的 HDF5，用于在完整数据下载期间验证入口。
 

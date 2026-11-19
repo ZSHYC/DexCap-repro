@@ -27,7 +27,7 @@
 
 在 `pro1` 的 `dexcap-wiping-epoch100` 会话安排第一次全数据权重对照。两组第 100 轮 checkpoint 均保存完成后，分别用 GPU 3 和 4 执行相同的 3 个种子，每个 400 步。结果输出到 `runs/wiping-{pointnet,setxf}-epoch100-preliminary.json`，正式结果在第 3000 轮上按 20 个配对摆放评估。
 
-两组第 100 轮对照已完成，仿真提交 `06a378d`。结果 JSON 中三对种子的盘子和海绵起点完全一致。
+两组第 100 轮对照使用 `06a378d` 的仿真和发布版动作队列。结果 JSON 中三对种子的盘子和海绵起点完全一致。
 
 | 编码器 | 抓盘回合 | 抓海绵回合 | 两件均抓取 | 仿真达标 |
 |---|---:|---:|---:|---:|
@@ -35,6 +35,25 @@
 | SetXF | 2/3 | 2/3 | 1/3 | 0/3 |
 
 六个回合的盘面正面接触步和完整擦拭次数均为 0。两组在持续训练。
+
+### Wiping 动作时序对照
+
+发布代码已从预测序列中取出与最后一帧观测对齐的 10 个动作，入队时再次切片，丢掉前三步，只执行剩余七步。`main` 的 `e5eaa5a` 和 `repro/setxf` 的 `e30fe9e` 让后续仿真执行完整队列。两分支在 `pro1` 的 Conda 环境通过了顺序执行 10 步且只请求一次扩散轨迹的回归测试。现有 checkpoint 可直接用于修正后的推理。
+
+保持两组第 100 轮 checkpoint 不变，取官方 `demo_0` 的帧索引 2、10、17、22、26、28、32、38、44、54、64、72、83、95、104。输入截至该帧的三帧观测，分别使用扩散种子 1、2、3，将首次执行动作与该帧官方动作比较。仿真观测来自官方动作驱动的同一场景，沿用首帧固定相机。表中为腕部位置误差中位数，单位为 mm。
+
+| 输入 | 编码器 | 右腕 | 左腕 |
+|---|---|---:|---:|
+| 官方观测 | PointNet | 24.6 → 16.7 | 37.1 → 14.2 |
+| 官方观测 | SetXF | 17.3 → 12.7 | 21.2 → 13.8 |
+| 仿真观测 | PointNet | 24.1 → 16.5 | 35.9 → 18.0 |
+| 仿真观测 | SetXF | 17.6 → 20.4 | 30.1 → 18.9 |
+
+在擦拭阶段的仿真观测中，PointNet 的左腕误差从 69.2 mm 降至 26.0 mm，SetXF 从 42.8 mm 降至 17.6 mm。逐时刻数据与运行脚本位于 `pro1` 的 `runs/wiping-{pointnet,setxf}-epoch100-action*-diagnostics.json` 和 `runs/wiping-epoch100-replay-diagnostics.py`。
+
+在 `demo_0` 的参考摆放上，各用种子 1 做 400 步闭环。PointNet 从只抓起海绵变为同时抓起两件物体，两个版本的盘面正面接触均为 0 步。SetXF 两个版本都抓起两件物体，正面接触从 8 步变为 6 步。四个回合的完整擦拭次数均为 0。记录为 `runs/wiping-{pointnet,setxf}-epoch100-{reference,action-aligned-reference}.json`。
+
+在与初次对照完全相同的三组随机摆放上，两组各跑 400 步。PointNet 抓盘回合由 1/3 增至 2/3，盘面正面接触仍为 0。SetXF 同时抓起两件物体的回合保持 1/3，种子 1 从无正面接触变为 5 步正面接触，接触期间累计相对移动 0.0133 m。修正前后两组均为 0/3 成功。记录为 `runs/wiping-{pointnet,setxf}-epoch100-action-aligned-trials.json`。
 
 ### 数据读取吞吐
 
@@ -45,7 +64,7 @@ Wiping 两组正式训练的近期一轮约为 28 s，等待 HDF5 数据约占�
 | PointNet | 10.99 s | 7.52 s | 5.70 → 2.38 s |
 | SetXF | 10.94 s | 7.47 s | 5.74 → 2.21 s |
 
-两组吞吐都提高约 46%。新启动的全量配置采用 8 个 worker，待运行的 Packaging 使用此配置。已在运行的两组 Wiping 保持启动时保存的 2 worker 配置。公开训练入口的 `--resume` 从 checkpoint 恢复网络及 EMA 权重，优化器与学习率调度按新训练初始化。基准日志为 `runs/wiping-*-loader-*-bench-*.console.log`。
+两组吞吐都提高约 46%。Packaging 全量训练使用 8 个 worker。已在运行的两组 Wiping 保持启动时保存的 2 worker 配置。公开训练入口的 `--resume` 从 checkpoint 恢复网络及 EMA 权重，优化器与学习率调度按新训练初始化。基准日志为 `runs/wiping-*-loader-*-bench-*.console.log`。
 
 ### Packaging 全量训练启动
 
