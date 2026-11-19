@@ -63,7 +63,9 @@ def _visible_hand_points(client, body, samples, side, bullet_from_camera):
     ])
 
 
-def capture_pointcloud(client, mocap_from_camera, bullet_from_mocap, rng, *, hand_bodies, hand_samples):
+def capture_pointcloud(
+    client, mocap_from_camera, bullet_from_mocap, rng, *, hand_bodies, hand_samples, table_height=None,
+):
     """Render the current scene as 10,000 XYZRGB points in the DexCap mocap frame."""
     width, height = IMAGE_SIZE // RENDER_SCALE
     fx, fy = FOCAL / RENDER_SCALE
@@ -97,6 +99,11 @@ def capture_pointcloud(client, mocap_from_camera, bullet_from_mocap, rng, *, han
         raise RuntimeError("Camera has no surfaces in the DexCap observation")
     rgb = np.concatenate((rgb, np.zeros_like(hand_xyz)))
     points = 10_000
-    visible = np.flatnonzero(table_point_mask(xyz, points // RENDER_SCALE**2))
+    keep = table_point_mask(xyz, points // RENDER_SCALE**2)
+    if table_height is not None:
+        # The recorded crop can sit above low objects on a flat simulated table.
+        height = xyz @ bullet_from_mocap[2, :3] + bullet_from_mocap[2, 3]
+        keep |= height >= table_height + 0.020
+    visible = np.flatnonzero(keep)
     indices = rng.choice(visible, points, replace=len(visible) < points)
     return np.concatenate((xyz[indices], rgb[indices]), axis=-1).astype(np.float32)

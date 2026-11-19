@@ -10,6 +10,7 @@ from simulation.camera import capture_pointcloud, sample_hand_surfaces
 from simulation.frames import ActionFrames, BULLET_FROM_MOCAP
 from simulation.packaging import (
     DEFAULT_OBJECT, PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJECTS, PackagingSimulation,
+    TABLE_HEIGHT as PACKAGING_TABLE_HEIGHT,
     sample_object_xy as sample_packaging_xy,
 )
 from simulation.wiping import PlateWipingSimulation, sample_object_xy as sample_wiping_xy
@@ -37,10 +38,12 @@ def rollout(args):
         sim = PackagingSimulation(args.object or DEFAULT_OBJECT)
         sample_object_xy = sample_packaging_xy
         position_keys = ("box_xy", "object_xy")
+        table_height = PACKAGING_TABLE_HEIGHT
     else:
         sim = PlateWipingSimulation()
         sample_object_xy = sample_wiping_xy
         position_keys = ("plate_xy", "sponge_xy")
+        table_height = None
     start = frames.to_bullet(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
 
@@ -49,7 +52,7 @@ def rollout(args):
         result = dict(zip(PROPRIOCEPTION, np.split(robot, [6, 14])))
         result["pointcloud"] = capture_pointcloud(
             sim.client, camera, BULLET_FROM_MOCAP, rng,
-            hand_bodies=hand_bodies, hand_samples=hand_samples,
+            hand_bodies=hand_bodies, hand_samples=hand_samples, table_height=table_height,
         )
         return result
 

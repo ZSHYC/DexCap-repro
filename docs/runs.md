@@ -55,6 +55,8 @@
 
 在与初次对照完全相同的三组随机摆放上，两组各跑 400 步。PointNet 抓盘回合由 1/3 增至 2/3，盘面正面接触仍为 0。SetXF 同时抓起两件物体的回合保持 1/3，种子 1 从无正面接触变为 5 步正面接触，接触期间累计相对移动 0.0133 m。修正前后两组均为 0/3 成功。记录为 `runs/wiping-{pointnet,setxf}-epoch100-action-aligned-trials.json`。
 
+官方 Wiping、Packaging 配置和 `pro1` 三个正式作业的生效配置均为 `algo.ema.enabled=false`。Wiping 两个第 100 轮 checkpoint 加载时没有 EMA 模型。尝试把点云编码器与去噪网络统一选到 EMA 分支后，两组 15 个时刻的逐项动作误差完全一致，确认该分支在本次实验中未启用。
+
 ### 数据读取吞吐
 
 Wiping 两组正式训练的近期一轮约为 28 s，等待 HDF5 数据约占一半。在 `pro1` 的 GPU 5 和 6 上分别用完整 Wiping 数据做短对照。每组在同一张卡上先以 2 个 worker、再以 8 个 worker 执行两轮各 200 个梯度步。batch size 16，表中为各次第二轮，计时按实际秒数换算。
@@ -270,3 +272,11 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 在 `pro1` 用完整 HDF5 重放官方 `demo_0` 的 131 步，终点仍得到 `object_in_box=true`、`lid_closed=true` 和 `sim_success=true`。结果成功写入 `runs/packaging-demo0-floor-support-pro1.json`。早于此提交的评估使用此前的高度和盖板判据。
 
 `dexcap-packaging-epoch100` 在训练日志确认第 100 轮权重保存完成后，用 GPU 3–6 对 15 种物体各跑一次 400 步参考摆放。逐物体结果在 `runs/packaging-setxf-seed1-full-20261119T111945Z-epoch100-preview/`，会话日志为 `runs/packaging-epoch100-preview.log`。正式随机摆放评估使用第 3000 轮权重。
+
+### Packaging 初始点云覆盖
+
+用官方首帧固定相机回放九种未见物体的 45 个随机初始场景，按渲染像素追踪下采样后的物体点。初始场景均未发生物体与盒体接触。弹簧夹在种子 2、4 的画面分别占 718、602 像素，裁剪后两者都为 0 点。此时官方裁剪下界分别约为 −2.6 mm 与 −1.2 mm，仿真桌面高 −30 mm，弹簧夹最高处约 −6 mm。
+
+用 `frame_2710` 原始深度中十处裸露桌面区域拟合台面，10,292 个有效点的拟合残差约 1.6 mm。结果在种子 2、4 的物体中心处约为 −20.0 和 −17.8 mm，对应原裁剪下界高于拟合桌面约 17 mm。直接将仿真桌面和物体改为该斜面，官方 `demo_0` 动作回放失去入盒和合盖。保留已验证的碰撞场景，将 Packaging 裁剪下界限制在仿真桌面上方 20 mm。该距离接近原始深度拟合后五组物体位置的裁剪高度中位数。
+
+补充裁剪规则后，45 个初始场景的 `10000 × 6` 策略点云都包含目标物体。弹簧夹种子 2、4 分别保留 249、221 个点。记录在 `runs/packaging-unseen-{visibility,floor-crop-ab}.json`，可见性脚本在 `runs/packaging-unseen-visibility.py`。这是初始观测覆盖对照，策略任务完成情况由闭环评估记录。
