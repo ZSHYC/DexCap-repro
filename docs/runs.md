@@ -596,3 +596,7 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 | 绿梨 | 10 cm 平移 | 0/5 | 0/5 | 2/5 | 0/5 |
 
 红银包装种子 5 在增强组抓起并释放，最终仍在盒外。红银包装的合盖种子由 3 增至 3、4，绿梨两组都是种子 2、3。在本次第 100 轮对照中，未观察到入盒或完整成功改善。逐回合结果在 `runs/packaging-translation-gpu3/{control,shift10}-{red-box,green-pear}.json`。
+
+#### 仿真评估的 CPU 线程实测
+
+在 GPU 3 上用同一增强组权重重跑红银包装的 5 × 400 步，设置 `OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1`。重跑和原跑的 JSON 逐字段一致。原跑约 428 秒，按运行进程的启动时间与结果文件落盘时间估计。单线程用 `/usr/bin/time` 测得 421.61 秒，用户态 CPU 时间为 419.43 秒。原跑监测期间的 CPU 使用率约为一个核的 36 倍。此设置主要降低 CPU 占用，未明显缩短本次评估用时，现有正式队列保留原设置。命令、计时和输出在 `runs/packaging-translation-gpu3/rollout-thread-benchmark.sh` 和 `runs/packaging-translation-gpu3/shift10-red-box-threads1.{time,json}`。
