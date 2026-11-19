@@ -1,5 +1,7 @@
 """Approximate Plate Wiping task with released LEAP collision meshes."""
 
+from itertools import combinations
+
 import numpy as np
 import pybullet as p
 
@@ -15,6 +17,7 @@ PLATE_RIM_HEIGHT = 0.024
 PLATE_INNER_RADIUS = 0.095
 SPONGE_HALF_HEIGHT = 0.02
 SPONGE_YAW = 0.33
+LINKS_PER_FINGER = 5  # Four actuated joints and one fixed fingertip.
 
 
 def sample_object_xy(rng):
@@ -124,7 +127,14 @@ class PlateWipingSimulation(LeapSimulation):
         if self._plate_grasp is None:
             contacts = p.getContactPoints(bodyA=self.right_hand, bodyB=self.plate,
                                           physicsClientId=self.client)
-            self._plate_grasp = self._attach(self.right_hand, self.plate, contacts)
+            pinched = any(
+                a[3] >= 0 and b[3] >= 0
+                and a[3] // LINKS_PER_FINGER != b[3] // LINKS_PER_FINGER
+                and np.dot(a[7], b[7]) < -0.25
+                for a, b in combinations(contacts, 2)
+            )
+            if pinched:
+                self._plate_grasp = self._attach(self.right_hand, self.plate, contacts)
         if self._sponge_grasp is None:
             contacts = p.getContactPoints(bodyA=self.left_hand, bodyB=self.sponge,
                                           physicsClientId=self.client)

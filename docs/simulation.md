@@ -28,6 +28,8 @@ python -m simulation.rollout "$DATASET" --output "$DEXCAP/runs/wiping-replay.jso
 
 Wiping 场景以原始示范的 `frame_2220` 深度和官方首帧点云校准。把深度投影到 Bullet 场景使用的坐标后，在两个物体初始位置附近估计的台面高度约为 −0.035 m 到 −0.026 m，仿真用 −0.030 m 的水平面近似。盘子由 4 mm 的浅底和一圈斜面构成，盘缘约高 24 mm。海绵整体高度取 40 mm，海绵长轴相对 `+y` 方向旋转约 19°。 [原始数据重建](raw-retarget.md)
 
+盘子需要两根不同手指同时形成相向接触后才建立抓取约束。两条接触法向的点积须小于 −0.25。这样允许右手在第一次碰到盘缘后继续闭合，再把盘子锁定到实际接触链节。
+
 ## 运行闭环策略
 
 从项目根执行。`CKPT` 指向 `runs/` 下实际保存的 Wiping checkpoint：
