@@ -18,6 +18,9 @@ import pybullet_data
 from scipy.spatial.transform import Rotation
 
 from simulation.leap import GRASP_FORCE, LINKS_PER_FINGER, LeapSimulation, wxyz
+from simulation.packaging_objects import (
+    UNSEEN_COMPOUNDS, VIDEO_1, compound_bounds, create_compound_shapes, cylinder_extent,
+)
 
 
 DEMO_OBJECT_XY = np.array([[0.482, 0.115], [0.517, -0.223]])
@@ -41,12 +44,12 @@ PACKAGING_OBJECTS = {
     "tape-measure": ("cylinder", (0.038, 0.038, 0.017), (0.78, 0.60, 0.08, 1), "demo_175"),
     "yellow-cloth": ("box", (0.075, 0.065, 0.020), (0.91, 0.75, 0.09, 1), "demo_250"),
 }
-PACKAGING_UNSEEN_OBJECTS = {
-    "red-apple": ("ellipsoid", (0.0395, 0.0395, 0.0435), (0.68, 0.035, 0.035, 1),
-                  "normal_packaging_unseenobj.mp4 @ 0.6 s"),
-    "earplug-jar": ("cylinder", (0.035, 0.035, 0.059), (0.72, 0.70, 0.64, 1),
-                    "normal_packaging_unseenobj.mp4 @ 0.6 s"),
+UNSEEN_PRIMITIVES = {
+    "red-apple": ("ellipsoid", (0.0395, 0.0395, 0.0435), (0.68, 0.035, 0.035, 1), VIDEO_1),
+    "earplug-jar": ("cylinder", (0.035, 0.035, 0.059), (0.72, 0.70, 0.64, 1), VIDEO_1),
+    "golden-curry": ("box", (0.09, 0.015, 0.0575), (0.67, 0.39, 0.10, 1), VIDEO_1),
 }
+PACKAGING_UNSEEN_OBJECTS = (*UNSEEN_PRIMITIVES, *UNSEEN_COMPOUNDS)
 
 
 def sample_object_xy(rng):
@@ -63,10 +66,17 @@ class PackagingSimulation(LeapSimulation):
 
     def __init__(self, object_name=DEFAULT_OBJECT):
         self.object_group = "unseen" if object_name in PACKAGING_UNSEEN_OBJECTS else "trained"
-        objects = PACKAGING_UNSEEN_OBJECTS if self.object_group == "unseen" else PACKAGING_OBJECTS
-        self.object_kind, half, self.object_color, self.object_reference = objects[object_name]
         self.object_name = object_name
-        self.object_half = np.asarray(half)
+        self.object_parts = None
+        if object_name in UNSEEN_COMPOUNDS:
+            self.object_reference, self.object_parts = UNSEEN_COMPOUNDS[object_name]
+            lower, _ = compound_bounds(self.object_parts, np.eye(3))
+            self.object_support_height = -lower[2]
+        else:
+            objects = UNSEEN_PRIMITIVES if self.object_group == "unseen" else PACKAGING_OBJECTS
+            self.object_kind, half, self.object_color, self.object_reference = objects[object_name]
+            self.object_half = np.asarray(half)
+            self.object_support_height = self.object_half[2]
         super().__init__()
 
     def reset(self, action, object_xy=DEMO_OBJECT_XY) -> dict[str, np.ndarray]:
@@ -190,8 +200,18 @@ class PackagingSimulation(LeapSimulation):
         p.stepSimulation(physicsClientId=self.client)
 
     def _create_object(self, xy):
-        position = [*xy, TABLE_HEIGHT + self.object_half[2]]
-        mass = 0.12
+        if self.object_parts is None:
+            collision, visual, orientation = self._primitive_object_shapes()
+        else:
+            collision, visual = create_compound_shapes(self.object_parts, self.client)
+            orientation = (0, 0, 0, 1)
+        return p.createMultiBody(
+            baseMass=0.12, baseCollisionShapeIndex=collision,
+            baseVisualShapeIndex=visual, basePosition=[*xy, TABLE_HEIGHT + self.object_support_height],
+            baseOrientation=orientation, physicsClientId=self.client,
+        )
+
+    def _primitive_object_shapes(self):
         if self.object_kind == "box":
             shape = p.GEOM_BOX
             collision_args = visual_args = dict(halfExtents=self.object_half)
@@ -220,11 +240,7 @@ class PackagingSimulation(LeapSimulation):
             visual = p.createVisualShape(
                 shape, **visual_args, rgbaColor=self.object_color, physicsClientId=self.client,
             )
-        return p.createMultiBody(
-            baseMass=mass, baseCollisionShapeIndex=collision,
-            baseVisualShapeIndex=visual, basePosition=position, baseOrientation=orientation,
-            physicsClientId=self.client,
-        )
+        return collision, visual, orientation
 
     def step(self, action) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
         self._allow_supported_pivot()
@@ -328,15 +344,17 @@ class PackagingSimulation(LeapSimulation):
             self.object, physicsClientId=self.client
         ))
         rotation = Rotation.from_quat(quaternion).as_matrix()
-        if self.object_kind == "cylinder":
-            axis = np.abs(rotation[:, 2])
-            local_half = self.object_half[0] * np.sqrt(np.maximum(0, 1 - axis**2))
-            local_half += self.object_half[2] * axis
-        elif self.object_kind == "ellipsoid":
-            local_half = np.linalg.norm(rotation * self.object_half, axis=1)
+        if self.object_parts is not None:
+            lower, upper = compound_bounds(self.object_parts, rotation)
+            lower, upper = position + lower, position + upper
         else:
-            local_half = np.abs(rotation) @ self.object_half
-        lower, upper = position - local_half, position + local_half
+            if self.object_kind == "cylinder":
+                extent = cylinder_extent(rotation, self.object_half)
+            elif self.object_kind == "ellipsoid":
+                extent = np.linalg.norm(rotation * self.object_half, axis=1)
+            else:
+                extent = np.abs(rotation) @ self.object_half
+            lower, upper = position - extent, position + extent
         return bool(
             np.all(lower[:2] >= -self.box_inner_half)
             and np.all(upper[:2] <= self.box_inner_half)

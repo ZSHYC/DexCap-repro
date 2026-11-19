@@ -101,11 +101,30 @@ CUDA_VISIBLE_DEVICES=2 python -m simulation.rollout "$PACKAGING_DATA" \
 
 作者第一段视频展示了 S&B 咖喱盒、红苹果、胶带分配器和 Mack’s 耳塞罐，第二段展示了长颈鹿、狮子、红黄积木堆和蓝色带把手杯。图 10 中还可见一个黑色弹簧夹。这些身份来自图像与录像，尺寸需另行估计。 [图 10](https://arxiv.org/html/2403.07788v2/exp_obj_v3.png) · [作者视频一](https://dex-cap.github.io/assets/normal_packaging_unseenobj.mp4) · [作者视频二](https://dex-cap.github.io/assets/normal_packaging_unseenobj2.mp4)
 
-以实测参考纸盒的约 29.8 × 19 cm 外部平面和 7.8 cm 高度为尺度，用视频一 0.6 s 时每个视角中的八个盒角拟合针孔投影，再由物体轮廓估计尺寸。目前 `--object` 可单独评估两个几何近似。输出包含 `object_group=unseen` 和视频来源。六种训练物体的评估照常在原队列中执行。
+以参考纸盒的约 29.8 × 19 cm 外部平面和 7.8 cm 高度为尺度。苹果和耳塞罐用视频一 0.6 s 的八个盒角拟合针孔投影后估计轮廓。其余在视频中出现的物体用两视角同帧的盒体和物体轮廓估算，透视与遮挡带来的尺寸误差约为 15%–25%。弹簧夹只在图 10 出现，尺寸参考外观相似的 6.5 英寸产品，初始平放姿态由仿真设定。 [同类弹簧夹尺寸](https://www.usplastic.com/catalog/item.aspx?itemid=156410)
 
-| `--object` | 视频量测后的仿真几何 |
+| `--object` | 仿真几何与初始姿态 |
 |---|---|
 | `red-apple` | 旋转椭球，平面直径约 7.9 cm、高 8.7 cm |
 | `earplug-jar` | 圆柱包络，直径约 7.0 cm、高 11.8 cm |
+| `golden-curry` | 窄边立起的纸盒，18.0 × 3.0 × 11.5 cm |
+| `tape-dispenser` | 14.4 × 10.8 × 6.0 cm，含带中心孔的胶带卷与红色切带器 |
+| `stacked-bricks` | 17.8 × 6.5 × 5.5 cm，横放的黄红阶梯状积木 |
+| `blue-mug` | 13.3 × 9.9 × 11.0 cm（含把手），保留杯口与把手内侧空间 |
+| `giraffe` | 12.6 × 3.5 × 16.6 cm，四足站立，保留细腿与长颈 |
+| `lion` | 14.0 × 4.6 × 6.6 cm，四足站立，保留鬃毛、躯干与尾巴 |
+| `spring-clamp` | 15.9 × 8.2 × 2.4 cm，平放的黑色双臂与橙色夹口，夹口保持闭合 |
 
-苹果椭球的最小厚度约 7.9 cm，大于当前刚性纸盒的可盖闭净高，完整合盖结果受这一几何近似限制。其余七种物体需要继续量测和建模，论文未见物体组的 45 回合评估尚未完成。
+复合模型用刚性拼接的盒体和圆柱近似接触面。苹果椭球的最小厚度约 7.9 cm，杯身直径约 9.5 cm，均超过当前刚性纸盒约 7.3 cm 的可盖闭净高。这两个模型的入盒与合盖结果受仿真几何约束。所有未见物体都通过 `--object` 选择，结果包含 `object_group=unseen` 和 `object_reference`。
+
+以下命令用同一个 checkpoint 评估九个物体，每种运行五组相同的摆放。运行时使用项目 Conda 环境和上文 SetXF 的 `PYTHONPATH`。
+
+```bash
+cd "$DEXCAP"
+objects=$(python -c 'from simulation.packaging import PACKAGING_UNSEEN_OBJECTS; print(*PACKAGING_UNSEEN_OBJECTS)')
+for object in $objects; do
+  CUDA_VISIBLE_DEVICES=3 python -m simulation.rollout "$PACKAGING_DATA" \
+    --task packaging --checkpoint "$CKPT" --object "$object" --trials 5 \
+    --output "$DEXCAP/runs/packaging-$object-final-sim.json"
+done
+```

@@ -5,6 +5,7 @@ import numpy as np
 import pybullet as p
 
 from simulation.packaging import PackagingSimulation
+from simulation.packaging_objects import UNSEEN_COMPOUNDS, create_compound_shapes
 
 
 class PackagingGraspTest(unittest.TestCase):
@@ -46,3 +47,30 @@ class PackagingGraspTest(unittest.TestCase):
         sim._release_object()
         self.assertIsNone(sim._object_grasp)
         self.assertTrue(sim._object_released)
+
+
+class PackagingObjectTest(unittest.TestCase):
+    def test_compound_bodies_include_every_part(self):
+        client = p.connect(p.DIRECT)
+        self.addCleanup(p.disconnect, client)
+        for name, (_, parts) in UNSEEN_COMPOUNDS.items():
+            with self.subTest(object=name):
+                self.assertLessEqual(len(parts), 16)
+                collision, visual = create_compound_shapes(parts, client)
+                body = p.createMultiBody(0.12, collision, visual, physicsClientId=client)
+                self.assertEqual(len(p.getVisualShapeData(body, physicsClientId=client)), len(parts))
+                self.assertEqual(len(p.getCollisionShapeData(body, -1, physicsClientId=client)), len(parts))
+
+    def test_bricks_must_fit_between_the_walls(self):
+        sim = PackagingSimulation("stacked-bricks")
+        self.addCleanup(sim.close)
+        action = np.zeros(46)
+        action[:6] = [0.2, -0.4, 0.5, 0.2, 0.4, 0.5]
+        action[[6, 10]] = 1
+        sim.reset(action)
+        box_pose = p.getBasePositionAndOrientation(sim.container_bottom, physicsClientId=sim.client)
+
+        for yaw, should_fit in ((0, True), (np.pi / 2, False)):
+            pose = p.multiplyTransforms(*box_pose, [0, 0, 0.040], p.getQuaternionFromEuler([0, 0, yaw]))
+            p.resetBasePositionAndOrientation(sim.object, *pose, physicsClientId=sim.client)
+            self.assertEqual(sim._object_in_box(), should_fit)
