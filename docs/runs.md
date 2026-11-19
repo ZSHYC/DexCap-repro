@@ -20,6 +20,8 @@
 
 在两组 Wiping 分别到第 477、476 轮、Packaging 到第 512 轮时复核。系统盘可用 19.89 GiB。按实际压缩大小估算，剩余正式权重、日志增长和增强组的一个 checkpoint 合计约需 19.21 GiB。余量约 0.68 GiB，压缩临时文件另计。
 
+23:19（北京时间），三组第 600 轮 checkpoint 均已保存并完成无损压缩，每份约 261 MB。此时系统盘可用 18.36 GiB。按生效配置，每组还需保存 23 份中间权重及 1 份第 3000 轮权重。用已保存文件的最大体积估算，合计约需 17.57 GiB，日志预计新增 0.21 GiB，另外预留 0.30 GiB 用于同时保存和压缩，剩余约 0.28 GiB。
+
 `60d5b3a` 的 `scripts/run_experiment.sh` 已在 `pro1` 的三个实验入口分别跑通 `smoke`。Wiping PointNet 使用当前项目源码，其余两组使用 `worktrees/setxf` 的 `4263783`。三个第 2 轮 checkpoint 均输出有限的 46 维动作。入口日志为 `runs/repro-entrypoint-pointnet.log`、`runs/repro-entrypoint-wiping-setxf.log` 和 `runs/repro-entrypoint-setxf.log`。   [运行方式](reproduction.md#运行一次完整实验)
 
 ### Wiping 全量训练启动
