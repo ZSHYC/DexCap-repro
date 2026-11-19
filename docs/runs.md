@@ -262,3 +262,11 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 `8196a31` 补齐九种未见物体，新增的六种复合刚体按各碰撞部件在纸盒坐标系中的朝向判断是否入盒。本地四项 Packaging 测试通过，覆盖复合体创建和有方向限制的入盒。使用官方完整 HDF5 上的第 2 轮短训 SetXF checkpoint，九种未见物体各完成一次 6 步 CUDA 闭环，均使用 `10000 × 6` 仿真观测。记录在 `runs/packaging-unseen-smoke-8196a31/`。同一源码重放官方 `demo_0` 的 131 个动作后，默认红银包装仍入盒并合盖，记录为 `runs/packaging-demo0-unseen-model-regression.json`。 [物体几何及来源](simulation.md#未见物体)
 
 `dexcap-packaging-unseen` 正在等待 Packaging 正式训练结束。它读取第 3000 轮权重，用 GPU 3–6 在九个物体上各跑五次，每回合 400 步，输出到 `runs/packaging-setxf-seed1-full-20261119T111945Z-unseen-final/`。同一个种子的盒位和物体起点在九种物体间一致，逐物体 JSON 汇总为 `summary.json`。会话日志为 `runs/packaging-unseen-evaluation.log`。
+
+### Packaging 分项判据验证
+
+`2eb8bbc` 使用盒底支撑判定入盒，使用盖板铰链角度判定合盖。让苹果、蓝杯和蓝色积木从盒内上方释放，三件物体在下落阶段都未计为入盒，落稳后均计为入盒，打开的盖板未触发完整成功。在盖板角度 165° 与 178° 的直接对照中，分别判为打开和闭合。本地六项 Packaging 测试通过。 [入盒与合盖判据](simulation.md#packaging-仿真)
+
+在 `pro1` 用完整 HDF5 重放官方 `demo_0` 的 131 步，终点仍得到 `object_in_box=true`、`lid_closed=true` 和 `sim_success=true`。结果成功写入 `runs/packaging-demo0-floor-support-pro1.json`。早于此提交的评估使用此前的高度和盖板判据。
+
+`dexcap-packaging-epoch100` 在训练日志确认第 100 轮权重保存完成后，用 GPU 3–6 对 15 种物体各跑一次 400 步参考摆放。逐物体结果在 `runs/packaging-setxf-seed1-full-20261119T111945Z-epoch100-preview/`，会话日志为 `runs/packaging-epoch100-preview.log`。正式随机摆放评估使用第 3000 轮权重。
