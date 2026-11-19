@@ -180,31 +180,7 @@ rg -n "finished run successfully|run failed with error|save checkpoint|Loss" \
 ckpt="$(find "$DEXCAP/runs/$run_name" -type f -name model_epoch_2.pth -print -quit)"
 test -n "$ckpt"
 
-CUDA_VISIBLE_DEVICES=0 python - "$ckpt" "$DATASET" <<'PY'
-import sys
-import h5py
-import numpy as np
-import torch
-from robomimic.utils.file_utils import policy_from_checkpoint
-
-policy, checkpoint = policy_from_checkpoint(
-    ckpt_path=sys.argv[1],
-    device=torch.device("cuda:0"),
-)
-policy.start_episode()
-
-with h5py.File(sys.argv[2], "r") as dataset:
-    demo = dataset["data/demo_0/obs"]
-    keys = checkpoint["shape_metadata"]["all_obs_keys"]
-    observation = {key: demo[key][:3] for key in keys}
-
-with torch.inference_mode():
-    action = policy(observation)
-
-assert action.shape == (46,)
-assert np.isfinite(action).all()
-print("action:", action.shape, "finite:", np.isfinite(action).all())
-PY
+CUDA_VISIBLE_DEVICES=0 python "$DEXCAP/scripts/checkpoint_inference.py" "$ckpt" "$DATASET"
 ```
 
 这个检查能发现 checkpoint 无法反序列化、输入字段不匹配或推理产生无效数值。通过后，训练闭环完成，可以启动完整训练。
