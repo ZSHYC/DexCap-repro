@@ -196,3 +196,24 @@ With the same sampling seed, all 80,000 points per hand were identical.
 The build ran in the local Conda environment, and the HDF5 and
 `runs/packaging-recorded-rebuild.log` were copied to `pro1`. Policy training
 uses the released HDF5.
+
+### Visible hand points at Packaging frame 2810
+
+The released `demo_0` frame at index 20 corresponds to raw `frame_2810`
+and contains 3280 zero-RGB hand points. A second fixture preserves the
+same calibration and archived joints. It builds one frame with
+`--action-gap 1 --num-points-to-sample 10000 --in-wild-data
+--use-recorded-joints --headless`.
+
+The rebuilt camera and all 32 hand values exactly match the released
+frame. Maximum wrist position and quaternion component differences are
+`5.55e-17` and `8.33e-17`. The rebuild contains 3289 zero-RGB points,
+with a hand-cloud centroid difference of 1.52 mm. For the hand points,
+the median nearest-neighbor distance is 4.26 mm from rebuilt to release
+and 4.27 mm in the opposite direction. The respective 95th percentiles
+are 8.35 and 8.28 mm. Two builds of this fixture with separate random
+surface samples produced directional medians of 4.25 and 4.30 mm.
+
+The raw fixture is on `pro1` at
+`data/raw/packaging-recorded-joints-visible-hand-fixture/`. The HDF5 file
+is `data/derived/packaging-recorded-joints-visible-hand-frame2810.hdf5`.
