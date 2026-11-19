@@ -28,6 +28,20 @@ python -m simulation.rollout "$DATASET" --output "$DEXCAP/runs/wiping-replay.jso
 
 服务器上的 `data/derived/wiping-demo-0-playback.hdf5` 包含从官方文件取出的 111 步动作、相机外参和手部状态。完整 HDF5 下载期间可以将上面的 `DATASET` 指向这份文件。
 
+![两条官方示范的 PyBullet 回放。上行为 Wiping 的初态、双手抓取、内盘面接触和终态，下行为 Packaging 的初态、抓取、入盒和闭盒终态。](assets/dexcap-official-replay-keyframes.png)
+
+图中使用官方 `demo_0` 动作和固定的外部观察相机。Wiping 在第 28 步抓到两件物体，第 64 步首次接触内盘面，111 步内累计 4 次擦拭。Packaging 在第 20 步抓取、第 52 步入盒，第 131 步结束时盖板已合。两组渲染的终态指标与常规命令的回放结果逐项一致。
+
+从项目根目录用 CPU 重新生成关键帧图。
+
+```bash
+release=data/official/e468f07000de0f8d3234a9c60a9d8208344675e0
+CUDA_VISIBLE_DEVICES= python -m scripts.render_demo_replays \
+  "$release/hand_wiping_1-14_5actiongap_10000points.hdf5" \
+  "$release/hand_packaging_wild_1-20_5actiongap_10000points.hdf5" \
+  runs/dexcap-official-replay-keyframes.png
+```
+
 Wiping 场景以原始示范的 `frame_2220` 深度和官方首帧点云校准。把深度投影到 Bullet 场景使用的坐标后，在两个物体初始位置附近估计的台面高度约为 −0.035 m 到 −0.026 m，仿真用 −0.030 m 的水平面近似。盘子由 4 mm 的浅底和一圈斜面构成，盘缘约高 24 mm。海绵整体高度取 40 mm，海绵长轴相对 `+y` 方向旋转约 19°。 [原始数据重建](raw-retarget.md)
 
 盘子需要两根不同手指同时形成相向接触后才建立抓取约束。两条接触法向的点积须小于 −0.25。盘子仍贴近桌面时，抓取约束上限为 20 N。盘子碰撞包围盒的最低点高于桌面 2 mm 后，抓取约束以当时盘心为目标位置，并把盘面法向调整到从 11 条官方示范估计出的右掌相对方向。Bullet 使用 200 N 上限执行这一朝向变化。这些近似分别描述离桌时的受力和提起后的持盘姿态。 [受力、标定与留出回放](runs.md#盘子离桌与擦拭阶段的受力)
