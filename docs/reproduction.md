@@ -54,7 +54,7 @@ scripts/run_experiment.sh wiping-setxf full
 scripts/run_experiment.sh packaging-setxf full
 ```
 
-三个命令默认分别使用 GPU 0、1、2。换卡时给各命令设置一个 `CUDA_VISIBLE_DEVICES` 编号，训练器将该卡映射为 `cuda:0`。每个命令先短训并加载第 2 轮权重，随后按完整配置训练，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种物体各跑 5 回合。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
+`pro1` 可用 GPU 为 0、1、2、3。三个正式作业各占 GPU 0、1、2，补充实验使用 GPU 3。训练器将各作业的可见卡映射为 `cuda:0`。每个命令先短训并加载第 2 轮权重，随后按完整配置训练，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种训练物体各跑 5 回合。Packaging 的九种未见物体排在同一张 GPU 2 上，等这些回合结束后开始。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
 
 `pro1` 上的 `dexcap-packaging-unseen` 会话等待 Packaging 的第 3000 轮权重。训练完成后，它用 GPU 3–6 对九种未见物体各跑 5 回合。评估可用同一个 checkpoint 手动重跑。 [未见物体及运行命令](simulation.md#未见物体)
 

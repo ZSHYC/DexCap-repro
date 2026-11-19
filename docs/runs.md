@@ -344,7 +344,7 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 
 `8196a31` 补齐九种未见物体，新增的六种复合刚体按各碰撞部件在纸盒坐标系中的朝向判断是否入盒。本地四项 Packaging 测试通过，覆盖复合体创建和有方向限制的入盒。使用官方完整 HDF5 上的第 2 轮短训 SetXF checkpoint，九种未见物体各完成一次 6 步 CUDA 闭环，均使用 `10000 × 6` 仿真观测。记录在 `runs/packaging-unseen-smoke-8196a31/`。同一源码重放官方 `demo_0` 的 131 个动作后，默认红银包装仍入盒并合盖，记录为 `runs/packaging-demo0-unseen-model-regression.json`。 [物体几何及来源](simulation.md#未见物体)
 
-`dexcap-packaging-unseen` 正在等待 Packaging 正式训练结束。它读取第 3000 轮权重，用 GPU 3–6 在九个物体上各跑五次，每回合 400 步，输出到 `runs/packaging-setxf-seed1-full-20261119T111945Z-unseen-final/`。同一个种子的盒位和物体起点在九种物体间一致，逐物体 JSON 汇总为 `summary.json`。会话日志为 `runs/packaging-unseen-evaluation.log`。
+`dexcap-packaging-unseen` 等待 Packaging 正式训练与六种训练物体的仿真完成。它读取第 3000 轮权重，在 GPU 2 上依次对九个未见物体各跑五次，每回合 400 步，输出到 `runs/packaging-setxf-seed1-full-20261119T111945Z-unseen-final/`。同一个种子的盒位和物体起点在九种物体间一致，逐物体 JSON 汇总为 `summary.json`。会话日志为 `runs/packaging-unseen-evaluation.log`。
 
 ### Packaging 分项判据验证
 
@@ -428,3 +428,5 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 基于完整 Packaging HDF5、SetXF、种子 1、batch size 16、每轮 500 步，从头训练 100 轮。对照组设 `train.dexcap_xy_translation_m = 0.0`，平移组设 `0.10`。其余配置沿用 `configs/pointcloud-full.json`，训练结束保存第 100 轮 checkpoint。
 
 两组在 `pro1` 的 GPU 5 和 6 同时启动，训练分支为 `repro/setxf` 的 `379cf43`。训练结束后，使用红银包装和绿梨各五组相同随机摆放，每回合 400 步。配置、启动命令和结果保存到 `runs/packaging-translation-study/`，分别使用 `control` 和 `shift10` 前缀。按 `docs/reproduction.md` 的训练命令复跑时，将 `--config` 指向相应的 `control.json` 或 `shift10.json`。
+
+调整 `pro1` GPU 分配后停止两组补充训练。对照组和增强组的日志分别到第 64 轮和第 60 轮，尚未生成第 100 轮 checkpoint。GPU 0、1、2 上的三组正式训练继续运行。Packaging 第 300 轮的两组闭环改为在 GPU 3 上串行补跑，会话为 `dexcap-packaging-epoch300-gpu3`，脚本为 `runs/packaging-epoch300-paired-gpu3.sh`。
