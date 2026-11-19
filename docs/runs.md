@@ -18,9 +18,15 @@
 
 PointNet 和 `SetXFPCDEncoder` 在 Wiping 官方数据的前 24 帧分别完成两轮训练，每轮三个梯度步。两个 checkpoint 均输出有限的 46 维动作，并分别读取仿真观测执行了 12 步闭环控制。这两次闭环均为 0 个海绵与盘子接触步。服务器记录为 `runs/wiping-policy-smoke-pro1.json` 和 `runs/wiping-setxf-smoke-pro1.json`。
 
+同一批 Wiping 接口 checkpoint 也执行了每种策略 20 回合、每回合 12 步的闭环试验。两个策略逐回合的盘子和海绵初始坐标完全相同，均为 0/20 仿真成功。这批结果用于验证随机场景和配对流程。服务器记录为 `runs/wiping-pointnet-20trial-smoke-pro1.json` 和 `runs/wiping-setxf-20trial-smoke-pro1.json`。
+
 Packaging 的 SetXF 策略也用官方 `demo_0` 的前 24 帧完成 6 个梯度步。同一个 checkpoint 读取 Packaging 仿真点云与手部状态，执行了 12 步，记录到右手与物体接触并触发抓取，物体尚未入盒。服务器记录为 `runs/packaging-setxf-smoke-pro1.json`。
 
-完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint，再执行 400 步仿真并写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
+使用 `cb561d3` 的可移动盒体与柔性手部接触回放官方 Packaging `demo_0`。131 步中盒体留在桌面，最接近桌面中心时比起点近 0.0519 m，终点与起点相距 0.0664 m。包装物仍由右手抓持，盒盖打开，仿真判定未成功。此前刚性手部接触的回放在第 110 步加速盒体，随后盒体滑出桌面。服务器记录为 `runs/packaging-demo0-compliant-pro1.json`。
+
+Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭环。记录到右手抓持、左手碰触盒体和盖板，盒体向桌面中心最大推进 0.0198 m，仿真判定未成功。服务器记录为 `runs/packaging-setxf-compliant-smoke-pro1.json`。
+
+完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 执行一组，每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ## 官方原始数据重建
 
@@ -39,4 +45,6 @@ Packaging 的 SetXF 策略也用官方 `demo_0` 的前 24 帧完成 6 个梯度�
 
 ## 本地 Packaging 仿真
 
-回放官方 `demo_0` 的 131 步并渲染 `10000 × 6` 点云。当前被动铰链配置累计收到 52 个右手与包装物的接触点、1197 个左手与盒盖的接触点。包装物已释放并落在盒内，盒盖尚未闭合，最终判定为未成功。 [场景和指标](simulation.md)
+用固定盒体和被动铰链回放官方 `demo_0` 的 131 步，渲染 `10000 × 6` 点云。累计收到 52 个右手与包装物的接触点、1197 个左手与盒盖的接触点。包装物已释放并落在盒内，盒盖尚未闭合，最终判定为未成功。 [场景和指标](simulation.md)
+
+同一段示范在当前柔性接触场景中将盒子向桌面中心推进约 0.0514 m，终点与起点相距 0.0653 m。包装物仍由右手抓持，盒盖打开。
