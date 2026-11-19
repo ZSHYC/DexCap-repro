@@ -18,18 +18,25 @@ from scipy.spatial.transform import Rotation
 from simulation.leap import LeapSimulation, wxyz
 
 
+DEMO_OBJECT_XY = np.array([[0.48, 0.12], [0.57, -0.27]])
+
+
+def sample_object_xy(rng):
+    """Sample the 10 × 10 cm box area and the 40 × 30 cm object area."""
+    half_area = np.array([[0.05, 0.05], [0.20, 0.15]])
+    return DEMO_OBJECT_XY + rng.uniform(-half_area, half_area)
+
+
 class PackagingSimulation(LeapSimulation):
     """Cardboard container, hinged lid, and packaged object."""
 
-    box_center = np.array([0.48, 0.12])
     box_inner_half = np.array([0.14, 0.11])
     box_top = 0.105
     object_half = np.array([0.045, 0.033, 0.045])
 
-    def reset(self, action) -> dict[str, np.ndarray]:
+    def reset(self, action, object_xy=DEMO_OBJECT_XY) -> dict[str, np.ndarray]:
         self._reset_scene(action, [0.32, 0.24, 0.14, 1.0])
         cardboard = [0.62, 0.42, 0.22, 1.0]
-        cx, cy = self.box_center
 
         component_half_extents = [
             [0.15, 0.12, 0.006],
@@ -70,7 +77,7 @@ class PackagingSimulation(LeapSimulation):
             baseMass=0.6,
             baseCollisionShapeIndex=bottom_collision,
             baseVisualShapeIndex=bottom_visual,
-            basePosition=[cx, cy, 0.006],
+            basePosition=[*object_xy[0], 0.006],
             linkMasses=[0.02],
             linkCollisionShapeIndices=[lid_collision],
             linkVisualShapeIndices=[lid_visual],
@@ -103,7 +110,7 @@ class PackagingSimulation(LeapSimulation):
         )
 
         self.object = self._box(
-            self.object_half, 0.12, [0.57, -0.27, 0.045],
+            self.object_half, 0.12, [*object_xy[1], 0.045],
             [0.78, 0.08, 0.04, 1.0]
         )
         p.changeDynamics(

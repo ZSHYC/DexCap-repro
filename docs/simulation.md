@@ -63,4 +63,13 @@ python -m simulation.rollout "$PACKAGING_DATA" --task packaging \
   --output "$DEXCAP/runs/packaging-replay.json"
 ```
 
-`PACKAGING_DATA` 可以换成版本目录下的完整 `hand_packaging_wild_1-20_5actiongap_10000points.hdf5`。闭环时加 `--checkpoint` 并选用 Packaging 权重。 [已执行的实验](runs.md)
+`PACKAGING_DATA` 可以换成版本目录下的完整 `hand_packaging_wild_1-20_5actiongap_10000points.hdf5`。闭环时用 Packaging 权重执行 5 回合：
+
+```bash
+export PYTHONPATH="$DEXCAP/worktrees/setxf/DexCap/STEP3_train_policy"
+CUDA_VISIBLE_DEVICES=2 python -m simulation.rollout "$PACKAGING_DATA" \
+  --task packaging --checkpoint "$CKPT" --trials 5 \
+  --output "$DEXCAP/runs/packaging-5-trials.json"
+```
+
+种子 1 至 5 分别在参考盒位周围的 10 × 10 cm 区域和参考物体位置周围的 40 × 30 cm 区域采样。结果记录每回合的 `box_xy`、`object_xy`，以及回合结束时的入盒率和任务成功率。论文每种物体评估 5 次。当前仿真使用 `demo_0` 中的红色包装物几何，5 回合结果适用于这一物体。 [论文的任务与初始摆放](https://arxiv.org/html/2403.07788v2#A1.SS6) · [实验记录](runs.md)
