@@ -6,20 +6,35 @@ import pybullet as p
 from simulation.leap import LeapSimulation, wxyz
 
 
+DEMO_OBJECT_XY = np.array([[0.54, -0.15], [0.55, 0.12]])
+PLATE_RADIUS = 0.125
+SPONGE_HALF_XY = (0.04, 0.065)
+
+
+def sample_object_xy(rng):
+    """Sample the paper's 40 × 30 cm areas around the two demo placements."""
+    half_area = np.array([0.20, 0.15])
+    clearance = PLATE_RADIUS + np.linalg.norm(SPONGE_HALF_XY)
+    while True:
+        xy = DEMO_OBJECT_XY + rng.uniform(-half_area, half_area, size=(2, 2))
+        if np.linalg.norm(xy[0] - xy[1]) >= clearance:
+            return xy
+
+
 class PlateWipingSimulation(LeapSimulation):
-    def reset(self, action):
+    def reset(self, action, object_xy=DEMO_OBJECT_XY):
         self._reset_scene(action, [0.12, 0.12, 0.12, 1.0])
 
-        collision = p.createCollisionShape(p.GEOM_CYLINDER, radius=0.125, height=0.012,
+        collision = p.createCollisionShape(p.GEOM_CYLINDER, radius=PLATE_RADIUS, height=0.012,
                                            physicsClientId=self.client)
-        visual = p.createVisualShape(p.GEOM_CYLINDER, radius=0.125, length=0.012,
+        visual = p.createVisualShape(p.GEOM_CYLINDER, radius=PLATE_RADIUS, length=0.012,
                                      rgbaColor=[0.88, 0.9, 0.96, 1.0],
                                      physicsClientId=self.client)
         self.plate = p.createMultiBody(baseMass=0.25, baseCollisionShapeIndex=collision,
                                        baseVisualShapeIndex=visual,
-                                       basePosition=[0.54, -0.15, 0.006],
+                                       basePosition=[*object_xy[0], 0.006],
                                        physicsClientId=self.client)
-        self.sponge = self._box([0.04, 0.065, 0.015], 0.06, [0.55, 0.12, 0.015],
+        self.sponge = self._box([*SPONGE_HALF_XY, 0.015], 0.06, [*object_xy[1], 0.015],
                                 [0.95, 0.72, 0.08, 1.0])
         p.changeDynamics(self.plate, -1, lateralFriction=0.8, physicsClientId=self.client)
         p.changeDynamics(self.sponge, -1, lateralFriction=1.2, physicsClientId=self.client)

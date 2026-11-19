@@ -4,7 +4,7 @@
 
 策略的两只手使用各自的腕部坐标。仿真用示范的 `frame_0_eef_quat` 和发布的标定配置将目标映射到同一个 Bullet 世界，执行后将模拟器的手部位姿与关节状态变回策略坐标。相机使用 HDF5 中的第一帧外参、发布的 L515 内参和 Bullet 深度缓存生成 `10000 × 6` XYZRGB 点云。控制频率为 20 Hz，物理步进为 240 Hz。
 
-两只 LEAP 手的掌部按目标做运动学移动，任务物体是动力学刚体。手碰到对应物体后，模拟器用固定约束近似抓取。当前两个场景各校准了 `demo_0` 的固定摆放，省略了机械臂运动学、软材料形变以及抓取的力学细节。仿真指标只描述对应场景。
+两只 LEAP 手的掌部按目标做运动学移动，任务物体是动力学刚体。手碰到对应物体后，模拟器用固定约束近似抓取。两个场景均以 `demo_0` 为标定参考，省略了机械臂运动学、软材料形变以及抓取的力学细节。仿真指标只描述对应场景。
 
 ## 回放官方示范
 
@@ -36,6 +36,16 @@ CUDA_VISIBLE_DEVICES=0 python -m simulation.rollout "$DATASET" \
 注意力模型用 `PYTHONPATH="$DEXCAP/worktrees/setxf/DexCap/STEP3_train_policy"`。策略每次读取最近三帧仿真观测。完成接口试跑后，去掉 `--steps` 用默认的 400 步时长评估。
 
 `sponge_plate_contact_steps` 是发生海绵与盘子接触的控制步数。`wipe_distance` 以米计，只累计连续接触时海绵相对于盘面的位移。`wipe_passes` 要求在同一段连续接触内，沿盘面横跨两个端点。`sim_success` 要求两件物体都已触发抓取，并累计至少两次跨盘擦拭。 [已执行的实验](runs.md)
+
+### 在相同摆放上比较 Wiping 策略
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python -m simulation.rollout "$DATASET" \
+  --checkpoint "$CKPT" --trials 20 \
+  --output "$DEXCAP/runs/wiping-20-trials.json"
+```
+
+使用种子 1 到 20。每个种子分别在两件物体参考位置周围的 40 × 30 cm 区域采样，不采用盘子与海绵初始轮廓重叠的摆放。每轮重置策略，输出记录两个起始坐标、任务指标和汇总成功率。PointNet 和 SetXF 使用相同的种子与摆放。论文的试验次数和布置区域用于设计此协议，区域中心、固定相机和物理模型仍取自项目的近似场景。单次运行保持参考摆放。 [论文评估协议与任务细节](https://arxiv.org/html/2403.07788v2#S5.SS1.SSS0.Px4)
 
 ## Packaging 仿真
 
