@@ -4,7 +4,7 @@
 
 策略的两只手使用各自的腕部坐标。仿真用示范的 `frame_0_eef_quat` 和发布的标定配置将目标映射到同一个 Bullet 世界，执行后将模拟器的手部位姿与关节状态变回策略坐标。相机使用 HDF5 中的第一帧外参、发布的 L515 内参和 Bullet 深度缓存生成 `10000 × 6` XYZRGB 点云。控制频率为 20 Hz，物理步进为 240 Hz。
 
-两只 LEAP 手的掌部按目标做运动学移动，任务物体是动力学刚体。手碰到对应物体后，模拟器用固定约束近似抓取。两个场景均以 `demo_0` 为标定参考，省略了机械臂运动学、软材料形变以及抓取的力学细节。仿真指标只描述对应场景。
+两只 LEAP 手的掌部按目标做运动学移动，任务物体是动力学刚体。手碰到对应物体后，模拟器用固定约束近似抓取。手部碰撞使用近似的接触刚度 (2500 N/m) 和阻尼 (50 N·s/m)，限制运动学手在碰撞时产生的过大冲量。两个场景均以 `demo_0` 为标定参考，省略了机械臂运动学、软材料形变以及抓取的力学细节。仿真指标只描述对应场景。 [Bullet 柔性接触示例](https://github.com/bulletphysics/bullet3/blob/master/examples/MultiBody/MultiBodySoftContact.cpp)
 
 ## 回放官方示范
 
@@ -21,6 +21,8 @@ python -m simulation.rollout "$DATASET" --output "$DEXCAP/runs/wiping-replay.jso
 ```
 
 服务器上的 `data/derived/wiping-demo-0-playback.hdf5` 包含从官方文件取出的 111 步动作、相机外参和手部状态。完整 HDF5 下载期间可以将上面的 `DATASET` 指向这份文件。
+
+Wiping 场景以原始示范的 `frame_2220` 深度和官方首帧点云校准。把深度投影到 Bullet 场景使用的坐标后，在两个物体初始位置附近估计的台面高度约为 −0.035 m 到 −0.026 m，仿真用 −0.030 m 的水平面近似。盘子碰撞体的厚度取 24 mm，海绵整体高度取 40 mm，海绵长轴相对 `+y` 方向旋转约 19°。 [原始数据重建](raw-retarget.md)
 
 ## 运行闭环策略
 
@@ -49,7 +51,7 @@ CUDA_VISIBLE_DEVICES=0 python -m simulation.rollout "$DATASET" \
 
 ## Packaging 仿真
 
-纸盒的底部和四壁构成一个有质量的刚体，盖板通过被动转动关节连接。左手可以通过接触推动纸盒和盖板。手部碰撞使用近似的接触刚度 (2500 N/m) 和阻尼 (50 N·s/m)，限制运动学手在碰撞时产生的过大冲量。右手碰到红色包装物后触发抓取，持物移至当前盒口上方时解除约束。入盒和合盖均按移动后的纸盒坐标判断，两者同时满足时记录 `sim_success`。`box_displacement_m` 记录盒体起点与终点的水平距离，`box_center_progress_m` 记录回合中向桌面中心靠近的最大距离。 [Bullet 柔性接触示例](https://github.com/bulletphysics/bullet3/blob/master/examples/MultiBody/MultiBodySoftContact.cpp)
+纸盒的底部和四壁构成一个有质量的刚体，盖板通过被动转动关节连接。左手可以通过接触推动纸盒和盖板。右手碰到红色包装物后触发抓取，持物移至当前盒口上方时解除约束。入盒和合盖均按移动后的纸盒坐标判断，两者同时满足时记录 `sim_success`。`box_displacement_m` 记录盒体起点与终点的水平距离，`box_center_progress_m` 记录回合中向桌面中心靠近的最大距离。
 
 ```bash
 PACKAGING_DATA="$DEXCAP/data/derived/packaging-demo-0-playback.hdf5"

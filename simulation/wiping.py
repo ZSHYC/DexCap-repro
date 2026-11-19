@@ -6,9 +6,13 @@ import pybullet as p
 from simulation.leap import LeapSimulation, wxyz
 
 
-DEMO_OBJECT_XY = np.array([[0.54, -0.15], [0.55, 0.12]])
+DEMO_OBJECT_XY = np.array([[0.54, -0.15], [0.542, 0.112]])
 PLATE_RADIUS = 0.125
 SPONGE_HALF_XY = (0.04, 0.065)
+TABLE_HEIGHT = -0.03
+PLATE_THICKNESS = 0.024
+SPONGE_HALF_HEIGHT = 0.02
+SPONGE_YAW = 0.33
 
 
 def sample_object_xy(rng):
@@ -23,19 +27,22 @@ def sample_object_xy(rng):
 
 class PlateWipingSimulation(LeapSimulation):
     def reset(self, action, object_xy=DEMO_OBJECT_XY):
-        self._reset_scene(action, [0.12, 0.12, 0.12, 1.0])
+        self._reset_scene(action, [0.12, 0.12, 0.12, 1.0], table_height=TABLE_HEIGHT)
 
-        collision = p.createCollisionShape(p.GEOM_CYLINDER, radius=PLATE_RADIUS, height=0.012,
+        collision = p.createCollisionShape(p.GEOM_CYLINDER, radius=PLATE_RADIUS, height=PLATE_THICKNESS,
                                            physicsClientId=self.client)
-        visual = p.createVisualShape(p.GEOM_CYLINDER, radius=PLATE_RADIUS, length=0.012,
+        visual = p.createVisualShape(p.GEOM_CYLINDER, radius=PLATE_RADIUS, length=PLATE_THICKNESS,
                                      rgbaColor=[0.88, 0.9, 0.96, 1.0],
                                      physicsClientId=self.client)
         self.plate = p.createMultiBody(baseMass=0.25, baseCollisionShapeIndex=collision,
                                        baseVisualShapeIndex=visual,
-                                       basePosition=[*object_xy[0], 0.006],
+                                       basePosition=[*object_xy[0], TABLE_HEIGHT + PLATE_THICKNESS / 2],
                                        physicsClientId=self.client)
-        self.sponge = self._box([*SPONGE_HALF_XY, 0.015], 0.06, [*object_xy[1], 0.015],
-                                [0.95, 0.72, 0.08, 1.0])
+        self.sponge = self._box(
+            [*SPONGE_HALF_XY, SPONGE_HALF_HEIGHT], 0.06,
+            [*object_xy[1], TABLE_HEIGHT + SPONGE_HALF_HEIGHT], [0.95, 0.72, 0.08, 1.0],
+            orientation=p.getQuaternionFromEuler([0, 0, SPONGE_YAW]),
+        )
         p.changeDynamics(self.plate, -1, lateralFriction=0.8, physicsClientId=self.client)
         p.changeDynamics(self.sponge, -1, lateralFriction=1.2, physicsClientId=self.client)
 

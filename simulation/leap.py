@@ -43,13 +43,13 @@ class LeapSimulation:
             raise RuntimeError("could not connect to PyBullet")
         self.substeps = 240 // 20
 
-    def _reset_scene(self, action, table_color):
+    def _reset_scene(self, action, table_color, table_height=0.0):
         p.resetSimulation(physicsClientId=self.client)
         p.setTimeStep(1.0 / 240, physicsClientId=self.client)
         p.setGravity(0, 0, -9.81, physicsClientId=self.client)
         p.setPhysicsEngineParameter(numSolverIterations=80, deterministicOverlappingPairs=1,
                                     physicsClientId=self.client)
-        self.table = self._box([0.75, 0.6, 0.01], 0, [0.4, 0, -0.01], table_color)
+        self.table = self._box([0.75, 0.6, 0.01], 0, [0.4, 0, table_height - 0.01], table_color)
         self.right_hand = p.loadURDF(str(MESH_DIR / "robot_pybullet.urdf"), useFixedBase=True,
                                      physicsClientId=self.client)
         self.left_hand = p.loadURDF(str(MESH_DIR / "robot_left_pybullet.urdf"), useFixedBase=True,
@@ -61,6 +61,13 @@ class LeapSimulation:
             for body, _ in self._hands
         ]
         self._apply_hand_pose(action)
+        # shortcut: approximate hand compliance until measured contact parameters are available.
+        for hand, _ in self._hands:
+            for link in range(-1, p.getNumJoints(hand, physicsClientId=self.client)):
+                p.changeDynamics(
+                    hand, link, contactStiffness=2500, contactDamping=50,
+                    physicsClientId=self.client,
+                )
 
     def _apply_hand_pose(self, action):
         action = np.asarray(action, dtype=float)
@@ -88,13 +95,14 @@ class LeapSimulation:
             "robot0_eef_hand": np.concatenate(fingers),
         }
 
-    def _box(self, half_extents, mass, position, color):
+    def _box(self, half_extents, mass, position, color, orientation=(0, 0, 0, 1)):
         collision = p.createCollisionShape(p.GEOM_BOX, halfExtents=half_extents,
                                            physicsClientId=self.client)
         visual = p.createVisualShape(p.GEOM_BOX, halfExtents=half_extents, rgbaColor=color,
                                      physicsClientId=self.client)
         return p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision,
                                  baseVisualShapeIndex=visual, basePosition=position,
+                                 baseOrientation=orientation,
                                  physicsClientId=self.client)
 
     def _attach(self, hand, prop):
