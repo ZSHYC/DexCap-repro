@@ -27,12 +27,13 @@ BOX_PANEL_HALF_THICKNESS = 0.006
 BOX_YAW = np.deg2rad(-66)
 LID_OPEN_ANGLE = 0.108
 RED_BOX_YAW = np.deg2rad(64)
+RED_BOX_TOP_COLOR = (0.93, 0.20, 0.06, 1)
 DEFAULT_OBJECT = "red-box"
 FINGERTIP_LINKS = (4, 9, 14, 19)
 GRASP_OPENING_M = 0.04
 # Shape, half extents in metres, color, and the source demonstration.
 PACKAGING_OBJECTS = {
-    "red-box": ("box", (0.060, 0.015, 0.0435), (0.78, 0.08, 0.04, 1), "demo_0"),
+    "red-box": ("box", (0.060, 0.015, 0.0435), (0.60, 0.59, 0.55, 1), "demo_0"),
     "blue-block": ("box", (0.055, 0.0275, 0.018), (0.04, 0.45, 0.72, 1), "demo_50"),
     "green-pear": ("ellipsoid", (0.029, 0.025, 0.027), (0.31, 0.47, 0.09, 1), "demo_100"),
     "green-can": ("cylinder", (0.0405, 0.0405, 0.034), (0.17, 0.45, 0.12, 1), "demo_150"),
@@ -183,11 +184,9 @@ class PackagingSimulation(LeapSimulation):
         position = [*xy, TABLE_HEIGHT + self.object_half[2]]
         mass = 0.12
         if self.object_kind == "box":
-            yaw = RED_BOX_YAW if self.object_name == DEFAULT_OBJECT else 0
-            orientation = p.getQuaternionFromEuler([0, 0, yaw])
-            return self._box(self.object_half, mass, position, self.object_color, orientation=orientation)
-
-        if self.object_kind == "cylinder":
+            shape = p.GEOM_BOX
+            collision_args = visual_args = dict(halfExtents=self.object_half)
+        elif self.object_kind == "cylinder":
             shape = p.GEOM_CYLINDER
             radius, height = self.object_half[0], 2 * self.object_half[2]
             collision_args = dict(radius=radius, height=height)
@@ -197,12 +196,25 @@ class PackagingSimulation(LeapSimulation):
             sphere = Path(pybullet_data.getDataPath()) / "sphere_smooth.obj"
             collision_args = visual_args = dict(fileName=str(sphere), meshScale=self.object_half)
         collision = p.createCollisionShape(shape, **collision_args, physicsClientId=self.client)
-        visual = p.createVisualShape(
-            shape, **visual_args, rgbaColor=self.object_color, physicsClientId=self.client,
-        )
+        orientation = (0, 0, 0, 1)
+        if self.object_name == DEFAULT_OBJECT:
+            # The red print covers the narrow top face of the standing carton.
+            visual = p.createVisualShapeArray(
+                shapeTypes=[p.GEOM_BOX, p.GEOM_BOX],
+                halfExtents=[self.object_half, [*self.object_half[:2], 0.0003]],
+                visualFramePositions=[[0, 0, 0], [0, 0, self.object_half[2]]],
+                rgbaColors=[self.object_color, RED_BOX_TOP_COLOR],
+                physicsClientId=self.client,
+            )
+            orientation = p.getQuaternionFromEuler([0, 0, RED_BOX_YAW])
+        else:
+            visual = p.createVisualShape(
+                shape, **visual_args, rgbaColor=self.object_color, physicsClientId=self.client,
+            )
         return p.createMultiBody(
             baseMass=mass, baseCollisionShapeIndex=collision,
-            baseVisualShapeIndex=visual, basePosition=position, physicsClientId=self.client,
+            baseVisualShapeIndex=visual, basePosition=position, baseOrientation=orientation,
+            physicsClientId=self.client,
         )
 
     def step(self, action) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
