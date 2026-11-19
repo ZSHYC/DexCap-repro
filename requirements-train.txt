@@ -12,3 +12,5 @@ tensorboard
 tensorboardX
 imageio
 matplotlib
+pybullet==3.2.6
+PyYAML

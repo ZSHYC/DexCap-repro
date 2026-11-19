@@ -1,6 +1,6 @@
 # DexCap 论文复现
 
-在 `pro1` 上复现 DexCap / DexIL 的点云策略训练，使用作者发布的 Wiping 和 Packaging 数据。公开源码位于 `DexCap/`，取自 [`j96w/DexCap@4b0bed0`](https://github.com/j96w/DexCap/tree/4b0bed0966c87368f3cde4476aadb7585c3b94b5)。原作者许可见 [DexCap/LICENSE](DexCap/LICENSE)。论文主结果用 Perceiver 和实体机器人。公开代码默认用 PointNet，适合作为第一组对照。 [DexCap 论文](https://arxiv.org/html/2403.07788v2#S5)
+在 `pro1` 上复现 DexCap / DexIL 的点云策略训练，使用作者发布的 Wiping 和 Packaging 数据。当前阶段聚焦仿真，支持无界面 Plate Wiping 轨迹回放与策略闭环。公开源码位于 `DexCap/`，取自 [`j96w/DexCap@4b0bed0`](https://github.com/j96w/DexCap/tree/4b0bed0966c87368f3cde4476aadb7585c3b94b5)。原作者许可见 [DexCap/LICENSE](DexCap/LICENSE)。 [DexCap 论文](https://arxiv.org/html/2403.07788v2#S5) · [运行仿真](docs/simulation.md)
 
 ## 项目入口
 
