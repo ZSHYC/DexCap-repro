@@ -288,6 +288,7 @@ cd "$DEXCAP/worktrees/setxf/DexCap/STEP3_train_policy/robomimic"
 - 公开数据只包含 Wiping 和 Packaging 的原始及处理后数据，不能覆盖论文全部六个任务。
 - 数据页没有发布论文所有基线、人工纠错数据或作者训练好的 checkpoint。
 - 公开配置走 PointNet，而论文最佳结果来自 Perceiver 类编码器。
+- 论文描述了将点云与动作轨迹同步做二维平移。当前正式实验使用发布的点云训练入口与 HDF5，入口未启用该增强。 [论文方法](https://arxiv.org/html/2403.07788v2#S4.SS2) · [仿真摆放覆盖](runs.md#随机摆放与动作范围)
 - 训练脚本中的环境构建与 rollout 主体被注释，训练日志不能直接产生论文任务成功率。
 - HDF5 中一个人工 clip 会按 `action_gap=5` 生成五条错相序列，因此 `demo_*` 数量不等于独立人工示范数量。
 
