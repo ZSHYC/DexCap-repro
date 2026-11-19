@@ -24,6 +24,7 @@
 ├── DexCap/              # 跟踪的上游源码快照
 ├── configs/             # 本项目维护的实验配置
 ├── docs/                # 复现记录
+├── scripts/             # 训练、推理和仿真入口
 ├── envs/
 │   └── train/           # Python 3.11 Conda 训练环境
 ├── data/
@@ -41,6 +42,27 @@ export DATA_REV="e468f07000de0f8d3234a9c60a9d8208344675e0"
 ```
 
 源码基线定位在上游提交 `4b0bed0966c87368f3cde4476aadb7585c3b94b5`。实验改动提交到私有仓库 `ZSHYC/DexCap-repro`，数据、Conda 环境和训练产物不进入 Git。每次实验的里程碑和证据摘要记录在 `docs/runs.md`；该文件记录结论，不收纳大型原始日志或 checkpoint。
+
+## 运行一次完整实验
+
+安装下文的 Conda 环境、下载对应 HDF5，并为 SetXF 建立 `worktrees/setxf` 后，可从项目根目录启动单项实验。三个命令分别在各自的终端或 `tmux` 窗口运行。
+
+```bash
+cd "$DEXCAP"
+scripts/run_experiment.sh wiping-pointnet full
+scripts/run_experiment.sh wiping-setxf full
+scripts/run_experiment.sh packaging-setxf full
+```
+
+脚本默认使用 GPU 0、1、2，可用 `CUDA_VISIBLE_DEVICES` 指定设备。它先短训并加载第 2 轮权重，随后读取完整训练配置，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种物体各跑 5 回合。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
+
+只验证训练与离线推理时使用 `smoke`。第三个参数可以指定已提取的 HDF5，用于在完整数据下载期间验证入口。
+
+```bash
+scripts/run_experiment.sh wiping-pointnet smoke data/derived/wiping-official-demo-0.hdf5
+```
+
+`pro1` 已有实验由 `dexcap-experiments` 和 `dexcap-full-sim` 两个后台会话负责。当前作业和中间结果记录在实验日志中。 [正在运行的实验](runs.md)
 
 ## 1. 建立 Conda 训练环境
 
