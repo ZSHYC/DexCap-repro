@@ -19,13 +19,18 @@ from scipy.spatial.transform import Rotation
 from simulation.leap import LeapSimulation, wxyz
 
 
-DEMO_OBJECT_XY = np.array([[0.48, 0.12], [0.57, -0.27]])
+DEMO_OBJECT_XY = np.array([[0.50, 0.14], [0.534, -0.219]])
+TABLE_HEIGHT = -0.030
+BOX_HALF_XY = (0.13, 0.12)
+BOX_PANEL_HALF_THICKNESS = 0.006
+BOX_YAW = np.deg2rad(-66)
+RED_BOX_YAW = np.deg2rad(64)
 DEFAULT_OBJECT = "red-box"
 FINGERTIP_LINKS = (4, 9, 14, 19)
 GRASP_OPENING_M = 0.04
 # Shape, half extents in metres, color, and the source demonstration.
 PACKAGING_OBJECTS = {
-    "red-box": ("box", (0.045, 0.033, 0.045), (0.78, 0.08, 0.04, 1), "demo_0"),
+    "red-box": ("box", (0.068, 0.030, 0.045), (0.78, 0.08, 0.04, 1), "demo_0"),
     "blue-block": ("box", (0.055, 0.0275, 0.018), (0.04, 0.45, 0.72, 1), "demo_50"),
     "green-pear": ("ellipsoid", (0.029, 0.025, 0.027), (0.31, 0.47, 0.09, 1), "demo_100"),
     "green-can": ("cylinder", (0.0405, 0.0405, 0.034), (0.17, 0.45, 0.12, 1), "demo_150"),
@@ -43,8 +48,8 @@ def sample_object_xy(rng):
 class PackagingSimulation(LeapSimulation):
     """Cardboard container, hinged lid, and packaged object."""
 
-    box_inner_half = np.array([0.14, 0.11])
-    box_top = 0.105
+    box_inner_half = np.array(BOX_HALF_XY) - 2 * BOX_PANEL_HALF_THICKNESS
+    box_top = 0.078
 
     def __init__(self, object_name=DEFAULT_OBJECT):
         self.object_kind, half, self.object_color, self.object_reference_demo = PACKAGING_OBJECTS[object_name]
@@ -53,22 +58,26 @@ class PackagingSimulation(LeapSimulation):
         super().__init__()
 
     def reset(self, action, object_xy=DEMO_OBJECT_XY) -> dict[str, np.ndarray]:
-        self._reset_scene(action, [0.32, 0.24, 0.14, 1.0])
+        self._reset_scene(action, [0.32, 0.24, 0.14, 1.0], table_height=TABLE_HEIGHT)
         cardboard = [0.62, 0.42, 0.22, 1.0]
-
+        half_x, half_y = BOX_HALF_XY
+        panel_half = BOX_PANEL_HALF_THICKNESS
+        wall_half_height = self.box_top / 2 - panel_half
+        wall_center = panel_half + wall_half_height
+        panel_extents = [half_x, half_y, panel_half]
         component_half_extents = [
-            [0.15, 0.12, 0.006],
-            [0.006, 0.12, 0.05],
-            [0.006, 0.12, 0.05],
-            [0.15, 0.006, 0.05],
-            [0.15, 0.006, 0.05],
+            panel_extents,
+            [panel_half, half_y, wall_half_height],
+            [panel_half, half_y, wall_half_height],
+            [half_x, panel_half, wall_half_height],
+            [half_x, panel_half, wall_half_height],
         ]
         component_positions = [
             [0, 0, 0],
-            [-0.144, 0, 0.049],
-            [0.144, 0, 0.049],
-            [0, -0.114, 0.049],
-            [0, 0.114, 0.049],
+            [panel_half - half_x, 0, wall_center],
+            [half_x - panel_half, 0, wall_center],
+            [0, panel_half - half_y, wall_center],
+            [0, half_y - panel_half, wall_center],
         ]
         bottom_collision = p.createCollisionShapeArray(
             shapeTypes=[p.GEOM_BOX] * len(component_half_extents),
@@ -84,22 +93,23 @@ class PackagingSimulation(LeapSimulation):
             physicsClientId=self.client
         )
         lid_collision = p.createCollisionShape(
-            p.GEOM_BOX, halfExtents=[0.15, 0.12, 0.006],
-            collisionFramePosition=[0, 0.12, 0], physicsClientId=self.client
+            p.GEOM_BOX, halfExtents=panel_extents,
+            collisionFramePosition=[0, half_y, 0], physicsClientId=self.client
         )
         lid_visual = p.createVisualShape(
-            p.GEOM_BOX, halfExtents=[0.15, 0.12, 0.006], rgbaColor=cardboard,
-            visualFramePosition=[0, 0.12, 0], physicsClientId=self.client
+            p.GEOM_BOX, halfExtents=panel_extents, rgbaColor=cardboard,
+            visualFramePosition=[0, half_y, 0], physicsClientId=self.client
         )
         self.container_bottom = p.createMultiBody(
             baseMass=0.6,
             baseCollisionShapeIndex=bottom_collision,
             baseVisualShapeIndex=bottom_visual,
-            basePosition=[*object_xy[0], 0.006],
+            basePosition=[*object_xy[0], TABLE_HEIGHT + panel_half],
+            baseOrientation=p.getQuaternionFromEuler([0, 0, BOX_YAW]),
             linkMasses=[0.02],
             linkCollisionShapeIndices=[lid_collision],
             linkVisualShapeIndices=[lid_visual],
-            linkPositions=[[0, 0.12, self.box_top]],
+            linkPositions=[[0, half_y, self.box_top]],
             linkOrientations=[[0, 0, 0, 1]],
             linkInertialFramePositions=[[0, 0, 0]],
             linkInertialFrameOrientations=[[0, 0, 0, 1]],
@@ -116,7 +126,7 @@ class PackagingSimulation(LeapSimulation):
         )
 
         p.resetJointState(
-            self.container_bottom, self.lid_link, -1.15, physicsClientId=self.client
+            self.container_bottom, self.lid_link, 0.0, physicsClientId=self.client
         )
         p.setJointMotorControl2(
             self.lid, self.lid_link, p.VELOCITY_CONTROL, targetVelocity=0, force=0.02,
@@ -154,10 +164,12 @@ class PackagingSimulation(LeapSimulation):
         return self.observation()
 
     def _create_object(self, xy):
-        position = [*xy, self.object_half[2]]
+        position = [*xy, TABLE_HEIGHT + self.object_half[2]]
         mass = 0.12
         if self.object_kind == "box":
-            return self._box(self.object_half, mass, position, self.object_color)
+            yaw = RED_BOX_YAW if self.object_name == DEFAULT_OBJECT else 0
+            orientation = p.getQuaternionFromEuler([0, 0, yaw])
+            return self._box(self.object_half, mass, position, self.object_color, orientation=orientation)
 
         if self.object_kind == "cylinder":
             shape = p.GEOM_CYLINDER
@@ -308,6 +320,6 @@ class PackagingSimulation(LeapSimulation):
         )
         hinge_position, quaternion = link[4], link[5]
         center, _ = p.multiplyTransforms(
-            hinge_position, quaternion, [0, 0.12, 0], [0, 0, 0, 1]
+            hinge_position, quaternion, [0, BOX_HALF_XY[1], 0], [0, 0, 0, 1]
         )
         return np.concatenate((center, wxyz(quaternion))).astype(np.float32)

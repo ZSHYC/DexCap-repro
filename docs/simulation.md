@@ -63,6 +63,8 @@ CUDA_VISIBLE_DEVICES=0 python -m simulation.rollout "$DATASET" \
 
 纸盒的底部和四壁构成一个有质量的刚体，盖板通过被动转动关节连接。左手可以通过接触推动纸盒和盖板。右手碰到选定物体后触发抓取。拇指到其它指尖的最短距离相比持物时的最小值增大 4 cm 时，解除抓取约束。入盒按释放后的物体在纸盒坐标下的几何边界判断，入盒和合盖同时满足时记录 `sim_success`。`box_displacement_m` 记录盒体起点与终点的水平距离，`box_center_progress_m` 记录回合中向桌面中心靠近的最大距离。
 
+场景使用官方 `frame_2710` 的深度估计初始几何。实际桌面在盒子和包装物附近约为 −3.5 cm 和 −2.2 cm，仿真用 −3 cm 的水平面近似。盒体外部平面尺寸约 26 × 24 cm，初始偏航约 −66°，盒盖从向外展开的位置开始。红银色包装物初始偏航约 64°。 [测量与对照结果](runs.md)
+
 ```bash
 PACKAGING_DATA="$DEXCAP/data/derived/packaging-demo-0-playback.hdf5"
 python -m simulation.rollout "$PACKAGING_DATA" --task packaging \
@@ -86,7 +88,7 @@ CUDA_VISIBLE_DEVICES=2 python -m simulation.rollout "$PACKAGING_DATA" \
 
 | `--object` | 几何参考 | 仿真形状及尺寸 |
 |---|---|---|
-| `red-box` | `demo_0` 红银色包装 | 长方体 9 × 6.6 × 9 cm |
+| `red-box` | `demo_0` 红银色包装 | 长方体 13.6 × 6 × 9 cm |
 | `blue-block` | `demo_50` 蓝色积木 | 长方体 11 × 5.5 × 3.6 cm |
 | `green-pear` | `demo_100` 绿色梨形物体 | 椭球 5.8 × 5 × 5.4 cm |
 | `green-can` | `demo_150` 绿色罐状包装 | 圆柱，直径 8.1 cm、高 6.8 cm |
