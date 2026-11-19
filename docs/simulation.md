@@ -26,7 +26,7 @@ python -m simulation.rollout "$DATASET" --output "$DEXCAP/runs/wiping-replay.jso
 
 服务器上的 `data/derived/wiping-demo-0-playback.hdf5` 包含从官方文件取出的 111 步动作、相机外参和手部状态。完整 HDF5 下载期间可以将上面的 `DATASET` 指向这份文件。
 
-Wiping 场景以原始示范的 `frame_2220` 深度和官方首帧点云校准。把深度投影到 Bullet 场景使用的坐标后，在两个物体初始位置附近估计的台面高度约为 −0.035 m 到 −0.026 m，仿真用 −0.030 m 的水平面近似。盘子碰撞体的厚度取 24 mm，海绵整体高度取 40 mm，海绵长轴相对 `+y` 方向旋转约 19°。 [原始数据重建](raw-retarget.md)
+Wiping 场景以原始示范的 `frame_2220` 深度和官方首帧点云校准。把深度投影到 Bullet 场景使用的坐标后，在两个物体初始位置附近估计的台面高度约为 −0.035 m 到 −0.026 m，仿真用 −0.030 m 的水平面近似。盘子由 4 mm 的浅底和一圈斜面构成，盘缘约高 24 mm。海绵整体高度取 40 mm，海绵长轴相对 `+y` 方向旋转约 19°。 [原始数据重建](raw-retarget.md)
 
 ## 运行闭环策略
 
@@ -41,7 +41,7 @@ CUDA_VISIBLE_DEVICES=0 python -m simulation.rollout "$DATASET" \
 
 注意力模型用 `PYTHONPATH="$DEXCAP/worktrees/setxf/DexCap/STEP3_train_policy"`。策略每次读取最近三帧仿真观测。完成接口试跑后，去掉 `--steps` 用默认的 400 步时长评估。
 
-`sponge_plate_contact_steps` 是发生海绵与盘子接触的控制步数。`wipe_distance` 以米计，只累计连续接触时海绵相对于盘面的位移。`wipe_passes` 要求在同一段连续接触内，沿盘面横跨两个端点。`sim_success` 要求两件物体都已触发抓取，并累计至少两次跨盘擦拭。 [已执行的实验](runs.md)
+`sponge_plate_contact_steps` 统计海绵与盘子的所有接触步。`wipe_surface_contact_steps` 只统计在盘面正侧施加法向力的接触步。`wipe_distance` 以米计，只累计连续正面接触时海绵相对于盘面的位移。`wipe_passes` 要求在同一段连续正面接触内跨过盘面局部 `x` 轴上的 ±5.5 cm 两个端点。`sim_success` 要求两件物体都已触发抓取，并累计至少两次跨盘擦拭。 [已执行的实验](runs.md)
 
 ### 在相同摆放上比较 Wiping 策略
 
