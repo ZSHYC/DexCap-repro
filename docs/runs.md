@@ -26,6 +26,8 @@ Packaging 保存第 700 轮权重后，用同一方法无损压缩 22 份已结�
 
 11 月 19 日 23:59（北京时间），Packaging 第 800 轮权重已保存并无损压缩为 260,877,286 字节。系统盘可用降至约 17.02 GiB，当时后续权重、日志及压缩临时空间预计共需 17.59 GiB。将安装完成后留存的 Miniconda 下载文件转存到本地工作区的 `runs/installer-cache/` 后，服务器可用升至 17.22 GiB。三组训练继续运行，当前预计还差约 0.37 GiB，已请求提供可写的持久数据盘目录。
 
+11 月 20 日 00:07（北京时间），两组 Wiping 的第 700 轮权重均已保存并完成压缩。系统盘可用 16.73 GiB，剩余存储缺口估算约 0.37 GiB。对 Packaging 第 800 轮权重只读试算，DEFLATE 从级别 1 调到 6 只多省 739,254 字节。即使其余 65 份中间权重都能省同样多，也只释放约 46 MiB。
+
 `60d5b3a` 的 `scripts/run_experiment.sh` 已在 `pro1` 的三个实验入口分别跑通 `smoke`。Wiping PointNet 使用当前项目源码，其余两组使用 `worktrees/setxf` 的 `4263783`。三个第 2 轮 checkpoint 均输出有限的 46 维动作。入口日志为 `runs/repro-entrypoint-pointnet.log`、`runs/repro-entrypoint-wiping-setxf.log` 和 `runs/repro-entrypoint-setxf.log`。   [运行方式](reproduction.md#运行一次完整实验)
 
 ### Wiping 全量训练启动
