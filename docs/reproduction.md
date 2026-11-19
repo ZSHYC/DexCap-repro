@@ -24,14 +24,18 @@
 ├── DexCap/              # 跟踪的上游源码快照
 ├── configs/             # 本项目维护的实验配置
 ├── docs/                # 复现记录
-├── scripts/             # 训练、推理和仿真入口
+├── scripts/             # 训练入口、权重推理和补充对照
+├── simulation/         # PyBullet 场景、闭环评估和结果汇总
+├── worktrees/
+│   └── setxf/           # repro/setxf 训练源码，和 main 并行使用
 ├── envs/
+│   ├── conda/           # 项目使用的 Conda 安装
 │   └── train/           # Python 3.11 Conda 训练环境
 ├── data/
 │   ├── official/        # 官方处理后数据
-│   ├── raw/             # 原始录制，后续阶段使用
+│   ├── raw/             # 官方原始录制，供数据重建和场景标定
 │   └── derived/         # 自行重建的数据
-└── runs/                # 日志、TensorBoard 和 checkpoint
+└── runs/                # 配置快照、日志、checkpoint 和仿真结果
 ```
 
 在每个新终端中设置项目路径：
@@ -54,9 +58,11 @@ scripts/run_experiment.sh wiping-setxf full
 scripts/run_experiment.sh packaging-setxf full
 ```
 
-`pro1` 可用 GPU 为 0、1、2、3。三个正式作业各占 GPU 0、1、2，补充实验使用 GPU 3。训练器将各作业的可见卡映射为 `cuda:0`。每个命令先短训并加载第 2 轮权重，随后按完整配置训练，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种训练物体各跑 5 回合。Packaging 的九种未见物体排在同一张 GPU 2 上，等这些回合结束后开始。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
+`pro1` 的 DexCap 作业只用 GPU 0、1、2、3。Wiping PointNet、Wiping SetXF、Packaging SetXF 各占 GPU 0、1、2，训练完成后分别在原卡上评估。GPU 3 串行跑补充实验。训练器将各作业的可见卡映射为 `cuda:0`，CPU 诊断将 `CUDA_VISIBLE_DEVICES` 置空。
 
-`pro1` 上的 `dexcap-packaging-unseen` 会话等待 Packaging 的第 3000 轮权重。训练完成后，它用 GPU 3–6 对九种未见物体各跑 5 回合。评估可用同一个 checkpoint 手动重跑。 [未见物体及运行命令](simulation.md#未见物体)
+每个命令先短训并加载第 2 轮权重，随后按完整配置训练，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种训练物体各跑 5 回合。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
+
+`pro1` 上的 `dexcap-packaging-unseen` 会话等六种训练物体评估全部结束，再用同一第 3000 轮权重在 GPU 2 上逐一评估九种未见物体，每种 5 回合。新启动的实验可按相同步骤手动运行。 [未见物体及运行命令](simulation.md#未见物体)
 
 只验证训练与离线推理时使用 `smoke`。第三个参数可以指定已提取的 HDF5，用于在完整数据下载期间验证入口。
 
@@ -64,7 +70,7 @@ scripts/run_experiment.sh packaging-setxf full
 scripts/run_experiment.sh wiping-pointnet smoke data/derived/wiping-official-demo-0.hdf5
 ```
 
-`pro1` 已有实验由 `dexcap-experiments` 和 `dexcap-full-sim` 两个后台会话负责。当前作业和中间结果记录在实验日志中。 [正在运行的实验](runs.md)
+`pro1` 的 Wiping PointNet 由 `dexcap-experiments` 启动，`dexcap-full-sim` 等待它的最终权重。两组 SetXF 分别在 `dexcap-wiping-setxf` 和 `dexcap-packaging-setxf` 完成训练和评估。最终由 `dexcap-formal-summary` 汇总各组输出。 [运行记录](runs.md)
 
 ## 1. 建立 Conda 训练环境
 
@@ -228,8 +234,6 @@ CUDA_VISIBLE_DEVICES=0 python -u scripts/train.py \
 官方训练参数为 batch size 16、学习率 `1e-4`、3000 epochs，每个 epoch 500 个梯度步。配置使用三帧观测、20 步动作预测和 DDIM。点云文件每帧保存 10,000 点，编码器前向时随机抽取 1,000 点。
 
 每次训练用一张 GPU，多个实验通过不同的 `CUDA_VISIBLE_DEVICES` 并行。在 `pro1` 的全量数据对照中，增加数据读取 worker 能缩短单个实验的数据等待。新启动的全量训练配置使用 8 个 worker。 [吞吐实测](runs.md#数据读取吞吐)
-
-`pro1` 的 DexCap 作业只分配 GPU 0、1、2、3。GPU 0 跑 Wiping PointNet，GPU 1 跑 Wiping SetXF，GPU 2 跑 Packaging SetXF。这三组各自在训练完成后使用原卡评估。GPU 3 串行跑补充实验。需要并行做 CPU 诊断时，将 `CUDA_VISIBLE_DEVICES` 置空。
 
 训练输出位于：
 
