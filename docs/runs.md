@@ -36,9 +36,11 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 使用 `b25cbd0` 和 Packaging 的接口短跑权重随机摆放 5 次，每回合 12 步。5 组盒位和物体位置均在设定的采样范围内，入盒为 0/5，完整成功为 0/5。服务器记录为 `runs/packaging-setxf-5trial-smoke-pro1.json`。 [摆放与指标](simulation.md)
 
+使用 `fe4678a` 将同一个 6 梯度步 SetXF 接口权重在六种物体上各运行 5 回合，每回合 6 步。核对了全部 30 回合的 `10000 × 6` 点云、六个物体和几何参考示范，以及五组在各物体间完全相同的摆放坐标。入盒与完整成功均为 0/30。服务器记录为 `runs/packaging-*-six-object-smoke-pro1.json`。这批短跑用于验证多物体评估入口。 [物体尺寸和来源](simulation.md#packaging-仿真)
+
 使用 `e5227cb` 的接触链节抓取回放两条官方示范。Wiping 的盘体接触从 32 步增至 51 步，正面接触仍为 0。Packaging 的盒体一度向桌面中心靠近 0.0987 m，包装物仍被右手抓持，盖板打开。服务器记录为 `runs/wiping-demo0-finger-grasp-pro1.json` 和 `runs/packaging-demo0-finger-grasp-pro1.json`。
 
-完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 在同一物体上执行 5 组摆放。每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
+完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 的六种物体各执行 5 组摆放。每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ### Wiping 单示范训练
 
