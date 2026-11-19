@@ -357,7 +357,7 @@ class SequenceDataset(torch.utils.data.Dataset):
     def get_action_traj(self, ep):
         action_traj = dict()
         for key in self.action_keys:
-            action_traj[key] = self.hdf5_file["data/{}/{}".format(ep, key)][()].astype('float32')
+            action_traj[key] = self.hdf5_file["data/{}/{}".format(ep, key)][()].astype(np.float64)
         return action_traj
    
     def get_action_stats(self):
@@ -1081,8 +1081,8 @@ def action_stats_to_normalization_stats(action_stats, action_config):
         elif norm_method == "min_max":
             # normalize min to -1 and max to 1
             range_eps = 1e-4
-            input_min = action_stats[action_key]["min"].astype(np.float32)
-            input_max = action_stats[action_key]["max"].astype(np.float32)
+            input_min = action_stats[action_key]["min"].astype(np.float64)
+            input_max = action_stats[action_key]["max"].astype(np.float64)
             # instead of -1 and 1 use numbers just below threshold to prevent numerical instability issues
             output_min = -0.999999
             output_max = 0.999999
