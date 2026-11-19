@@ -21,6 +21,8 @@ from simulation.leap import LeapSimulation, wxyz
 
 DEMO_OBJECT_XY = np.array([[0.48, 0.12], [0.57, -0.27]])
 DEFAULT_OBJECT = "red-box"
+FINGERTIP_LINKS = (4, 9, 14, 19)
+GRASP_OPENING_M = 0.04
 # Shape, half extents in metres, color, and the source demonstration.
 PACKAGING_OBJECTS = {
     "red-box": ("box", (0.045, 0.033, 0.045), (0.78, 0.08, 0.04, 1), "demo_0"),
@@ -133,6 +135,7 @@ class PackagingSimulation(LeapSimulation):
 
         self._object_grasp = None
         self._object_released = False
+        self._min_grasp_gap = np.inf
         self._right_object_contacts = 0
         self._left_lid_contacts = 0
         self._left_box_contacts = 0
@@ -194,10 +197,10 @@ class PackagingSimulation(LeapSimulation):
             self._left_box_contacts += len(box_contacts)
             if self._object_grasp is None and not self._object_released:
                 self._object_grasp = self._attach(self.right_hand, self.object, object_contacts)
-            if self._object_grasp is not None and self._object_over_box():
+            if self._object_grasp is not None and self._hand_opened():
                 self._release_object()
 
-        object_in_box = self._object_in_box()
+        object_in_box = self._object_released and self._object_in_box()
         lid_closed = self._lid_closed()
         center_distance = self._box_center_distance()
         self._minimum_center_distance = min(self._minimum_center_distance, center_distance)
@@ -224,14 +227,14 @@ class PackagingSimulation(LeapSimulation):
         result["lid_pose"] = self._lid_pose()
         return result
 
-    def _object_over_box(self) -> bool:
-        position = self._box_local_pose(*p.getBasePositionAndOrientation(
-            self.object, physicsClientId=self.client
-        ))[0]
-        return bool(
-            np.all(np.abs(position[:2]) < self.box_inner_half - 0.025)
-            and self.box_top <= position[2] < 0.20
+    def _hand_opened(self) -> bool:
+        fingers = p.getLinkStates(
+            self.right_hand, FINGERTIP_LINKS, physicsClientId=self.client,
         )
+        tips = np.asarray([finger[4] for finger in fingers])
+        gap = np.linalg.norm(tips[:-1] - tips[-1], axis=1).min()
+        self._min_grasp_gap = min(gap, self._min_grasp_gap)
+        return bool(gap - self._min_grasp_gap >= GRASP_OPENING_M)
 
     def _object_in_box(self) -> bool:
         position, quaternion = self._box_local_pose(*p.getBasePositionAndOrientation(

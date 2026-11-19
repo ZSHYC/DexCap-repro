@@ -61,7 +61,7 @@ CUDA_VISIBLE_DEVICES=0 python -m simulation.rollout "$DATASET" \
 
 ## Packaging 仿真
 
-纸盒的底部和四壁构成一个有质量的刚体，盖板通过被动转动关节连接。左手可以通过接触推动纸盒和盖板。右手碰到选定物体后触发抓取，持物移至当前盒口上方时解除约束。入盒按物体在纸盒坐标下的几何边界判断，入盒和合盖同时满足时记录 `sim_success`。`box_displacement_m` 记录盒体起点与终点的水平距离，`box_center_progress_m` 记录回合中向桌面中心靠近的最大距离。
+纸盒的底部和四壁构成一个有质量的刚体，盖板通过被动转动关节连接。左手可以通过接触推动纸盒和盖板。右手碰到选定物体后触发抓取。拇指到其它指尖的最短距离相比持物时的最小值增大 4 cm 时，解除抓取约束。入盒按释放后的物体在纸盒坐标下的几何边界判断，入盒和合盖同时满足时记录 `sim_success`。`box_displacement_m` 记录盒体起点与终点的水平距离，`box_center_progress_m` 记录回合中向桌面中心靠近的最大距离。
 
 ```bash
 PACKAGING_DATA="$DEXCAP/data/derived/packaging-demo-0-playback.hdf5"
