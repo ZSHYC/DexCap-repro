@@ -114,8 +114,44 @@ dones                           [1]
 data.attrs.total                1
 ```
 
-All numeric arrays checked were finite. This proves the raw-image, depth,
-two-hand IK, point-cloud, masking, and HDF5 write path works without a display.
-It does not establish full-dataset runtime or reproduce every released HDF5
-value: the complete Wiping and Packaging archives were intentionally not
-downloaded, and the Packaging raw path was not separately sampled.
+All numeric arrays checked were finite. The fixture exercised image and depth
+reading, two-hand IK, point-cloud construction, masking, and HDF5 writing
+without a display.
+
+### Packaging first ten raw frames
+
+The first official clip spans `frame_2710` through `frame_3360`. The fixture
+includes the calibration and table alignment files, `frame_0`, and the ten
+consecutive frames from `frame_2710` through `frame_2719`. The original
+annotation is preserved in `clip_marks.json.official`. The working
+`clip_marks.json` selects the available ten frames. The archive was read by
+HTTP byte range from the pinned data revision. [Official data revision](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/e468f07000de0f8d3234a9c60a9d8208344675e0)
+
+The build ran in the existing local Python 3.10 Conda environment with no
+display. The raw fixture, generated HDF5, and log were copied to `pro1`. With
+the build dependencies enabled in Conda, the equivalent command on `pro1`
+uses its copy of the fixture.
+
+```bash
+export DEXCAP="$HOME/dexcap-repro"
+cd "$DEXCAP/DexCap/STEP2_build_dataset"
+python demo_create_hdf5.py \
+  "$DEXCAP/data/raw/packaging-rebuild-fixture/save_packaging_wild_1-20" \
+  "$DEXCAP/data/derived/packaging-rebuild-fixture.hdf5" \
+  --action-gap 5 --num-points-to-sample 10000 --in-wild-data --headless
+```
+
+The output contains `demo_0` through `demo_4`, with two frames per sequence,
+46 values per action, and `10000 × 6` points per frame. All checked numeric
+arrays were finite. Compared with the corresponding first two frames in the
+released demos, the images and camera states are identical. Wrist positions,
+quaternions, and first-action wrist targets match within `1.11e-16`. The
+glove observations match within `2.22e-16`. The median nearest-neighbor XYZ
+distance from rebuilt to released points ranges from 1.70 to 1.72 mm across
+the five sequences.
+
+The largest finger-joint difference per sequence ranges from 1.82 to 2.74
+rad after undoing the stored half-scale. Repeating the rebuild reproduced its
+own hand states and actions exactly. The cause of the discrepancy with the
+released HDF5 is unresolved. Policy training uses the released HDF5. The
+build log is at `runs/packaging-rebuild-fixture.log`.
