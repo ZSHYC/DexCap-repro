@@ -201,6 +201,23 @@ PointNet 在擦拭阶段只换海绵时，左腕配对误差中位数下降 6.6 
 
 对 SetXF 再令两种场景的非手部点共享同一帧的录制 RGB 中位数。此时网格相对原盘面的配对误差中位变化为右腕约 0.0 mm、左腕 −0.2 mm。原色条件下的误差增加在同色条件下没有出现，说明网格的成像颜色及其与几何的相互作用也影响该对照。正式仿真沿用原盘面。脚本及结果为 `runs/wiping-plate-profile-neutral.py` 和 `runs/wiping-setxf-epoch300-plate-neutral-{primitive,profile}.json`。
 
+#### 用原始 RGB-D 标定海绵分层外观
+
+在抓取前的官方 `frame_2220` 中，用五个图像多边形选取海绵顶面、上层侧面、中间深色层、下层黄色区和底部深色层。将有效深度点投影到 Bullet 坐标。五个区域各有 922–6499 个点。顶面、中间深色区和底部深色区的 (z) 中位数分别为 3.5、−9.0、−29.3 mm。标定脚本和完整 RGB 数值在 `runs/wiping-measure-sponge-bands.py`、`runs/wiping-sponge-measured-bands.json`。
+
+原型沿用 130 × 80 mm 的平面尺寸，把可见高度从 40 mm 改为 34 mm。第二个版本在同一组三维点上按局部高度赋五个测得的 RGB 中位数。第 44 帧样例中，654 个海绵点改变颜色，整帧 XYZ 逐项一致。两种版本都使用保存的物理回放姿态渲染。
+
+![第 44 帧的仿真海绵表面点。左侧使用原黄色，右侧使用实测分层颜色。](assets/wiping-measured-sponge-bands.png)
+
+使用第 300 轮权重、同一 13 个时刻和三个扩散种子。表中为相对原仿真渲染的腕位误差配对增量中位数，单位 mm。
+
+| 渲染中的更改 | PointNet 右腕、左腕 | SetXF 右腕、左腕 |
+|---|---:|---:|
+| 仅海绵高度 | 0.0、约 0.0 | +0.1、+0.4 |
+| 海绵高度与实测分层 RGB | −0.1、−2.7 | +0.4、+1.4 |
+
+在高度相同的两组之间，仅增加实测分层 RGB 使 PointNet 左腕配对误差下降 2.6 mm，使 SetXF 增加 0.9 mm。这里测量的是离线首次动作。正式仿真沿用原海绵外观。脚本和结果为 `runs/wiping-sponge-bands-ab.py`、`runs/wiping-{pointnet,setxf}-epoch300-sponge-bands-ab.json`。
+
 ### 数据读取吞吐
 
 Wiping 两组正式训练的近期一轮约为 28 s，等待 HDF5 数据约占一半。在 `pro1` 的 GPU 5 和 6 上分别用完整 Wiping 数据做短对照。每组在同一张卡上先以 2 个 worker、再以 8 个 worker 执行两轮各 200 个梯度步。batch size 16，表中为各次第二轮，计时按实际秒数换算。
