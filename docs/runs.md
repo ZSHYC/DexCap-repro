@@ -238,7 +238,15 @@ for variant in baseline layered; do
 done
 ```
 
-两组已在 `pro1` 的 `dexcap-wiping-sponge-epoch500` 会话中并行启动，均使用 CPU。结果待汇总。
+两组均在 `pro1` 的 CPU 上完成。结果文件的三对种子、海绵起点、盘子起点及输入点云尺寸逐项一致。
+
+| 种子 | 原外观抓取 | 分层外观抓取 | 海绵与盘子接触步数（原 / 分层） |
+|---|---|---|---:|
+| 1 | 海绵 | 海绵 | 1 / 4 |
+| 2 | 盘子 | 无 | 0 / 0 |
+| 3 | 无 | 盘子和海绵 | 0 / 0 |
+
+六个回合均为 0 步内盘面接触、0 次擦拭，两组成功均为 0/3。分层外观改变了部分回合的抓取结果，三对摆放上未观察到内盘面表现改善。正式评估继续使用原外观。逐回合结果在 `runs/wiping-pointnet-epoch500-sponge-{baseline,layered}.json`。
 
 ### 数据读取吞吐
 
@@ -579,3 +587,5 @@ GPU 3 重跑的对照组已结束 100 轮训练，权重位于 `runs/packaging-t
 对照组红银包装已完成 5 × 400 步，摆放逐项匹配此前第 100 轮实验。入盒与完整成功均为 0/5，种子 3 达到合盖判据。结果为 `runs/packaging-translation-gpu3/control-red-box.json`。
 
 对照组绿梨也完成 5 × 400 步，摆放与此前第 100 轮逐项一致。两种物体都没有抓取、入盒或完整成功，绿梨有 2/5 回合达到合盖判据。绿梨结果为 `runs/packaging-translation-gpu3/control-green-pear.json`。对照组评估结束后，增强组在 GPU 3 开始训练。
+
+增强组已完成 100 轮训练，权重在 `runs/packaging-translation-gpu3/jobs/shift10/20261119221125/models/model_epoch_100.pth`。GPU 3 先评估红银包装，再评估绿梨。
