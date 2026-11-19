@@ -27,8 +27,10 @@ DEMO_OBJECT_XY = np.array([[0.482, 0.115], [0.517, -0.223]])
 TABLE_HEIGHT = -0.030
 BOX_HALF_XY = (0.149, 0.095)
 BOX_PANEL_HALF_THICKNESS = 0.006
+BOX_FLOOR_CONTACT_TOLERANCE = 0.002
 BOX_YAW = np.deg2rad(-62.8)
 LID_OPEN_ANGLE = 0.108
+LID_CLOSED_TOLERANCE = np.deg2rad(6)
 LID_HINGE_DRAG = 0.003  # shortcut: use a dry hinge approximation until its torque is measured.
 RED_BOX_YAW = np.deg2rad(64)
 RED_BOX_TOP_COLOR = (0.93, 0.20, 0.06, 1)
@@ -355,21 +357,27 @@ class PackagingSimulation(LeapSimulation):
             else:
                 extent = np.abs(rotation) @ self.object_half
             lower, upper = position - extent, position + extent
-        return bool(
-            np.all(lower[:2] >= -self.box_inner_half)
-            and np.all(upper[:2] <= self.box_inner_half)
-            and lower[2] >= 0.005 and upper[2] <= self.box_top
+        if np.any(lower[:2] < -self.box_inner_half) or np.any(upper[:2] > self.box_inner_half):
+            return False
+
+        box_origin, box_rotation = p.getBasePositionAndOrientation(
+            self.container_bottom, physicsClientId=self.client,
+        )
+        up = Rotation.from_quat(box_rotation).apply([0, 0, 1])
+        floor = np.asarray(box_origin) + BOX_PANEL_HALF_THICKNESS * up
+        contacts = p.getContactPoints(
+            bodyA=self.object, bodyB=self.container_bottom, linkIndexB=-1,
+            physicsClientId=self.client,
+        )
+        return any(
+            contact[9] > 0 and np.dot(contact[7], up) > 0.5
+            and abs(np.dot(contact[6] - floor, up)) <= BOX_FLOOR_CONTACT_TOLERANCE
+            for contact in contacts
         )
 
     def _lid_closed(self) -> bool:
-        pose = self._lid_pose()
-        position, quaternion = self._box_local_pose(pose[:3], pose[[4, 5, 6, 3]])
-        normal = Rotation.from_quat(quaternion).apply([0, 0, 1])
-        return bool(
-            np.linalg.norm(position[:2]) < 0.045
-            and abs(position[2] - self.box_top) < 0.035
-            and abs(normal[2]) > 0.92
-        )
+        angle, *_ = p.getJointState(self.lid, self.lid_link, physicsClientId=self.client)
+        return abs(angle - np.pi) <= LID_CLOSED_TOLERANCE
 
     def _box_local_pose(self, position, quaternion):
         box_pose = p.getBasePositionAndOrientation(

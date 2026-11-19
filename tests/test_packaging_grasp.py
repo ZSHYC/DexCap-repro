@@ -27,6 +27,13 @@ class PackagingGraspTest(unittest.TestCase):
                 angle = p.getJointState(sim.lid, sim.lid_link, physicsClientId=sim.client)[0]
                 self.assertAlmostEqual(angle, limit, delta=0.02)
 
+    def test_lid_must_be_near_its_closed_stop(self):
+        sim = self.sim
+        for degrees, closed in ((165, False), (178, True)):
+            with self.subTest(degrees=degrees):
+                p.resetJointState(sim.lid, sim.lid_link, np.deg2rad(degrees), physicsClientId=sim.client)
+                self.assertEqual(sim._lid_closed(), closed)
+
     def test_opposing_grip_can_pivot_after_touching_the_box(self):
         sim = self.sim
         center, _ = p.getBasePositionAndOrientation(sim.object, physicsClientId=sim.client)
@@ -50,6 +57,15 @@ class PackagingGraspTest(unittest.TestCase):
 
 
 class PackagingObjectTest(unittest.TestCase):
+    def set_up_object(self, name):
+        sim = PackagingSimulation(name)
+        self.addCleanup(sim.close)
+        action = np.zeros(46)
+        action[:6] = [0.2, -0.4, 0.5, 0.2, 0.4, 0.5]
+        action[[6, 10]] = 1
+        sim.reset(action)
+        return sim, action
+
     def test_compound_bodies_include_every_part(self):
         client = p.connect(p.DIRECT)
         self.addCleanup(p.disconnect, client)
@@ -62,15 +78,29 @@ class PackagingObjectTest(unittest.TestCase):
                 self.assertEqual(len(p.getCollisionShapeData(body, -1, physicsClientId=client)), len(parts))
 
     def test_bricks_must_fit_between_the_walls(self):
-        sim = PackagingSimulation("stacked-bricks")
-        self.addCleanup(sim.close)
-        action = np.zeros(46)
-        action[:6] = [0.2, -0.4, 0.5, 0.2, 0.4, 0.5]
-        action[[6, 10]] = 1
-        sim.reset(action)
+        sim, _ = self.set_up_object("stacked-bricks")
         box_pose = p.getBasePositionAndOrientation(sim.container_bottom, physicsClientId=sim.client)
+        position, orientation = p.multiplyTransforms(*box_pose, [0, 0, 0.065], [0, 0, 0, 1])
+        p.resetBasePositionAndOrientation(sim.object, position, orientation, physicsClientId=sim.client)
+        for _ in range(120):
+            sim._step_physics()
+        self.assertTrue(sim._object_in_box())
 
-        for yaw, should_fit in ((0, True), (np.pi / 2, False)):
-            pose = p.multiplyTransforms(*box_pose, [0, 0, 0.040], p.getQuaternionFromEuler([0, 0, yaw]))
-            p.resetBasePositionAndOrientation(sim.object, *pose, physicsClientId=sim.client)
-            self.assertEqual(sim._object_in_box(), should_fit)
+        pose = p.multiplyTransforms(*box_pose, [0, 0, 0.040], p.getQuaternionFromEuler([0, 0, np.pi / 2]))
+        p.resetBasePositionAndOrientation(sim.object, *pose, physicsClientId=sim.client)
+        self.assertFalse(sim._object_in_box())
+
+    def test_released_mug_counts_as_placed_when_supported_by_the_box(self):
+        sim, action = self.set_up_object("blue-mug")
+        box_pose = p.getBasePositionAndOrientation(sim.container_bottom, physicsClientId=sim.client)
+        pose = p.multiplyTransforms(*box_pose, [0, 0, 0.090], [0, 0, 0, 1])
+        p.resetBasePositionAndOrientation(sim.object, *pose, physicsClientId=sim.client)
+        sim._object_released = True
+
+        _, falling = sim.step(action)
+        self.assertFalse(falling["object_in_box"])
+        for _ in range(120):
+            sim._step_physics()
+        _, resting = sim.step(action)
+        self.assertTrue(resting["object_in_box"])
+        self.assertFalse(resting["sim_success"])
