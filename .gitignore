@@ -1,0 +1,8 @@
+/.env
+/.omx/
+/data
+/envs/
+/runs
+/worktrees/
+__pycache__/
+*.py[cod]
