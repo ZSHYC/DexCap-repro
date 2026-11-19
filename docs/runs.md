@@ -46,6 +46,8 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 `b2741ee` 改用竖直擦拭计数。在 `pro1` 的倾斜盘面回归试验中，同一侧上下往返计 2 次，横向往返和盘底往返均计 0 次。官方 111 步回放仍为 41 步盘体接触、0 步正面接触、0 次完整擦拭。服务器记录为 `runs/wiping-demo0-vertical-strokes-pro1.json`。 [当前计数定义](simulation.md)
 
+`48d87e6` 使用手指张开触发 Packaging 的物体释放。用官方动作回放时，第 51 步松手，包装物落在盒外。相同场景的 `pro1` 回放结束时 `object_released=true`、`object_in_box=false`、`lid_closed=false`。服务器记录为 `runs/packaging-demo0-hand-opening-pro1.json`。
+
 完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 的六种物体各执行 5 组摆放。每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ### Wiping 单示范训练
@@ -109,3 +111,5 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 用固定盒体和被动铰链回放官方 `demo_0` 的 131 步，渲染 `10000 × 6` 点云。累计收到 52 个右手与包装物的接触点、1197 个左手与盒盖的接触点。包装物已释放并落在盒内，盒盖尚未闭合，最终判定为未成功。 [场景和指标](simulation.md)
 
 同一段示范在当前柔性接触场景中将盒子向桌面中心推进约 0.0514 m，终点与起点相距 0.0653 m。包装物仍由右手抓持，盒盖打开。
+
+官方示范约第 50–60 帧已清楚看到包装物在盒中。第 60 帧盒内白色包装标签的点云中位位置约为 `[0.418, -0.046, -0.001] m`。旧抓取条件下，模拟包装物在第 60 步仍被抓住，中心为 `[0.385, -0.224, 0.066] m`，纸盒最大倾角约 66°。单独约束纸盒保持水平也未使持物到达盒口。改用手指张开的释放条件修正了松手时序，剩余偏差集中在物体与盒口的相对位置。
