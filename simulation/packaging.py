@@ -155,8 +155,8 @@ class PackagingSimulation(LeapSimulation):
             self._right_object_contacts += len(object_contacts)
             self._left_lid_contacts += len(lid_contacts)
             self._left_box_contacts += len(box_contacts)
-            if self._object_grasp is None and not self._object_released and object_contacts:
-                self._object_grasp = self._attach(self.right_hand, self.object)
+            if self._object_grasp is None and not self._object_released:
+                self._object_grasp = self._attach(self.right_hand, self.object, object_contacts)
             if self._object_grasp is not None and self._object_over_box():
                 self._release_object()
 

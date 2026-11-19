@@ -131,12 +131,18 @@ class LeapSimulation:
                                  baseOrientation=orientation,
                                  physicsClientId=self.client)
 
-    def _attach(self, hand, prop):
-        hand_pose = p.getBasePositionAndOrientation(hand, physicsClientId=self.client)
+    def _attach(self, hand, prop, contacts):
+        if not contacts:
+            return None
+        parent_link = max(contacts, key=lambda contact: contact[9])[3]
+        if parent_link == -1:
+            hand_pose = p.getBasePositionAndOrientation(hand, physicsClientId=self.client)
+        else:
+            hand_pose = p.getLinkState(hand, parent_link, physicsClientId=self.client)[:2]
         prop_pose = p.getBasePositionAndOrientation(prop, physicsClientId=self.client)
         relative = p.multiplyTransforms(*p.invertTransform(*hand_pose), *prop_pose)
         constraint = p.createConstraint(
-            parentBodyUniqueId=hand, parentLinkIndex=-1,
+            parentBodyUniqueId=hand, parentLinkIndex=parent_link,
             childBodyUniqueId=prop, childLinkIndex=-1,
             jointType=p.JOINT_FIXED, jointAxis=[0, 0, 0],
             parentFramePosition=relative[0], childFramePosition=[0, 0, 0],

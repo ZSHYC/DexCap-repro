@@ -121,12 +121,14 @@ class PlateWipingSimulation(LeapSimulation):
         }
 
     def _maybe_grasp(self):
-        if self._plate_grasp is None and p.getContactPoints(
-                bodyA=self.right_hand, bodyB=self.plate, physicsClientId=self.client):
-            self._plate_grasp = self._attach(self.right_hand, self.plate)
-        if self._sponge_grasp is None and p.getContactPoints(
-                bodyA=self.left_hand, bodyB=self.sponge, physicsClientId=self.client):
-            self._sponge_grasp = self._attach(self.left_hand, self.sponge)
+        if self._plate_grasp is None:
+            contacts = p.getContactPoints(bodyA=self.right_hand, bodyB=self.plate,
+                                          physicsClientId=self.client)
+            self._plate_grasp = self._attach(self.right_hand, self.plate, contacts)
+        if self._sponge_grasp is None:
+            contacts = p.getContactPoints(bodyA=self.left_hand, bodyB=self.sponge,
+                                          physicsClientId=self.client)
+            self._sponge_grasp = self._attach(self.left_hand, self.sponge, contacts)
 
     def _update_wipe_metrics(self, contacts):
         plate_pose = p.getBasePositionAndOrientation(self.plate, physicsClientId=self.client)
