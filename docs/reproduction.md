@@ -289,16 +289,21 @@ cd "$DEXCAP/worktrees/setxf/DexCap/STEP3_train_policy/robomimic"
 
 通过 `python -m simulation.rollout` 回放官方第一个示范，或加载训练 checkpoint，让策略接收仿真点云和手部状态。Wiping 记录接触和擦拭，Packaging 记录物体入盒和盖板闭合。 [命令、场景近似与指标](simulation.md)
 
-## 公开材料带来的比较限制
+## 与论文表格的对应关系
 
-- 公开数据只包含 Wiping 和 Packaging 的原始及处理后数据，不能覆盖论文全部六个任务。
-- 数据页没有发布论文所有基线、人工纠错数据或作者训练好的 checkpoint。
-- 公开配置走 PointNet，而论文最佳结果来自 Perceiver 类编码器。
-- 论文描述了将点云与动作轨迹同步做二维平移。三组正式实验沿用发布入口的默认行为。另开 Packaging 对照，在完整数据和同一种子下比较每轴最多 10 cm 的同步平移。幅度取值源于本轮实验。 [论文方法](https://arxiv.org/html/2403.07788v2#S4.SS2) · [平移实验](runs.md#同步二维平移对照)
-- 训练脚本中的环境构建与 rollout 主体被注释，训练日志不能直接产生论文任务成功率。
-- HDF5 中一个人工 clip 会按 `action_gap=5` 生成五条错相序列，因此 `demo_*` 数量不等于独立人工示范数量。
+下表的百分比是论文报告的机器人结果。本项目的结果来自用公开数据训练的策略在 PyBullet 中闭环运行，报告成功数和实际回合数。
 
-实验记录区分训练闭环、编码器对照、原始数据重建和仿真结果。
+| 论文表格 | 论文结果 | 本项目对应的仿真结果 |
+|---|---|---|
+| Table I，Plate Wiping | DP-point 为 50%，DP-perc 为 70%，每种策略 20 回合 | PointNet 与公开 `SetXFPCDEncoder` 各在同一组 20 个摆放上评估，汇总 `sim_success`。两件物体均触发抓取且累计至少两次内盘面擦拭时计为成功。 |
+| Table II，Packaging，仅 DexCap 数据 | 作者方法的 Subtask、All、Unseen 分别为 70%、47%、40% | SetXF 在 6 种训练物体和 9 种未见物体上各跑 5 回合，分别汇总。入盒对应 `object_in_box`，完整仿真成功要求入盒且合盖。 |
+| 其余任务及 30 条人工纠错后的结果 | 包括 Table I 的 Sponge Picking、Ball Collecting，Table II 的纠错列，以及 Table III、IV | 固定版数据中的两份 HDF5 对应 Wiping 与 Packaging。其余任务的示范和人工纠错数据未随该版本发布。 |
+
+论文 Table I 的 Overall 汇总三个任务。正式仿真报告只给出已有任务的指标，并另列 Packaging 的训练物体和未见物体。 [论文 Table I](https://arxiv.org/html/2403.07788v2#S5.T1) · [论文 Table II](https://arxiv.org/html/2403.07788v2#S5.T2) · [固定版数据清单](https://huggingface.co/api/datasets/chenwangj/DexCap-Data/tree/e468f07000de0f8d3234a9c60a9d8208344675e0?recursive=true) · [本项目汇总命令](simulation.md#汇总正式仿真结果)
+
+- **数据量。** 论文报告收集了 102 条 Wiping 和 104 条 Packaging 示范。服务器上的两个公开 HDF5 分别包含 255 和 480 个 `demo_*`。按发布构建器的 `action_gap=5` 五相位规则，分别折合 51 和 96 组片段。论文附录 A-C 描述存储 5000 点，发布文件每帧实际存储 10000 个 XYZRGB 点。本项目直接用发布文件，编码器前向均匀抽取 1000 点。 [论文数据描述](https://arxiv.org/html/2403.07788v2#S5.SS1) · [附录 A-C](https://arxiv.org/html/2403.07788v2#A1.SS3) · [发布构建器](../DexCap/STEP2_build_dataset/dataset_utils.py)
+- **模型和训练。** 三组正式配置与附录 Table VI、VII 共同采用 batch size 16、学习率 `1e-4`、3000 轮、3 帧观测、1D U-Net 和 DDIM，扩散训练与推理分别用 100、10 步。每轮 500 个梯度步来自发布训练配置。PointNet 按点提取特征后做最大池化，公开 SetXF 用 8 个可学习查询做集合注意力再做最大池化，两者输出均为 64 维。SetXF 对照依据公开实现，论文的超参数表未披露所有注意力层设置。同步二维平移另在 Packaging 的 100 轮对照中测量，每轴最多 10 cm 为本项目的选择。 [附录 Table VI、VII](https://arxiv.org/html/2403.07788v2#A1.SS5) · [发布训练配置](../DexCap/STEP3_train_policy/robomimic/training_config/diffusion_policy_pcd_wiping_1-14.json) · [公开编码器](../DexCap/STEP3_train_policy/robomimic/models/base_nets.py) · [平移实验](runs.md#同步二维平移对照)
+- **闭环控制。** 附录 A-D 使用腕位到达判定和最多 10 步的控制器等待上限，手指由关节阻抗控制。仿真逐控制步应用腕位目标，执行完当前 10 个策略动作后生成下一批，任务物体由 Bullet 碰撞与抓取约束驱动。仿真采用 400 个控制步的观察窗口，擦拭距离、接触范围与合盖容差以本项目的指标定义为准。 [附录 A-D](https://arxiv.org/html/2403.07788v2#A1.SS4) · [仿真控制与判据](simulation.md)
 
 ## Git 提交节奏
 
