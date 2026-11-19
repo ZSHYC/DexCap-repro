@@ -47,7 +47,10 @@ def rollout(args):
     def observe(state, rng):
         robot = frames.from_bullet(np.concatenate([state[key] for key in PROPRIOCEPTION]))
         result = dict(zip(PROPRIOCEPTION, np.split(robot, [6, 14])))
-        result["pointcloud"] = capture_pointcloud(sim.client, camera, BULLET_FROM_MOCAP, rng)
+        result["pointcloud"] = capture_pointcloud(
+            sim.client, camera, BULLET_FROM_MOCAP, rng,
+            hand_bodies=(sim.right_hand, sim.left_hand),
+        )
         return result
 
     def episode(seed, object_xy=None):
