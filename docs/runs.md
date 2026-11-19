@@ -84,6 +84,8 @@
 
 相同审计用于 111 步官方 `demo_0` 动作。原判据为 31 步正侧接触，内盘面判据为 28 步内盘面接触，两种判据均计 4 次擦拭。接触点和力的数据位于 `runs/wiping-{demo0,pointnet-epoch200-seed1}-face-contact-audit.json`。
 
+![盘子坐标系下的正向受力触点。官方动作的触点主要位于内盘面，PointNet 该回合的触点集中在盘沿。](assets/wiping-face-contact-audit.png)
+
 ### 数据读取吞吐
 
 Wiping 两组正式训练的近期一轮约为 28 s，等待 HDF5 数据约占一半。在 `pro1` 的 GPU 5 和 6 上分别用完整 Wiping 数据做短对照。每组在同一张卡上先以 2 个 worker、再以 8 个 worker 执行两轮各 200 个梯度步。batch size 16，表中为各次第二轮，计时按实际秒数换算。
