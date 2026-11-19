@@ -75,3 +75,16 @@ CUDA_VISIBLE_DEVICES=2 python -m simulation.rollout "$PACKAGING_DATA" \
 种子 1 至 5 分别在参考盒位周围的 10 × 10 cm 区域和参考物体位置周围的 40 × 30 cm 区域采样。结果记录每回合的 `box_xy`、`object_xy`，以及回合结束时的入盒率和任务成功率。论文每种物体评估 5 次。当前仿真使用 `demo_0` 中的红色包装物几何，5 回合结果适用于这一物体。 [论文的任务与初始摆放](https://arxiv.org/html/2403.07788v2#A1.SS6) · [实验记录](runs.md)
 
 论文的完整 Packaging 协议覆盖 6 个训练中物体和 9 个未见物体。公开 Packaging HDF5 有 480 条序列，提供图像、点云和动作。论文图 10 提供物体照片，公开数据和源码缺少可直接用于仿真的物体网格、尺寸及分组标签。新增物体需要从可辨认的观测估计几何，并记录样本来源。 [论文评估协议](https://arxiv.org/html/2403.07788v2#S5.SS1.SSS0.Px4) · [固定版数据文件](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/e468f07000de0f8d3234a9c60a9d8208344675e0)
+
+从这 480 条序列每隔 25 条抽取一张首帧图像和点云，共 20 张。以下是公开训练数据中可辨认的几种外观和可用于估计几何的示范索引。
+
+| 示范 | 首帧中的物体外观 |
+|---|---|
+| `demo_0` | 红银色长方体包装 |
+| `demo_50` | 蓝色带凸点的积木 |
+| `demo_100` | 绿色梨形物体 |
+| `demo_150` | 绿色罐状包装 |
+| `demo_175` | 黑黄卷尺状物体 |
+| `demo_225` | 黄色织物状物体 |
+
+抽样数据保存在 `pro1` 的 `data/derived/packaging-objects-keyframes.hdf5`，首帧拼图位于 `runs/packaging-objects-keyframes.png`。这些外观描述由录制图像得到，论文的评测分组需要结合图 10 确认。 [论文物体照片](https://arxiv.org/html/2403.07788v2/exp_obj_v3.png)
