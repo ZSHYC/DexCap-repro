@@ -6,7 +6,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 
-from simulation.camera import capture_pointcloud
+from simulation.camera import capture_pointcloud, sample_hand_surfaces
 from simulation.frames import ActionFrames, BULLET_FROM_MOCAP
 from simulation.packaging import (
     DEFAULT_OBJECT, PACKAGING_OBJECTS, PackagingSimulation,
@@ -44,19 +44,21 @@ def rollout(args):
     start = frames.to_bullet(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
 
-    def observe(state, rng):
+    def observe(state, rng, hand_bodies, hand_samples):
         robot = frames.from_bullet(np.concatenate([state[key] for key in PROPRIOCEPTION]))
         result = dict(zip(PROPRIOCEPTION, np.split(robot, [6, 14])))
         result["pointcloud"] = capture_pointcloud(
             sim.client, camera, BULLET_FROM_MOCAP, rng,
-            hand_bodies=(sim.right_hand, sim.left_hand),
+            hand_bodies=hand_bodies, hand_samples=hand_samples,
         )
         return result
 
     def episode(seed, object_xy=None):
         state = sim.reset(start) if object_xy is None else sim.reset(start, object_xy)
         rng = np.random.default_rng(seed)
-        observation = observe(state, rng)
+        hand_bodies = (sim.right_hand, sim.left_hand)
+        hand_samples = sample_hand_surfaces(sim.client, hand_bodies)
+        observation = observe(state, rng, hand_bodies, hand_samples)
         if policy is not None:
             torch.manual_seed(seed)
             policy.start_episode()
@@ -71,7 +73,7 @@ def rollout(args):
                     action = policy(batch)
             state, info = sim.step(frames.to_bullet(action))
             if policy is not None and i + 1 < steps:
-                history.append(observe(state, rng))
+                history.append(observe(state, rng, hand_bodies, hand_samples))
         return {"pointcloud_shape": list(observation["pointcloud"].shape), **info}
 
     try:

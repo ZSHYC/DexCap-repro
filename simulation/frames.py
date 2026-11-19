@@ -15,6 +15,7 @@ AXES = BULLET_FROM_MOCAP[:3, :3]
 TABLE_SHIFT = BULLET_FROM_MOCAP[:3, 3]
 HAND_TO_WRIST = np.array([[0, -1, 0], [0, 0, 1], [1, 0, 0]])
 LEAP_TO_HAND = Rotation.from_euler("xyz", [-np.pi / 2, np.pi / 2, 0]).as_matrix()
+HAND_MESH_OFFSETS = np.array([[-0.02, 0.05, -0.1], [0.02, 0.05, -0.1]])
 CALIBRATION = Path(__file__).resolve().parents[1] / "DexCap/STEP2_build_dataset/config"
 
 
@@ -27,13 +28,13 @@ class ActionFrames:
         canonical = np.diag([1, -1, -1]) @ Rotation.from_euler("xyz", [-z, x + 0.3, y]).as_matrix()
         self.delta = canonical @ (frame.as_matrix() @ HAND_TO_WRIST).T
         self.offsets = []
-        for side, x_offset in (("right", -0.02), ("left", 0.02)):
+        for side, mesh_offset in zip(("right", "left"), HAND_MESH_OFFSETS):
             path = CALIBRATION / f"realrobot_{side}_hand_offset.yml"
             config = yaml.safe_load(path.read_text())
             self.offsets.append((
                 np.array(config["absolute_offset"]),
                 np.array(config["goal_ori_offset"]),
-                np.array([x_offset, 0.05, -0.1]),
+                mesh_offset,
             ))
 
     def to_bullet(self, action):
