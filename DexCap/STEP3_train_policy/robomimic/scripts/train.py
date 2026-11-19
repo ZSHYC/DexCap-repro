@@ -191,7 +191,9 @@ def train(config, device, auto_remove_exp=False, resume=None):
 
     # load training data
     trainset, validset = TrainUtils.load_data_for_training(
-        config, obs_keys=shape_meta["all_obs_keys"])
+        config, obs_keys=shape_meta["all_obs_keys"],
+        dexcap_xy_translation_m=config.train.get("dexcap_xy_translation_m", 0.0),
+    )
     train_sampler = trainset.get_dataset_sampler()
     print("\n============= Training Dataset =============")
     print(trainset)

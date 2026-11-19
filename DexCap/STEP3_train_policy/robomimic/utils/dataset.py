@@ -37,6 +37,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         filter_by_attribute=None,
         load_next_obs=True,
         obs_seq_length=None,
+        dexcap_xy_translation_m=0.0,
     ):
         """
         Dataset class for fetching sequences of experience.
@@ -89,6 +90,8 @@ class SequenceDataset(torch.utils.data.Dataset):
             load_next_obs (bool): whether to load next_obs from the dataset
 
             obs_seq_length (int): length of current observation sequences. Defaults to seq_length.
+
+            dexcap_xy_translation_m (float): maximum horizontal shift per axis for DexCap samples.
         """
         super(SequenceDataset, self).__init__()
 
@@ -112,6 +115,15 @@ class SequenceDataset(torch.utils.data.Dataset):
             self.dataset_keys = tuple(set(self.dataset_keys).union(set(self.action_keys)))
 
         self.action_config = action_config
+        self.dexcap_xy_translation_m = dexcap_xy_translation_m
+        if dexcap_xy_translation_m and (
+            dexcap_xy_translation_m < 0
+            or self.load_next_obs
+            or not {"pointcloud", "robot0_eef_pos"}.issubset(self.obs_keys)
+            or self.action_keys != ("actions",)
+            or action_config["actions"].get("normalization") != "min_max"
+        ):
+            raise ValueError("DexCap translation needs current point clouds and wrists with min-max actions")
 
         self.n_frame_stack = frame_stack
         assert self.n_frame_stack >= 1
@@ -428,8 +440,37 @@ class SequenceDataset(torch.utils.data.Dataset):
         Fetch dataset sequence @index (inferred through internal index map), using the getitem_cache if available.
         """
         if self.hdf5_cache_mode == "all":
-            return self.getitem_cache[index]
-        return self.get_item(index)
+            sample = self.getitem_cache[index]
+        else:
+            sample = self.get_item(index)
+        if self.dexcap_xy_translation_m:
+            return self._translate_dexcap_sample(sample)
+        return sample
+
+    def _translate_dexcap_sample(self, sample):
+        obs = sample["obs"].copy()
+        actions = sample["actions"].copy()
+        positions = obs["robot0_eef_pos"].copy()
+        pointcloud = obs["pointcloud"].copy()
+        if actions.shape[-1] != 46 or positions.shape[-1] != 6 or pointcloud.shape[-1] != 6:
+            raise ValueError("DexCap translation needs bimanual 46D actions, 6D wrists and XYZRGB points")
+
+        target_xy = actions[:, :6].reshape(-1, 2, 3)[..., :2]
+        scale = self.get_action_normalization_stats()["actions"]["scale"][0, :6]
+        xy_scale = scale.reshape(2, 3)[:, :2]
+        limit = self.dexcap_xy_translation_m
+        lower = np.maximum(-limit, ((-1 - target_xy) * xy_scale).max(axis=(0, 1)))
+        upper = np.minimum(limit, ((1 - target_xy) * xy_scale).min(axis=(0, 1)))
+        shift = np.random.uniform(lower, upper)
+
+        target_xy += shift / xy_scale
+        positions.reshape(-1, 2, 3)[..., :2] += shift
+        # Robot XY maps to negative Z and X in the recorded point cloud.
+        pointcloud[..., 0] -= shift[1]
+        pointcloud[..., 2] -= shift[0]
+        obs["robot0_eef_pos"] = positions
+        obs["pointcloud"] = pointcloud
+        return {**sample, "obs": obs, "actions": actions}
 
     def get_item(self, index):
         """

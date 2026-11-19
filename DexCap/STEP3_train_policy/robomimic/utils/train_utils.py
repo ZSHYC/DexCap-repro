@@ -142,7 +142,7 @@ def set_absolute_sync_path(output_dir, exp_name, time_str=None):
         )
 
 
-def load_data_for_training(config, obs_keys):
+def load_data_for_training(config, obs_keys, *, dexcap_xy_translation_m=0.0):
     """
     Data loading at the start of an algorithm.
 
@@ -178,16 +178,19 @@ def load_data_for_training(config, obs_keys):
         )
         assert set(train_demo_keys).isdisjoint(set(valid_demo_keys)), "training demonstrations overlap with " \
             "validation demonstrations!"
-        train_dataset = dataset_factory(config, obs_keys, filter_by_attribute=train_filter_by_attribute)
-        valid_dataset = dataset_factory(config, obs_keys, filter_by_attribute=valid_filter_by_attribute)
-    else:
-        train_dataset = dataset_factory(config, obs_keys, filter_by_attribute=train_filter_by_attribute)
-        valid_dataset = None
+    train_dataset = dataset_factory(
+        config, obs_keys, filter_by_attribute=train_filter_by_attribute,
+        dexcap_xy_translation_m=dexcap_xy_translation_m,
+    )
+    valid_dataset = (
+        dataset_factory(config, obs_keys, filter_by_attribute=valid_filter_by_attribute)
+        if config.experiment.validate else None
+    )
 
     return train_dataset, valid_dataset
 
 
-def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=None):
+def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=None, *, dexcap_xy_translation_m=0.0):
     """
     Create a SequenceDataset instance to pass to a torch DataLoader.
 
@@ -240,6 +243,10 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
         ds_kwargs["obs_seq_length"] = min(
             config.train.seq_length, max(1, observation_horizon - stacked_frames)
         )
+    if dexcap_xy_translation_m:
+        if ds_class is not SequenceDataset:
+            raise ValueError("DexCap translation requires a robomimic HDF5 dataset")
+        ds_kwargs["dexcap_xy_translation_m"] = dexcap_xy_translation_m
 
     meta_ds_kwargs = dict()
 
