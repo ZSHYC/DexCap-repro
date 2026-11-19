@@ -26,10 +26,12 @@
 
 2026-11-19 18:30（北京时间），Wiping 完整 HDF5 已落盘。PointNet 和 SetXF 的训练日志均报告 255 条示范和 27901 个有效序列。两组均完成两轮全数据短训，第 2 轮 checkpoint 都能输出有限的 46 维动作，随后进入正式训练。每组计划 3000 轮，每轮 500 个梯度步。
 
-| 编码器 | GPU | 正式训练目录（在 `runs/` 下） |
-|---|---:|---|
-| PointNet | 0 | `wiping-pointnet-seed1-full-20261119T102945Z` |
-| SetXF | 1 | `wiping-setxf-seed1-full-20261119T103025Z` |
+| 编码器 | GPU | 训练源码 | 正式训练目录（在 `runs/` 下） |
+|---|---:|---|---|
+| PointNet | 0 | `70da97f` | `wiping-pointnet-seed1-full-20261119T102945Z` |
+| SetXF | 1 | `4263783` | `wiping-setxf-seed1-full-20261119T103025Z` |
+
+两个正式作业保存的 `config.json` 只有 `experiment.name` 不同。两版训练源码在 `DexCap/STEP3_train_policy` 的行为差异是点云编码器的选择与初始化参数，训练日志也分别打印了 `PointNet` 和 `SetXFPCDEncoder` 实例。
 
 旧下载等待器在文件落盘交接时提前退出了 Wiping SetXF。该组从落盘的文件经 `scripts/run_experiment.sh wiping-setxf full` 启动，在同一任务内顺序运行训练、加载权重和配对仿真。Packaging 的下载保持运行，`dexcap-packaging-setxf` 等待最终文件后使用同一入口。PointNet 沿用已启动的训练与评估队列。
 
@@ -576,16 +578,21 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 
 论文 IV-B 描述了在操作空间内同步平移点云和动作轨迹。作者未给出采样范围。本次对照以原 HDF5 中两腕的 Min–Max 动作范围近似操作空间，在每个样本上分别按轴取可行区间，并限制最大幅度为 10 cm。同一个二维位移用于三帧点云、两腕的位置观测和 20 步目标。旋转、手指关节、点云颜色和动作归一化参数均沿用原值。整段轨迹平移保留录制中物体与盒子之间的相对布局。 [论文 IV-B](https://arxiv.org/html/2403.07788v2#S4.SS2)
 
-基于完整 Packaging HDF5、SetXF、种子 1、batch size 16、每轮 500 步，从头训练 100 轮。对照组设 `train.dexcap_xy_translation_m = 0.0`，平移组设 `0.10`。其余配置沿用 `configs/pointcloud-full.json`，训练结束保存第 100 轮 checkpoint。
+基于完整 Packaging HDF5、SetXF、种子 1、batch size 16、每轮 500 步，从头训练 100 轮。以 `configs/pointcloud-full.json` 为基准，将 `train.num_epochs` 改为 `100`，对照组和增强组的 `train.dexcap_xy_translation_m` 分别设为 `0.0` 和 `0.10`。两个配置仅有这两处相对基准的变化。
 
 两组在 `pro1` 的 GPU 5 和 6 同时启动，训练分支为 `repro/setxf` 的 `379cf43`。训练结束后，使用红银包装和绿梨各五组相同随机摆放，每回合 400 步。配置、启动命令和结果保存到 `runs/packaging-translation-study/`，分别使用 `control` 和 `shift10` 前缀。按 `docs/reproduction.md` 的训练命令复跑时，将 `--config` 指向相应的 `control.json` 或 `shift10.json`。
 
 调整 `pro1` GPU 分配后停止两组补充训练。对照组和增强组的日志分别到第 64 轮和第 60 轮，尚未生成第 100 轮 checkpoint。GPU 0、1、2 上的三组正式训练继续运行。Packaging 第 300 轮的两组闭环改为在 GPU 3 上串行补跑，会话为 `dexcap-packaging-epoch300-gpu3`，脚本为 `runs/packaging-epoch300-paired-gpu3.sh`。随后 `dexcap-translation-gpu3` 沿用原配置，依次从头训练对照组与增强组，新输出和日志写入 `runs/packaging-translation-gpu3/`。
 
-GPU 3 重跑的对照组已结束 100 轮训练，权重位于 `runs/packaging-translation-gpu3/jobs/control/20261119213209/models/model_epoch_100.pth`。队列已加载该权重开始红银包装闭环，完成两种物体的评估后再启动增强组。
+两组均已保存第 100 轮 checkpoint。权重在 `runs/packaging-translation-gpu3/jobs/` 下，对照组为 `control/20261119213209/models/model_epoch_100.pth`，增强组为 `shift10/20261119221125/models/model_epoch_100.pth`。
 
-对照组红银包装已完成 5 × 400 步，摆放逐项匹配此前第 100 轮实验。入盒与完整成功均为 0/5，种子 3 达到合盖判据。结果为 `runs/packaging-translation-gpu3/control-red-box.json`。
+两组的两种物体均完成 5 × 400 步。对每种物体核对了种子、盒位、物体起点、数据文件及点云尺寸。抓取包括回合结束时仍持物，以及曾抓取后释放的回合。
 
-对照组绿梨也完成 5 × 400 步，摆放与此前第 100 轮逐项一致。两种物体都没有抓取、入盒或完整成功，绿梨有 2/5 回合达到合盖判据。绿梨结果为 `runs/packaging-translation-gpu3/control-green-pear.json`。对照组评估结束后，增强组在 GPU 3 开始训练。
+| 物体 | 组别 | 抓取 | 入盒 | 合盖 | 完整成功 |
+|---|---|---:|---:|---:|---:|
+| 红银包装 | 对照 | 0/5 | 0/5 | 1/5 | 0/5 |
+| 红银包装 | 10 cm 平移 | 1/5 | 0/5 | 2/5 | 0/5 |
+| 绿梨 | 对照 | 0/5 | 0/5 | 2/5 | 0/5 |
+| 绿梨 | 10 cm 平移 | 0/5 | 0/5 | 2/5 | 0/5 |
 
-增强组已完成 100 轮训练，权重在 `runs/packaging-translation-gpu3/jobs/shift10/20261119221125/models/model_epoch_100.pth`。GPU 3 先评估红银包装，再评估绿梨。
+红银包装种子 5 在增强组抓起并释放，最终仍在盒外。红银包装的合盖种子由 3 增至 3、4，绿梨两组都是种子 2、3。在本次第 100 轮对照中，未观察到入盒或完整成功改善。逐回合结果在 `runs/packaging-translation-gpu3/{control,shift10}-{red-box,green-pear}.json`。
