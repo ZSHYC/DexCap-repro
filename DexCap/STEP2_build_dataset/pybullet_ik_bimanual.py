@@ -4,6 +4,9 @@ from transforms3d.euler import quat2euler, euler2quat
 from utils import *
 from hyperparameters import *
 
+LEFT_ROBOT_JOINT_FLIPS = [0, 4, 8, 12, 13]
+
+
 class LeapPybulletIK():
     def __init__(self, headless=False):
         # start pybullet
@@ -516,10 +519,8 @@ class LeapPybulletIK():
         # further map joints to real robot
         real_right_robot_hand_q += np.pi
         real_left_robot_hand_q += np.pi
-        real_left_robot_hand_q[0] = np.pi * 2 - real_left_robot_hand_q[0]
-        real_left_robot_hand_q[4] = np.pi * 2 - real_left_robot_hand_q[4]
-        real_left_robot_hand_q[8] = np.pi * 2 - real_left_robot_hand_q[8]
-        real_left_robot_hand_q[12] = np.pi * 2 - real_left_robot_hand_q[12]
-        real_left_robot_hand_q[13] = np.pi * 2 - real_left_robot_hand_q[13]
+        real_left_robot_hand_q[LEFT_ROBOT_JOINT_FLIPS] = (
+            np.pi * 2 - real_left_robot_hand_q[LEFT_ROBOT_JOINT_FLIPS]
+        )
 
         return real_right_robot_hand_q, real_left_robot_hand_q, right_hand_pointcloud, left_hand_pointcloud

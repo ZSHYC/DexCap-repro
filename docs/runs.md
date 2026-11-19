@@ -203,6 +203,8 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 Packaging 使用相同数据版本的标定、台面平移、`frame_0` 和首段的 `frame_2710–2719`，输出五条各含两帧的 HDF5 序列。逐帧比较发布文件时，图像、相机与腕位可以对齐，手指 IK 换算回弧度后仍有明显差异。原始帧、重建结果和日志已集中到 `pro1` 项目目录。 [重建命令与误差](raw-retarget.md#packaging-first-ten-raw-frames)
 
+从同一原始 ZIP 恢复 22 个归档关节文件并使用 `--use-recorded-joints` 重建后，五条序列的两帧手部状态及各序列首个动作的手指目标都与发布文件逐值一致。首个完整动作的最大差为 `1.11e-16`。归档夹具与现场求解夹具保存在不同目录中。 [归档关节重建](raw-retarget.md#rebuild-with-archived-hand-joints)
+
 ## 本地 Plate Wiping 仿真
 
 | 输入 | 控制步 | 海绵与盘子接触步 | 相对盘面移动 | 完整擦拭 | 仿真判定 |

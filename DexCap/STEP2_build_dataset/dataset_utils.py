@@ -3,12 +3,15 @@ import json
 from utils import *
 from hyperparameters import *
 from pointcloud_crop import table_point_mask
-from pybullet_ik_bimanual import LeapPybulletIK
+from pybullet_ik_bimanual import LEFT_ROBOT_JOINT_FLIPS, LeapPybulletIK
 
 leapPybulletIK = None
 R_delta_init = None
 
-def read_pose_data(frame_path, demo_path, fixed_trans_to_robot_table, first_frame=False):
+def read_pose_data(
+    frame_path, demo_path, fixed_trans_to_robot_table,
+    first_frame=False, use_recorded_joints=False,
+):
     global leapPybulletIK
 
     cam_pose_path = os.path.join(frame_path, "pose.txt")
@@ -43,9 +46,29 @@ def read_pose_data(frame_path, demo_path, fixed_trans_to_robot_table, first_fram
     right_hand_joint_xyz = translate_wrist_to_origin(right_hand_joint_xyz)  # canonical view by translate to origin
     right_hand_wrist_ori = np.loadtxt(hand_ori_path)[0]
 
-    right_hand_target, left_hand_target, right_hand_points, left_hand_points = leapPybulletIK.compute_IK(right_hand_joint_xyz, right_hand_wrist_ori, left_hand_joint_xyz, left_hand_wrist_ori)
-    np.savetxt(os.path.join(frame_path, "right_joints.txt"), right_hand_target)
-    np.savetxt(os.path.join(frame_path, "left_joints.txt"), left_hand_target)
+    right_joints_path = os.path.join(frame_path, "right_joints.txt")
+    left_joints_path = os.path.join(frame_path, "left_joints.txt")
+    if use_recorded_joints:
+        right_hand_target = np.loadtxt(right_joints_path)
+        left_hand_target = np.loadtxt(left_joints_path)
+        if (
+            right_hand_target.shape != (16,)
+            or left_hand_target.shape != (16,)
+            or not np.isfinite([right_hand_target, left_hand_target]).all()
+        ):
+            raise ValueError(f"Expected 16 finite recorded joints per hand in {frame_path}")
+        # Undo the robot convention before generating the LEAP mesh.
+        left_mesh_joints = left_hand_target - np.pi
+        left_mesh_joints[LEFT_ROBOT_JOINT_FLIPS] *= -1
+        right_hand_points, left_hand_points = leapPybulletIK.get_mesh_pointcloud(
+            right_hand_target - np.pi, left_mesh_joints,
+        )
+    else:
+        right_hand_target, left_hand_target, right_hand_points, left_hand_points = leapPybulletIK.compute_IK(
+            right_hand_joint_xyz, right_hand_wrist_ori, left_hand_joint_xyz, left_hand_wrist_ori,
+        )
+        np.savetxt(right_joints_path, right_hand_target)
+        np.savetxt(left_joints_path, left_hand_target)
 
     # convert left hand pose
     left_rotation_matrix = Rotation.from_quat(left_hand_wrist_ori).as_matrix().T
@@ -131,7 +154,10 @@ def read_pose_data(frame_path, demo_path, fixed_trans_to_robot_table, first_fram
             right_hand_points,
             left_hand_points)
 
-def process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sample, in_wild_data=False, headless=False):
+def process_hdf5(
+    output_hdf5_file, dataset_folders, action_gap, num_points_to_sample,
+    in_wild_data=False, headless=False, use_recorded_joints=False,
+):
     global R_delta_init, leapPybulletIK
 
     leapPybulletIK = LeapPybulletIK(headless=headless)
@@ -165,7 +191,11 @@ def process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sa
             for clip in clip_marks:
 
                 # save frame0 & update R_delta_init
-                frame0_pose_data, frame0_left_pose_data, _, _, _, _, _ = read_pose_data(os.path.join(dataset_folder, f'frame_0'), dataset_folder, fixed_trans_to_robot_table=fixed_trans_to_robot_table, first_frame=True)
+                frame0_pose_data, frame0_left_pose_data, _, _, _, _, _ = read_pose_data(
+                    os.path.join(dataset_folder, "frame_0"), dataset_folder,
+                    fixed_trans_to_robot_table=fixed_trans_to_robot_table,
+                    first_frame=True, use_recorded_joints=use_recorded_joints,
+                )
                 update_R_delta_init(frame0_pose_data[:3], frame0_pose_data[3:7])
 
                 # Get start and end frame numbers
@@ -189,7 +219,14 @@ def process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sa
                     frame_path = os.path.join(dataset_folder, frame_folder)
 
                     # load hand pose data
-                    pose_data, left_pose_data, cam_data, glove_data, left_glove_data, right_hand_points, left_hand_points = read_pose_data(frame_path, dataset_folder, fixed_trans_to_robot_table=fixed_trans_to_robot_table)
+                    (
+                        pose_data, left_pose_data, cam_data, glove_data,
+                        left_glove_data, right_hand_points, left_hand_points,
+                    ) = read_pose_data(
+                        frame_path, dataset_folder,
+                        fixed_trans_to_robot_table=fixed_trans_to_robot_table,
+                        use_recorded_joints=use_recorded_joints,
+                    )
                     poses.append(pose_data)
                     poses_left.append(left_pose_data)
 

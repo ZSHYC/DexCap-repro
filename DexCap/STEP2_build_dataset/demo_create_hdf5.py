@@ -12,6 +12,10 @@ def main():
     parser.add_argument("--num-points-to-sample", type=int, default=10000)
     parser.add_argument("--in-wild-data", action="store_true", help="Enable packaging/in-the-wild translation data")
     parser.add_argument("--headless", action="store_true", help="Disable Open3D, OpenCV, and PyBullet GUI windows")
+    parser.add_argument(
+        "--use-recorded-joints", action="store_true",
+        help="Read the archived LEAP joints from each frame and preserve those files",
+    )
     args = parser.parse_args()
 
     sub_dirs = [
@@ -31,6 +35,7 @@ def main():
         args.num_points_to_sample,
         in_wild_data=args.in_wild_data,
         headless=args.headless,
+        use_recorded_joints=args.use_recorded_joints,
     )
 
 
