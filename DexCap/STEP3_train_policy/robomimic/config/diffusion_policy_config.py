@@ -6,6 +6,10 @@ from robomimic.config.base_config import BaseConfig
 
 class DiffusionPolicyConfig(BaseConfig):
     ALGO_NAME = "diffusion_policy"
+
+    def train_config(self):
+        super().train_config()
+        self.train.dexcap_xy_translation_m = 0.0
     
     def algo_config(self):
         """
