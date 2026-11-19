@@ -377,7 +377,7 @@ class PackagingSimulation(LeapSimulation):
 
     def _lid_closed(self) -> bool:
         angle, *_ = p.getJointState(self.lid, self.lid_link, physicsClientId=self.client)
-        return abs(angle - np.pi) <= LID_CLOSED_TOLERANCE
+        return bool(abs(angle - np.pi) <= LID_CLOSED_TOLERANCE)
 
     def _box_local_pose(self, position, quaternion):
         box_pose = p.getBasePositionAndOrientation(

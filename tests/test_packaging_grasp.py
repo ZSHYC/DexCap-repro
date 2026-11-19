@@ -32,7 +32,7 @@ class PackagingGraspTest(unittest.TestCase):
         for degrees, closed in ((165, False), (178, True)):
             with self.subTest(degrees=degrees):
                 p.resetJointState(sim.lid, sim.lid_link, np.deg2rad(degrees), physicsClientId=sim.client)
-                self.assertEqual(sim._lid_closed(), closed)
+                self.assertIs(sim._lid_closed(), closed)
 
     def test_opposing_grip_can_pivot_after_touching_the_box(self):
         sim = self.sim
