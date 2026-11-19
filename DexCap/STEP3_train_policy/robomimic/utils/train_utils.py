@@ -233,10 +233,18 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
     ds_weights = [ds_cfg.get("weight", 1.0) for ds_cfg in config.train.data]
     ds_labels = [ds_cfg.get("label", "dummy") for ds_cfg in config.train.data]
 
+    ds_class = R2D2Dataset if config.train.data_format == "r2d2" else SequenceDataset
+    if ds_class is SequenceDataset and config.algo_name == "diffusion_policy":
+        stacked_frames = config.train.frame_stack - 1
+        observation_horizon = config.algo.horizon.observation_horizon
+        ds_kwargs["obs_seq_length"] = min(
+            config.train.seq_length, max(1, observation_horizon - stacked_frames)
+        )
+
     meta_ds_kwargs = dict()
 
     dataset = get_dataset(
-        ds_class=R2D2Dataset if config.train.data_format == "r2d2" else SequenceDataset,
+        ds_class=ds_class,
         ds_kwargs=ds_kwargs,
         ds_weights=ds_weights,
         ds_labels=ds_labels,
