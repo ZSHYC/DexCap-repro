@@ -99,6 +99,8 @@ Wiping 两组正式训练的近期一轮约为 28 s，等待 HDF5 数据约占�
 
 两组吞吐都提高约 46%。Packaging 全量训练使用 8 个 worker。已在运行的两组 Wiping 保持启动时保存的 2 worker 配置。公开训练入口的 `--resume` 从 checkpoint 恢复网络及 EMA 权重，优化器与学习率调度按新训练初始化。基准日志为 `runs/wiping-*-loader-*-bench-*.console.log`。
 
+在 GPU 3 上用完整 Wiping 数据和 PointNet 进一步比较 8 与 16 个 worker。每种设置跑两轮，每轮 500 步，batch size 为 16。8 个 worker 用时 20.70 s、19.60 s，16 个 worker 用时 19.61 s、19.93 s，两轮的排序相反。对应的数据等待分别为 6.76 s、6.75 s 和 6.33 s、6.56 s。新增训练继续采用 8 个 worker。配置和日志在 `runs/wiping-loader-benchmark-20261119T124313Z/`。
+
 ### Packaging 全量训练启动
 
 2026-11-19 19:19（北京时间），29.1 GB 完整 HDF5 在 `pro1` 落盘。GPU 2 的 SetXF 短训记录 480 条示范、57916 个序列，完成两轮并输出有限的 46 维动作。随后启动正式训练 `runs/packaging-setxf-seed1-full-20261119T111945Z`。保存的配置为 8 个 worker、batch size 16、3000 轮、每轮 500 步。第 2 轮用时约 20.7 s，其中数据读取约 6.6 s。
