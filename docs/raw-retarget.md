@@ -41,7 +41,7 @@ data/raw/
 │   │   └── frame_2220/
 │   └── ...
 └── save_packaging_wild_1-20/
-    ├── save_data_packaging_wild_1-20_01/
+    ├── save_data_packaging_01/
     │   ├── clip_marks.json
     │   ├── map_to_robot_table_trans.txt
     │   ├── frame_0/
