@@ -158,6 +158,19 @@ PointNet 使用录制场景时，左腕误差的绝对中位数从 6.1 mm 增至
 
 对齐中心的配对变化在 1 mm 以内。单独对齐海绵后的 PointNet 左腕误差中位数为 11.7 mm，录制输入为 6.2 mm。SetXF 对齐盘子在擦拭阶段的配对左腕误差降幅为 0.6 mm，全段配对误差增加 0.2 mm。这两项位置修正都留下了多毫米的观测误差。逐项记录和脚本在 `runs/wiping-{pointnet,setxf}-epoch300-object-position-ab.json`、`runs/wiping-object-position-ab.py`。
 
+#### 同时对齐中心与盘面法向
+
+在同一批 38 帧中，海绵相对于盘子中心的三维位置差在两个仿真抓取都触发之前中位为 15.3 mm（10 帧），之后为 36.8 mm（28 帧）。抓盘后，拟合的录制盘面与仿真盘面法向夹角中位数为 4.8°。
+
+沿用上述 13 个时刻、三个种子及按帧的点数采样，额外同时移动两物体。另一组还按最小旋转将仿真盘面法向对齐到录制估计。海绵沿用仿真朝向。表中为相对原仿真渲染的腕位误差配对增量中位数，单位 mm。
+
+| 渲染中的对齐项 | PointNet 右腕、左腕 | SetXF 右腕、左腕 |
+|---|---:|---:|
+| 两个物体中心 | 0.0、−0.5 | +0.7、+1.5 |
+| 两个物体中心和盘面法向 | 0.0、−0.6 | +0.5、+2.1 |
+
+用 Bullet 分割缓冲区追踪 13 个时刻的渲染点来源。掌心 22 cm 内的非手部点合计 71.4% 来自盘子、28.6% 来自海绵。按当前裁剪设置，这批近手渲染点没有桌面点。几何对照与分割记录分别在 `runs/wiping-{pointnet,setxf}-epoch300-object-pose-ab.json` 和 `runs/wiping-near-scene-parts.json`。复算脚本为 `runs/wiping-object-pose-ab.py`、`runs/wiping-near-scene-parts.py`。
+
 ### 数据读取吞吐
 
 Wiping 两组正式训练的近期一轮约为 28 s，等待 HDF5 数据约占一半。在 `pro1` 的 GPU 5 和 6 上分别用完整 Wiping 数据做短对照。每组在同一张卡上先以 2 个 worker、再以 8 个 worker 执行两轮各 200 个梯度步。batch size 16，表中为各次第二轮，计时按实际秒数换算。
@@ -493,3 +506,5 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 调整 `pro1` GPU 分配后停止两组补充训练。对照组和增强组的日志分别到第 64 轮和第 60 轮，尚未生成第 100 轮 checkpoint。GPU 0、1、2 上的三组正式训练继续运行。Packaging 第 300 轮的两组闭环改为在 GPU 3 上串行补跑，会话为 `dexcap-packaging-epoch300-gpu3`，脚本为 `runs/packaging-epoch300-paired-gpu3.sh`。随后 `dexcap-translation-gpu3` 沿用原配置，依次从头训练对照组与增强组，新输出和日志写入 `runs/packaging-translation-gpu3/`。
 
 GPU 3 重跑的对照组已结束 100 轮训练，权重位于 `runs/packaging-translation-gpu3/jobs/control/20261119213209/models/model_epoch_100.pth`。队列已加载该权重开始红银包装闭环，完成两种物体的评估后再启动增强组。
+
+对照组红银包装已完成 5 × 400 步，摆放逐项匹配此前第 100 轮实验。入盒与完整成功均为 0/5，种子 3 达到合盖判据。结果为 `runs/packaging-translation-gpu3/control-red-box.json`。
