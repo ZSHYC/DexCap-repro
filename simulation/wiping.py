@@ -5,7 +5,7 @@ from itertools import combinations
 import numpy as np
 import pybullet as p
 
-from simulation.leap import LeapSimulation, wxyz
+from simulation.leap import GRASP_FORCE, LeapSimulation, wxyz
 
 
 DEMO_OBJECT_XY = np.array([[0.54, -0.15], [0.542, 0.112]])
@@ -15,6 +15,7 @@ TABLE_HEIGHT = -0.03
 PLATE_BASE_THICKNESS = 0.004
 PLATE_RIM_HEIGHT = 0.024
 PLATE_INNER_RADIUS = 0.095
+PLATE_SEATING_FORCE = 20  # shortcut: an approximate seated grip until traction is measured.
 SPONGE_HALF_HEIGHT = 0.02
 SPONGE_YAW = 0.33
 LINKS_PER_FINGER = 5  # Four actuated joints and one fixed fingertip.
@@ -45,6 +46,7 @@ class PlateWipingSimulation(LeapSimulation):
         p.changeDynamics(self.sponge, -1, lateralFriction=1.2, physicsClientId=self.client)
 
         self._plate_grasp = None
+        self._plate_lifted = False
         self._sponge_grasp = None
         self._wipe_distance = 0.0
         self._wipe_passes = 0
@@ -137,7 +139,15 @@ class PlateWipingSimulation(LeapSimulation):
                 for a, b in combinations(contacts, 2)
             )
             if pinched:
-                self._plate_grasp = self._attach(self.right_hand, self.plate, contacts)
+                self._plate_grasp = self._attach(
+                    self.right_hand, self.plate, contacts, max_force=PLATE_SEATING_FORCE,
+                )
+        if self._plate_grasp is not None and not self._plate_lifted:
+            bottom, _ = p.getAABB(self.plate, physicsClientId=self.client)
+            if bottom[2] > TABLE_HEIGHT + PLATE_BASE_THICKNESS / 2:
+                p.changeConstraint(self._plate_grasp, maxForce=GRASP_FORCE, erp=0.8,
+                                   physicsClientId=self.client)
+                self._plate_lifted = True
         if self._sponge_grasp is None:
             contacts = p.getContactPoints(bodyA=self.left_hand, bodyB=self.sponge,
                                           physicsClientId=self.client)

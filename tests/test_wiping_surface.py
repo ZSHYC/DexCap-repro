@@ -1,12 +1,42 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import pybullet as p
 
-from simulation.wiping import PlateWipingSimulation, SPONGE_HALF_HEIGHT
+from simulation.leap import GRASP_FORCE
+from simulation.wiping import PLATE_SEATING_FORCE, PlateWipingSimulation, SPONGE_HALF_HEIGHT
 
 
 class WipingSurfaceTest(unittest.TestCase):
+    def test_grasp_stays_force_limited_until_plate_clears_table(self):
+        sim = PlateWipingSimulation()
+        self.addCleanup(sim.close)
+        action = np.zeros(46)
+        action[:6] = [0.2, -0.4, 0.5, 0.2, 0.4, 0.5]
+        action[[6, 10]] = 1
+        sim.reset(action)
+        contacts = [
+            (None, None, None, 4, None, None, None, (0, 0, 1), None, 1),
+            (None, None, None, 9, None, None, None, (0, 0, -1), None, 1),
+        ]
+        with patch.object(p, "getContactPoints", side_effect=[contacts, []]):
+            sim._maybe_grasp()
+
+        def max_force():
+            return p.getConstraintInfo(sim._plate_grasp, physicsClientId=sim.client)[10]
+
+        self.assertEqual(max_force(), PLATE_SEATING_FORCE)
+        with patch.object(p, "getContactPoints", return_value=[]):
+            sim._maybe_grasp()
+        self.assertEqual(max_force(), PLATE_SEATING_FORCE)
+
+        xyz, quat = p.getBasePositionAndOrientation(sim.plate, physicsClientId=sim.client)
+        p.resetBasePositionAndOrientation(sim.plate, [*xyz[:2], xyz[2] + 0.05], quat,
+                                          physicsClientId=sim.client)
+        sim._maybe_grasp()
+        self.assertEqual(max_force(), GRASP_FORCE)
+
     def test_only_vertical_strokes_on_the_wiping_face_count(self):
         action = np.zeros(46)
         action[:6] = [0.2, -0.4, 0.5, 0.2, 0.4, 0.5]

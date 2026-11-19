@@ -9,6 +9,7 @@ import pybullet as p
 LEAP_SWAP = [1, 0, 2, 3, 5, 4, 6, 7, 9, 8, 10, 11, 12, 13, 14, 15]
 LEFT_MIRRORED = [0, 4, 8, 12, 13]
 MESH_DIR = Path(__file__).resolve().parents[1] / "DexCap/STEP2_build_dataset/leap_hand_mesh"
+GRASP_FORCE = 200
 
 
 def wxyz(quaternion):
@@ -131,7 +132,7 @@ class LeapSimulation:
                                  baseOrientation=orientation,
                                  physicsClientId=self.client)
 
-    def _attach(self, hand, prop, contacts):
+    def _attach(self, hand, prop, contacts, *, max_force=GRASP_FORCE):
         if not contacts:
             return None
         parent_link = max(contacts, key=lambda contact: contact[9])[3]
@@ -149,7 +150,7 @@ class LeapSimulation:
             parentFrameOrientation=relative[1], childFrameOrientation=[0, 0, 0, 1],
             physicsClientId=self.client,
         )
-        p.changeConstraint(constraint, maxForce=200, erp=0.8, physicsClientId=self.client)
+        p.changeConstraint(constraint, maxForce=max_force, erp=0.8, physicsClientId=self.client)
         # The fixed grasp replaces hand–prop collisions while the object is held.
         self._set_hand_collision(hand, prop, enabled=False)
         p.resetBaseVelocity(prop, [0, 0, 0], [0, 0, 0], physicsClientId=self.client)
