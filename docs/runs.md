@@ -48,6 +48,10 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 `48d87e6` 使用手指张开触发 Packaging 的物体释放。用官方动作回放时，第 51 步松手，包装物落在盒外。相同场景的 `pro1` 回放结束时 `object_released=true`、`object_in_box=false`、`lid_closed=false`。服务器记录为 `runs/packaging-demo0-hand-opening-pro1.json`。
 
+`432b9d2` 接入原始深度测得的初始场景。同一释放条件下，最大盒体倾角从约 58.2° 降至 1.6°，持物到盒中心在盒平面内的最近距离从 24.1 cm 缩至 7.8 cm。最终盒体平移距离从约 9.0 cm 增至 23.2 cm。服务器回放完成 131 步，包装物已释放，仍未入盒或合盖。记录为 `runs/packaging-demo0-raw-calibrated-pro1.json`。
+
+用新场景本地确认六种物体在 30 组初始场景的裁剪点云中都可见，并各有一种能装入盒中的姿态。`pro1` 用现有 SetXF 的接口权重运行了绿罐的 5 个摆放，每回合 6 步，入盒和完整成功为 0/5。记录为 `runs/packaging-green-can-calibrated-smoke-pro1.json`。
+
 完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 的六种物体各执行 5 组摆放。每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ### Wiping 单示范训练
