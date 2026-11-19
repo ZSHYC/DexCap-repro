@@ -130,14 +130,30 @@ CUDA_VISIBLE_DEVICES=2 python -m simulation.rollout "$PACKAGING_DATA" \
 
 复合模型用刚性拼接的盒体和圆柱近似接触面。完全闭合时，盒底上表面到盖板下表面的净高约 6.6 cm。苹果椭球的最小厚度约 7.9 cm，杯身直径约 9.5 cm，刚性近似会影响合盖。作者视频中苹果最终被盖板遮住，侧视可见窄缝，蓝杯的盖板明显被顶起。两件物体被盒底支撑时均可计为入盒。所有未见物体都通过 `--object` 选择，结果包含 `object_group=unseen` 和 `object_reference`。 [苹果视频 43.0–46.1 秒](https://dex-cap.github.io/assets/normal_packaging_unseenobj.mp4) · [蓝杯视频 35.0–42.8 秒](https://dex-cap.github.io/assets/normal_packaging_unseenobj2.mp4)
 
-以下命令用同一个 checkpoint 评估九个物体，每种运行五组相同的摆放。运行时使用项目 Conda 环境和上文 SetXF 的 `PYTHONPATH`。
+以下命令用同一个 checkpoint 评估九个物体，每种运行五组相同的摆放。`PACKAGING_RUN` 指向 `runs/` 下该次 Packaging 正式训练的目录。训练物体评估退出后，从项目 Conda 环境和上文 SetXF 的 `PYTHONPATH` 运行。
 
 ```bash
 cd "$DEXCAP"
+mkdir -p "${PACKAGING_RUN}-unseen-final"
 objects=$(python -c 'from simulation.packaging import PACKAGING_UNSEEN_OBJECTS; print(*PACKAGING_UNSEEN_OBJECTS)')
 for object in $objects; do
-  CUDA_VISIBLE_DEVICES=3 python -m simulation.rollout "$PACKAGING_DATA" \
+  CUDA_VISIBLE_DEVICES=2 python -m simulation.rollout "$PACKAGING_DATA" \
     --task packaging --checkpoint "$CKPT" --object "$object" --trials 5 \
-    --output "$DEXCAP/runs/packaging-$object-final-sim.json"
+    --output "${PACKAGING_RUN}-unseen-final/$object.json"
 done
 ```
+
+## 汇总正式仿真结果
+
+在 `pro1` 上，以下命令读取三个正在运行的正式实验将产生的结果。换到另一组训练时，传入对应的两个 Wiping JSON 和 Packaging 训练目录。
+
+```bash
+cd "$DEXCAP"
+python -m simulation.summarize_results \
+  runs/wiping-pointnet-seed1-final-sim.json \
+  runs/wiping-setxf-seed1-full-20261119T103025Z.final-sim.json \
+  runs/packaging-setxf-seed1-full-20261119T111945Z \
+  --output runs/dexcap-formal-simulation.json
+```
+
+命令要求第 3000 轮的权重、每回合 400 步，并核对两组 Wiping 的 20 个摆放以及 Packaging 所有物体的五个摆放。输出按实际回合统计 Wiping 成功率和 Packaging 两组的入盒率、合盖率与完整成功率，保留逐物体计数。六种训练物体共 30 回合，九种未见物体共 45 回合。
