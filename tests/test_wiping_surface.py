@@ -5,7 +5,7 @@ import numpy as np
 import pybullet as p
 
 from simulation.leap import GRASP_FORCE
-from simulation.wiping import PLATE_SEATING_FORCE, PlateWipingSimulation, SPONGE_HALF_HEIGHT
+from simulation.wiping import HELD_PLATE_NORMAL, PLATE_SEATING_FORCE, PlateWipingSimulation, SPONGE_HALF_HEIGHT
 
 
 class WipingSurfaceTest(unittest.TestCase):
@@ -36,6 +36,11 @@ class WipingSurfaceTest(unittest.TestCase):
                                           physicsClientId=sim.client)
         sim._maybe_grasp()
         self.assertEqual(max_force(), GRASP_FORCE)
+        constraint = p.getConstraintInfo(sim._plate_grasp, physicsClientId=sim.client)
+        _, parent_quat = p.getLinkState(sim.right_hand, constraint[1], physicsClientId=sim.client)[:2]
+        _, target_quat = p.multiplyTransforms([0, 0, 0], parent_quat, [0, 0, 0], constraint[8])
+        rotation = np.asarray(p.getMatrixFromQuaternion(target_quat)).reshape(3, 3)
+        np.testing.assert_allclose(rotation[:, 2], HELD_PLATE_NORMAL, atol=1e-6)
 
     def test_only_vertical_strokes_on_the_wiping_face_count(self):
         action = np.zeros(46)

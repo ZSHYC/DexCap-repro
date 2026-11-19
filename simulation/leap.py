@@ -136,11 +136,18 @@ class LeapSimulation:
         if not contacts:
             return None
         parent_link = max(contacts, key=lambda contact: contact[9])[3]
+        prop_pose = p.getBasePositionAndOrientation(prop, physicsClientId=self.client)
+        constraint = self._create_grasp_constraint(hand, parent_link, prop, prop_pose, max_force)
+        # The fixed grasp replaces hand–prop collisions while the object is held.
+        self._set_hand_collision(hand, prop, enabled=False)
+        p.resetBaseVelocity(prop, [0, 0, 0], [0, 0, 0], physicsClientId=self.client)
+        return constraint
+
+    def _create_grasp_constraint(self, hand, parent_link, prop, prop_pose, max_force=GRASP_FORCE):
         if parent_link == -1:
             hand_pose = p.getBasePositionAndOrientation(hand, physicsClientId=self.client)
         else:
             hand_pose = p.getLinkState(hand, parent_link, physicsClientId=self.client)[:2]
-        prop_pose = p.getBasePositionAndOrientation(prop, physicsClientId=self.client)
         relative = p.multiplyTransforms(*p.invertTransform(*hand_pose), *prop_pose)
         constraint = p.createConstraint(
             parentBodyUniqueId=hand, parentLinkIndex=parent_link,
@@ -151,9 +158,6 @@ class LeapSimulation:
             physicsClientId=self.client,
         )
         p.changeConstraint(constraint, maxForce=max_force, erp=0.8, physicsClientId=self.client)
-        # The fixed grasp replaces hand–prop collisions while the object is held.
-        self._set_hand_collision(hand, prop, enabled=False)
-        p.resetBaseVelocity(prop, [0, 0, 0], [0, 0, 0], physicsClientId=self.client)
         return constraint
 
     def _set_hand_collision(self, hand, prop, enabled):
