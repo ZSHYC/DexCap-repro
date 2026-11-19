@@ -348,6 +348,8 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 
 `dexcap-packaging-unseen` 等待 Packaging 正式训练与六种训练物体的仿真完成。它读取第 3000 轮权重，在 GPU 2 上依次对九个未见物体各跑五次，每回合 400 步，输出到 `runs/packaging-setxf-seed1-full-20261119T111945Z-unseen-final/`。同一个种子的盒位和物体起点在九种物体间一致，逐物体 JSON 汇总为 `summary.json`。会话日志为 `runs/packaging-unseen-evaluation.log`。
 
+`dexcap-formal-summary` 等待两种 Wiping 与 Packaging 的正式评估会话结束，然后在 CPU 上核对第 3000 轮的逐回合记录并生成 `runs/dexcap-formal-simulation.json`。输出包含 Wiping 每组 20 回合，以及 Packaging 训练物体 30 回合、未见物体 45 回合的计数。等待及汇总日志为 `runs/formal-summary.log`。 [手动汇总命令](simulation.md#汇总正式仿真结果)
+
 ### Packaging 分项判据验证
 
 `2eb8bbc` 使用盒底支撑判定入盒，使用盖板铰链角度判定合盖。让苹果、蓝杯和蓝色积木从盒内上方释放，三件物体在下落阶段都未计为入盒，落稳后均计为入盒，打开的盖板未触发完整成功。在盖板角度 165° 与 178° 的直接对照中，分别判为打开和闭合。本地六项 Packaging 测试通过。 [入盒与合盖判据](simulation.md#packaging-仿真)
@@ -397,6 +399,8 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 
 第 200 轮的两组各完成 5 × 400 步，盒位和物体起点与第 100 轮逐项相同。两个物体都只在种子 5 触发抓取后释放，入盒、合盖和完整成功均为 0/5。与第 100 轮相比，红银包装在种子 5 的右手接触点数由 501 增至 1652，绿梨由 158 降至 111。
 
+第 300 轮在 GPU 3 上依次完成红银包装与绿梨的 5 × 400 步。逐项核对两种物体的种子、盒位和物体起点，与第 200 轮一致。两种物体仍各只有种子 5 抓取，入盒与完整成功均为 0/5。红银包装有一个回合结束时达到合盖判据，同一回合未达到入盒判据。结果在 `runs/packaging-{red-box,green-pear}-epoch300-random5.json`。
+
 ### 随机摆放与动作范围
 
 从三个正式作业共用的训练逻辑确认，DDIM 在逆扩散末步限制归一化动作，腕部平移用各自 checkpoint 中的 min–max 参数还原。对 Wiping 和 Packaging 的第 200 轮权重，用官方成功回放的抓取动作作为参考，分别沿目标物和纸盒在仿真中的初始位置差平移。Packaging 的五组抓取目标都在平移范围内。Wiping 的三组有单轴目标超出 6.6–16.6 mm。
@@ -431,4 +435,4 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 
 两组在 `pro1` 的 GPU 5 和 6 同时启动，训练分支为 `repro/setxf` 的 `379cf43`。训练结束后，使用红银包装和绿梨各五组相同随机摆放，每回合 400 步。配置、启动命令和结果保存到 `runs/packaging-translation-study/`，分别使用 `control` 和 `shift10` 前缀。按 `docs/reproduction.md` 的训练命令复跑时，将 `--config` 指向相应的 `control.json` 或 `shift10.json`。
 
-调整 `pro1` GPU 分配后停止两组补充训练。对照组和增强组的日志分别到第 64 轮和第 60 轮，尚未生成第 100 轮 checkpoint。GPU 0、1、2 上的三组正式训练继续运行。Packaging 第 300 轮的两组闭环改为在 GPU 3 上串行补跑，会话为 `dexcap-packaging-epoch300-gpu3`，脚本为 `runs/packaging-epoch300-paired-gpu3.sh`。
+调整 `pro1` GPU 分配后停止两组补充训练。对照组和增强组的日志分别到第 64 轮和第 60 轮，尚未生成第 100 轮 checkpoint。GPU 0、1、2 上的三组正式训练继续运行。Packaging 第 300 轮的两组闭环改为在 GPU 3 上串行补跑，会话为 `dexcap-packaging-epoch300-gpu3`，脚本为 `runs/packaging-epoch300-paired-gpu3.sh`。随后 `dexcap-translation-gpu3` 沿用原配置，依次从头训练对照组与增强组，新输出和日志写入 `runs/packaging-translation-gpu3/`。
