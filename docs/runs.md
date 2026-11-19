@@ -32,6 +32,8 @@ Packaging 保存第 700 轮权重后，用同一方法无损压缩 22 份已结�
 
 01:05（北京时间），Packaging 第 1000 轮权重已保存并压缩为 260,943,068 字节。此时两组 Wiping 到第 823、824 轮，第 800 轮权重均已保存并压缩。三组所有完整轮次的训练损失均为有限值。系统盘可用约 13.18 GiB，后续权重、日志与压缩临时空间预计还需约 16.13 GiB。
 
+02:34（北京时间），两组 Wiping 均已保存及压缩第 1000 轮权重，训练到第 1004 轮。Packaging 到第 1258 轮。按最近 40 轮的中位耗时，预计 Packaging 约 12:09 完成训练，两组 Wiping 约 19:04、19:08 完成训练。正式评估在各组权重保存结束后开始，仍受后续可用空间影响。当时系统盘可用约 11.69 GiB，完训估算还需约 14.67 GiB。
+
 `60d5b3a` 的 `scripts/run_experiment.sh` 已在 `pro1` 的三个实验入口分别跑通 `smoke`。Wiping PointNet 使用当前项目源码，其余两组使用 `worktrees/setxf` 的 `4263783`。三个第 2 轮 checkpoint 均输出有限的 46 维动作。入口日志为 `runs/repro-entrypoint-pointnet.log`、`runs/repro-entrypoint-wiping-setxf.log` 和 `runs/repro-entrypoint-setxf.log`。   [运行方式](reproduction.md#运行一次完整实验)
 
 ### Wiping 全量训练启动
