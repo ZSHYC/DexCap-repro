@@ -10,9 +10,17 @@
 
 ## pro1
 
-项目位于 `~/dexcap-repro`。Conda 环境位于 `envs/train`，Python 3.11.18。使用复现提交 `55963d8` 和该环境的 PyBullet，回放官方 `demo_0` 共 111 步，点云为 `10000 × 6`。两件物体触发抓取，海绵与盘子接触 4 步，相对盘面移动 0.0131 m，完整擦拭为 0 次。服务器记录为 `runs/wiping-demo0-pro1.json`。
+项目位于 `~/dexcap-repro`。Conda 环境位于 `envs/train`，Python 3.11.18，PyTorch `2.10.0+cu130`，GPU 为 RTX PRO 5000 72 GB Blackwell。CUDA 张量运算已成功执行。
 
-官方完整数据和 GPU 训练依赖正在准备。 [服务器项目操作路径](reproduction.md)
+使用复现提交 `55963d8` 和该环境的 PyBullet，回放 Wiping 官方 `demo_0` 共 111 步，点云为 `10000 × 6`。两件物体触发抓取，海绵与盘子接触 4 步，相对盘面移动 0.0131 m，完整擦拭为 0 次。服务器记录为 `runs/wiping-demo0-pro1.json`。
+
+使用 `76a296c` 回放 Packaging 官方 `demo_0` 共 131 步，点云为 `10000 × 6`。累计 52 个右手与包装物接触点、1197 个左手与盖板接触点。包装物入盒，盖板未闭合。服务器记录为 `runs/packaging-demo0-passive-pro1.json`。
+
+PointNet 和 `SetXFPCDEncoder` 在 Wiping 官方数据的前 24 帧分别完成两轮训练，每轮三个梯度步。两个 checkpoint 均输出有限的 46 维动作，并分别读取仿真观测执行了 12 步闭环控制。这两次闭环均为 0 个海绵与盘子接触步。服务器记录为 `runs/wiping-policy-smoke-pro1.json` 和 `runs/wiping-setxf-smoke-pro1.json`。
+
+Packaging 的 SetXF 策略也用官方 `demo_0` 的前 24 帧完成 6 个梯度步。同一个 checkpoint 读取 Packaging 仿真点云与手部状态，执行了 12 步，记录到右手与物体接触并触发抓取，物体尚未入盒。服务器记录为 `runs/packaging-setxf-smoke-pro1.json`。
+
+完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint，再执行 400 步仿真并写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ## 官方原始数据重建
 
@@ -31,4 +39,4 @@
 
 ## 本地 Packaging 仿真
 
-回放官方 `demo_0` 的 131 步并渲染 `10000 × 6` 点云。模拟器累计收到 52 个右手与包装物的接触点、3131 个左手与盒盖的接触点。包装物已释放并落在盒内，盒盖尚未闭合，最终判定为未成功。 [场景和指标](simulation.md)
+回放官方 `demo_0` 的 131 步并渲染 `10000 × 6` 点云。当前被动铰链配置累计收到 52 个右手与包装物的接触点、1197 个左手与盒盖的接触点。包装物已释放并落在盒内，盒盖尚未闭合，最终判定为未成功。 [场景和指标](simulation.md)

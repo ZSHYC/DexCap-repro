@@ -58,15 +58,17 @@ The code uses relative paths for calibration YAML and LEAP-hand mesh files, so
 run it from `STEP2_build_dataset`:
 
 ```bash
-cd /path/to/project/DexCap/STEP2_build_dataset
+export DEXCAP="$HOME/dexcap-repro"
+mkdir -p "$DEXCAP/data/derived"
+cd "$DEXCAP/DexCap/STEP2_build_dataset"
 ```
 
 Wiping data:
 
 ```bash
 python demo_create_hdf5.py \
-  /path/to/data/raw/save_wipe_1-14 \
-  /path/to/data/processed/hand_wiping_1-14_5actiongap_10000points.hdf5 \
+  "$DEXCAP/data/raw/save_wipe_1-14" \
+  "$DEXCAP/data/derived/hand_wiping_1-14_5actiongap_10000points.hdf5" \
   --action-gap 5 \
   --num-points-to-sample 10000 \
   --headless
@@ -76,8 +78,8 @@ Packaging/in-the-wild data requires its additional table translation:
 
 ```bash
 python demo_create_hdf5.py \
-  /path/to/data/raw/save_packaging_wild_1-20 \
-  /path/to/data/processed/hand_packaging_wild_1-20_5actiongap_10000points.hdf5 \
+  "$DEXCAP/data/raw/save_packaging_wild_1-20" \
+  "$DEXCAP/data/derived/hand_packaging_wild_1-20_5actiongap_10000points.hdf5" \
   --action-gap 5 \
   --num-points-to-sample 10000 \
   --in-wild-data \
