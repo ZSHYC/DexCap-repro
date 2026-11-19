@@ -11,3 +11,7 @@
 ## pro1
 
 项目位于 `~/dexcap-repro`。Conda 环境位于 `envs/train`，Python 3.11.18。Wiping 的完整数据和 PyTorch 依赖正在准备。正式结果将从实际训练日志填入。
+
+## 官方原始数据重建
+
+从官方 Wiping 原始 ZIP 提取第一段示范的标定、`frame_0` 和 `frame_2220`，以单帧夹具运行无界面的 PyBullet 指尖 IK 和 RGB-D 点云构建。输出一个 HDF5 时间步、46 维动作和 `1000 × 6` 点云。 [重建命令与验证范围](raw-retarget.md)

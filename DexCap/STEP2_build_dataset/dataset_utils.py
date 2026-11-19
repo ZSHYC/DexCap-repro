@@ -5,7 +5,7 @@ from utils import *
 from hyperparameters import *
 from pybullet_ik_bimanual import LeapPybulletIK
 
-leapPybulletIK = LeapPybulletIK()
+leapPybulletIK = None
 R_delta_init = None
 
 def read_pose_data(frame_path, demo_path, fixed_trans_to_robot_table, first_frame=False):
@@ -131,13 +131,15 @@ def read_pose_data(frame_path, demo_path, fixed_trans_to_robot_table, first_fram
             right_hand_points,
             left_hand_points)
 
-def process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sample, in_wild_data=False):
-    global R_delta_init
+def process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sample, in_wild_data=False, headless=False):
+    global R_delta_init, leapPybulletIK
 
-    vis = o3d.visualization.Visualizer()
-    vis.create_window()
-    pcd_vis = o3d.geometry.PointCloud()  # Empty point cloud for starters
-    firstfirst = True
+    leapPybulletIK = LeapPybulletIK(headless=headless)
+    if not headless:
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+        pcd_vis = o3d.geometry.PointCloud()  # Empty point cloud for starters
+        firstfirst = True
 
     with h5py.File(output_hdf5_file, 'w') as output_hdf5:
         output_data_group = output_hdf5.create_group('data')
@@ -252,21 +254,22 @@ def process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sa
                     pointcloud.append(copy.deepcopy(color_pcd))
                     labels.append(0)
 
-                    # update pointcloud visualization
-                    pcd_vis.points = o3d.utility.Vector3dVector(color_pcd[:, :3])
-                    pcd_vis.colors = o3d.utility.Vector3dVector(color_pcd[:, 3:])
+                    if not headless:
+                        # update pointcloud visualization
+                        pcd_vis.points = o3d.utility.Vector3dVector(color_pcd[:, :3])
+                        pcd_vis.colors = o3d.utility.Vector3dVector(color_pcd[:, 3:])
 
-                    if firstfirst:
-                        vis.add_geometry(pcd_vis)
-                        firstfirst = False
-                    else:
-                        vis.update_geometry(pcd_vis)
-                    vis.poll_events()
-                    vis.update_renderer()
+                        if firstfirst:
+                            vis.add_geometry(pcd_vis)
+                            firstfirst = False
+                        else:
+                            vis.update_geometry(pcd_vis)
+                        vis.poll_events()
+                        vis.update_renderer()
 
-                    # update image visualization
-                    cv2.imshow("masked_resized_image", resized_image)
-                    cv2.waitKey(1)
+                        # update image visualization
+                        cv2.imshow("masked_resized_image", resized_image)
+                        cv2.waitKey(1)
 
                 poses = np.array(poses)
                 robot0_eef_pos = poses[:, :3]

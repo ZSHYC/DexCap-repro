@@ -1,16 +1,38 @@
-from dataset_utils import *
+import argparse
+import os
 
-# dataset_base_dir = '[PATH_TO_RAW_DATA_DOWNLOAD]/save_wipe_1-14'
-dataset_base_dir = '[PATH_TO_RAW_DATA_DOWNLOAD]/save_packaging_wild_1-20'
+from dataset_utils import extract_dataset_folder_last_two_digits, process_hdf5
 
-sub_dirs = [os.path.join(dataset_base_dir, d) for d in os.listdir(dataset_base_dir) if os.path.isdir(os.path.join(dataset_base_dir, d))]
-dataset_folders = sorted(sub_dirs, key=lambda d: extract_dataset_folder_last_two_digits(os.path.basename(d)))
 
-action_gap = 5
-num_points_to_sample = 10000
+def main():
+    parser = argparse.ArgumentParser(description="Build a DexCap HDF5 dataset from the released raw data.")
+    parser.add_argument("dataset_base_dir", help="Directory containing the raw recording directories")
+    parser.add_argument("output_hdf5_file", help="HDF5 file to create")
+    parser.add_argument("--action-gap", type=int, default=5)
+    parser.add_argument("--num-points-to-sample", type=int, default=10000)
+    parser.add_argument("--in-wild-data", action="store_true", help="Enable packaging/in-the-wild translation data")
+    parser.add_argument("--headless", action="store_true", help="Disable Open3D, OpenCV, and PyBullet GUI windows")
+    args = parser.parse_args()
 
-# output_hdf5_file = '[PATH_TO_SAVE_FOLDER]/hand_wiping_1-14_{}actiongap_{}points.hdf5'.format(action_gap, num_points_to_sample)
-output_hdf5_file = '[PATH_TO_SAVE_FOLDER]/hand_packaging_wild_1-20_{}actiongap_{}points.hdf5'.format(action_gap, num_points_to_sample)
+    sub_dirs = [
+        os.path.join(args.dataset_base_dir, directory)
+        for directory in os.listdir(args.dataset_base_dir)
+        if os.path.isdir(os.path.join(args.dataset_base_dir, directory))
+    ]
+    dataset_folders = sorted(
+        sub_dirs,
+        key=lambda path: extract_dataset_folder_last_two_digits(os.path.basename(path)),
+    )
 
-# process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sample)
-process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sample, in_wild_data=True)
+    process_hdf5(
+        args.output_hdf5_file,
+        dataset_folders,
+        args.action_gap,
+        args.num_points_to_sample,
+        in_wild_data=args.in_wild_data,
+        headless=args.headless,
+    )
+
+
+if __name__ == "__main__":
+    main()

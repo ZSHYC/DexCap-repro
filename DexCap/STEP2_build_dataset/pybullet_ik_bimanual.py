@@ -5,11 +5,14 @@ from utils import *
 from hyperparameters import *
 
 class LeapPybulletIK():
-    def __init__(self):
+    def __init__(self, headless=False):
         # start pybullet
-        clid = p.connect(p.SHARED_MEMORY)
-        if clid < 0:
-            p.connect(p.GUI)
+        if headless:
+            p.connect(p.DIRECT)
+        else:
+            clid = p.connect(p.SHARED_MEMORY)
+            if clid < 0:
+                p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.loadURDF("plane.urdf", [0, 0, -0.3])
 
