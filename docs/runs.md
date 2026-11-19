@@ -258,3 +258,7 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 取作者第一段未见物体视频 0.6 s 处的两张斜视画面。苹果和耳塞罐分别对应原图左上角为 `(1326, 5)` 和 `(1326, 452)` 的 578 × 423 像素裁剪。在各自画面用盒口四角、前面两底角及后侧两内角拟合相机，重投影均方根误差约 1.5 像素。红苹果用 263 个红色轮廓像素拟合贴桌椭球，得到约 79 × 79 × 87 mm。耳塞罐由盖面、底座中心和盖缘测得直径约 69 mm、高约 117 mm，近似为圆柱。投影尺度来自另一次原始深度中的参考纸盒尺寸。 [作者原始视频](https://dex-cap.github.io/assets/normal_packaging_unseenobj.mp4)
 
 在 `pro1` 各用一次 Packaging 短训 SetXF 权重执行 6 步，两个模型均使用 `10000 × 6` 仿真观测，输出标明 `object_group=unseen` 和视频来源。记录为 `runs/packaging-{red-apple,earplug-jar}-smoke-pro1.json`。这两次验证了运行路径，闭环成功率仍待全量权重评估。
+
+`8196a31` 补齐九种未见物体，新增的六种复合刚体按各碰撞部件在纸盒坐标系中的朝向判断是否入盒。本地四项 Packaging 测试通过，覆盖复合体创建和有方向限制的入盒。使用官方完整 HDF5 上的第 2 轮短训 SetXF checkpoint，九种未见物体各完成一次 6 步 CUDA 闭环，均使用 `10000 × 6` 仿真观测。记录在 `runs/packaging-unseen-smoke-8196a31/`。同一源码重放官方 `demo_0` 的 131 个动作后，默认红银包装仍入盒并合盖，记录为 `runs/packaging-demo0-unseen-model-regression.json`。 [物体几何及来源](simulation.md#未见物体)
+
+`dexcap-packaging-unseen` 正在等待 Packaging 正式训练结束。它读取第 3000 轮权重，用 GPU 3–6 在九个物体上各跑五次，每回合 400 步，输出到 `runs/packaging-setxf-seed1-full-20261119T111945Z-unseen-final/`。同一个种子的盒位和物体起点在九种物体间一致，逐物体 JSON 汇总为 `summary.json`。会话日志为 `runs/packaging-unseen-evaluation.log`。

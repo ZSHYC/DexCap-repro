@@ -1,17 +1,17 @@
 # DexCap 复现指南
 
-本文记录在 `pro1` 上复现 DexCap 的工作路径。当前阶段聚焦仿真与其所需的策略训练，从官方 Wiping 数据建立训练闭环，再对照 PointNet 和注意力编码器。 [仿真入口](simulation.md)
+本文记录在 `pro1` 上使用公开数据训练 DexCap 策略并在 PyBullet 中评估的工作路径。Wiping 比较 PointNet 和注意力编码器，Packaging 评估同一个策略在六种训练物体和九种未见物体上的表现。 [仿真入口](simulation.md)
 
 ## 复现范围
 
-训练、数据重建和仿真分别记录结果。
+官方数据发布的固定版本提供 Wiping 和 Packaging 的处理后 HDF5 以及对应原始录制。论文另外报告了 Sponge Picking、Ball Collecting、Scissor Cutting 和 Tea Preparing，该版本缺少这四项的示范。当前可直接用发布数据训练并回放的仿真覆盖前两项。 [官方数据文件清单](https://huggingface.co/api/datasets/chenwangj/DexCap-Data/tree/e468f07000de0f8d3234a9c60a9d8208344675e0?recursive=true) · [论文任务](https://arxiv.org/html/2403.07788v2#S5)
 
 | 层级 | 目标 | 完成依据 |
 | --- | --- | --- |
 | 环境 | Conda 环境能调用 Blackwell GPU，并导入仓库内的 robomimic | CUDA 张量运算成功，导入路径位于本项目 |
-| 训练闭环 | 官方 Wiping HDF5 能完成短训、保存并加载 checkpoint | 日志明确完成，checkpoint 对三帧真实观测输出有限的 46 维动作 |
+| 训练闭环 | 官方 Wiping 和 Packaging HDF5 能完成短训、保存并加载 checkpoint | 日志明确完成，checkpoint 对三帧真实观测输出有限的 46 维动作 |
 | 算法对照 | PointNet 和 `SetXFPCDEncoder` 使用相同数据与训练参数 | 两组实验均保留生效配置、日志和 checkpoint |
-| 仿真 | 以官方示范设定初始场景，在 PyBullet 回放或执行策略 | 模拟器产生点云和手部状态，记录抓取、接触及擦拭次数 |
+| 仿真 | 以官方示范设定初始场景，在 PyBullet 回放或执行策略 | 模拟器产生点云和手部状态，记录 Wiping 抓取与擦拭、Packaging 入盒与合盖 |
 
 服务器训练成功只能证明数据加载、优化和模型推理链路可用。论文报告的任务成功率来自实体机器人试验，不能用训练 loss 或离线动作预测代替。
 
@@ -55,6 +55,8 @@ scripts/run_experiment.sh packaging-setxf full
 ```
 
 三个命令默认分别使用 GPU 0、1、2。换卡时给各命令设置一个 `CUDA_VISIBLE_DEVICES` 编号，训练器将该卡映射为 `cuda:0`。每个命令先短训并加载第 2 轮权重，随后按完整配置训练，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种物体各跑 5 回合。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
+
+`pro1` 上的 `dexcap-packaging-unseen` 会话等待 Packaging 的第 3000 轮权重。训练完成后，它用 GPU 3–6 对九种未见物体各跑 5 回合。评估可用同一个 checkpoint 手动重跑。 [未见物体及运行命令](simulation.md#未见物体)
 
 只验证训练与离线推理时使用 `smoke`。第三个参数可以指定已提取的 HDF5，用于在完整数据下载期间验证入口。
 
