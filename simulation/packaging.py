@@ -41,6 +41,12 @@ PACKAGING_OBJECTS = {
     "tape-measure": ("cylinder", (0.038, 0.038, 0.017), (0.78, 0.60, 0.08, 1), "demo_175"),
     "yellow-cloth": ("box", (0.075, 0.065, 0.020), (0.91, 0.75, 0.09, 1), "demo_250"),
 }
+PACKAGING_UNSEEN_OBJECTS = {
+    "red-apple": ("ellipsoid", (0.0395, 0.0395, 0.0435), (0.68, 0.035, 0.035, 1),
+                  "normal_packaging_unseenobj.mp4 @ 0.6 s"),
+    "earplug-jar": ("cylinder", (0.035, 0.035, 0.059), (0.72, 0.70, 0.64, 1),
+                    "normal_packaging_unseenobj.mp4 @ 0.6 s"),
+}
 
 
 def sample_object_xy(rng):
@@ -56,7 +62,9 @@ class PackagingSimulation(LeapSimulation):
     box_top = 0.078
 
     def __init__(self, object_name=DEFAULT_OBJECT):
-        self.object_kind, half, self.object_color, self.object_reference_demo = PACKAGING_OBJECTS[object_name]
+        self.object_group = "unseen" if object_name in PACKAGING_UNSEEN_OBJECTS else "trained"
+        objects = PACKAGING_UNSEEN_OBJECTS if self.object_group == "unseen" else PACKAGING_OBJECTS
+        self.object_kind, half, self.object_color, self.object_reference = objects[object_name]
         self.object_name = object_name
         self.object_half = np.asarray(half)
         super().__init__()

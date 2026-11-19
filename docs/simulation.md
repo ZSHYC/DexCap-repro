@@ -96,3 +96,16 @@ CUDA_VISIBLE_DEVICES=2 python -m simulation.rollout "$PACKAGING_DATA" \
 | `yellow-cloth` | `demo_225`、`demo_250` 黄色织物 | 长方体 15 × 13 × 4 cm |
 
 抽样数据保存在 `pro1` 的 `data/derived/packaging-objects-keyframes.hdf5`，首帧拼图位于 `runs/packaging-objects-keyframes.png`。这些外观描述由录制图像得到，论文的评测分组需要结合图 10 确认。 [论文物体照片](https://arxiv.org/html/2403.07788v2/exp_obj_v3.png)
+
+### 未见物体
+
+作者第一段视频展示了 S&B 咖喱盒、红苹果、胶带分配器和 Mack’s 耳塞罐，第二段展示了长颈鹿、狮子、红黄积木堆和蓝色带把手杯。图 10 中还可见一个黑色弹簧夹。这些身份来自图像与录像，尺寸需另行估计。 [图 10](https://arxiv.org/html/2403.07788v2/exp_obj_v3.png) · [作者视频一](https://dex-cap.github.io/assets/normal_packaging_unseenobj.mp4) · [作者视频二](https://dex-cap.github.io/assets/normal_packaging_unseenobj2.mp4)
+
+以实测参考纸盒的约 29.8 × 19 cm 外部平面和 7.8 cm 高度为尺度，用视频一 0.6 s 时每个视角中的八个盒角拟合针孔投影，再由物体轮廓估计尺寸。目前 `--object` 可单独评估两个几何近似。输出包含 `object_group=unseen` 和视频来源。六种训练物体的评估照常在原队列中执行。
+
+| `--object` | 视频量测后的仿真几何 |
+|---|---|
+| `red-apple` | 旋转椭球，平面直径约 7.9 cm、高 8.7 cm |
+| `earplug-jar` | 圆柱包络，直径约 7.0 cm、高 11.8 cm |
+
+苹果椭球的最小厚度约 7.9 cm，大于当前刚性纸盒的可盖闭净高，完整合盖结果受这一几何近似限制。其余七种物体需要继续量测和建模，论文未见物体组的 45 回合评估尚未完成。

@@ -9,7 +9,7 @@ import numpy as np
 from simulation.camera import capture_pointcloud, sample_hand_surfaces
 from simulation.frames import ActionFrames, BULLET_FROM_MOCAP
 from simulation.packaging import (
-    DEFAULT_OBJECT, PACKAGING_OBJECTS, PackagingSimulation,
+    DEFAULT_OBJECT, PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJECTS, PackagingSimulation,
     sample_object_xy as sample_packaging_xy,
 )
 from simulation.wiping import PlateWipingSimulation, sample_object_xy as sample_wiping_xy
@@ -97,7 +97,9 @@ def rollout(args):
         "steps": steps,
     }
     if args.task == "packaging":
-        result.update(object=sim.object_name, object_reference_demo=sim.object_reference_demo)
+        result.update(object=sim.object_name, object_group=sim.object_group)
+        reference_key = "object_reference_demo" if sim.object_group == "trained" else "object_reference"
+        result[reference_key] = sim.object_reference
     if args.trials == 1:
         return {**result, **results[0]}
     if args.task == "packaging":
@@ -113,7 +115,8 @@ def main():
     parser = argparse.ArgumentParser(description="Run a headless DexCap episode")
     parser.add_argument("dataset", type=Path)
     parser.add_argument("--task", choices=("wiping", "packaging"), default="wiping")
-    parser.add_argument("--object", choices=PACKAGING_OBJECTS, help="Select the Packaging policy-evaluation object")
+    parser.add_argument("--object", choices=(*PACKAGING_OBJECTS, *PACKAGING_UNSEEN_OBJECTS),
+                        help="Select the Packaging policy-evaluation object")
     parser.add_argument("--checkpoint", help="Use a policy checkpoint instead of recorded actions")
     parser.add_argument("--steps", type=int)
     parser.add_argument("--trials", type=int, default=1, help="Sample placements for policy evaluation")
