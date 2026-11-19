@@ -74,6 +74,9 @@ class PackagingSimulation(LeapSimulation):
         p.resetJointState(
             self.container_bottom, self.lid_link, -1.15, physicsClientId=self.client
         )
+        p.setJointMotorControl2(
+            self.lid, self.lid_link, p.VELOCITY_CONTROL, force=0, physicsClientId=self.client
+        )
         p.changeDynamics(
             self.lid, self.lid_link, lateralFriction=0.9, angularDamping=0.25,
             physicsClientId=self.client
