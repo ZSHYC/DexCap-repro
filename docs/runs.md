@@ -36,6 +36,8 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 使用 `b25cbd0` 和 Packaging 的接口短跑权重随机摆放 5 次，每回合 12 步。5 组盒位和物体位置均在设定的采样范围内，入盒为 0/5，完整成功为 0/5。服务器记录为 `runs/packaging-setxf-5trial-smoke-pro1.json`。 [摆放与指标](simulation.md)
 
+使用 `e5227cb` 的接触链节抓取回放两条官方示范。Wiping 的盘体接触从 32 步增至 51 步，正面接触仍为 0。Packaging 的盒体一度向桌面中心靠近 0.0987 m，包装物仍被右手抓持，盖板打开。服务器记录为 `runs/wiping-demo0-finger-grasp-pro1.json` 和 `runs/packaging-demo0-finger-grasp-pro1.json`。
+
 完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 在同一物体上执行 5 组摆放。每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ### Wiping 单示范训练
@@ -68,6 +70,8 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 另做接触判据诊断。官方动作先触发两件物体的抓取，随后让海绵在盘面坐标中按脚本做往返运动。连续 361 步都有物理接触，记录 2 次跨盘和 0.548 m 位移。脚本运动用于验证计数逻辑。官方动作回放的接触集中在盘缘，较早固定的抓取姿态是已观察到的场景误差来源。
 
 对官方示范每隔五步抽取一次点云，以颜色分割和拟合估计海绵与盘面相对位置。在擦拭阶段（帧索引 75），官方样本的海绵中心约在盘面上方 5.6 cm，镜像左手场景同一步的海绵中心仍偏向盘面下方。检查三组记录关节角时，镜像场景的左右手指尖和碰撞包围盒对应一致，说明手部几何对齐后仍需解决抓取姿态误差。
+
+用帧索引 40 至 105 内每隔五帧的 14 个点云估计持物期间的海绵位置。仅改变固定约束的父链节，在相同回放动作下把海绵的平均 3D 位置误差从 54.9 mm 降至 25.5 mm。位置来自颜色分割后点云的中位数，与真实质心有偏差。
 
 ## 本地 Packaging 仿真
 
