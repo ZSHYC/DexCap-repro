@@ -6,7 +6,7 @@ import numpy as np
 import pybullet as p
 from scipy.spatial.transform import Rotation
 
-from simulation.leap import LeapSimulation, wxyz
+from simulation.leap import LINKS_PER_FINGER, LeapSimulation, wxyz
 
 
 DEMO_OBJECT_XY = np.array([[0.54, -0.15], [0.542, 0.112]])
@@ -22,7 +22,6 @@ HELD_PLATE_NORMAL = np.array([-0.897, 0.360, 0.260])
 HELD_PLATE_NORMAL /= np.linalg.norm(HELD_PLATE_NORMAL)
 SPONGE_HALF_HEIGHT = 0.02
 SPONGE_YAW = 0.33
-LINKS_PER_FINGER = 5  # Four actuated joints and one fixed fingertip.
 MIN_WIPE_STROKE_M = 0.06
 
 

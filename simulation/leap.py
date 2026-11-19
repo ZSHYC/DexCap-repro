@@ -8,6 +8,7 @@ import pybullet as p
 
 LEAP_SWAP = [1, 0, 2, 3, 5, 4, 6, 7, 9, 8, 10, 11, 12, 13, 14, 15]
 LEFT_MIRRORED = [0, 4, 8, 12, 13]
+LINKS_PER_FINGER = 5  # Four actuated joints and one fixed fingertip.
 MESH_DIR = Path(__file__).resolve().parents[1] / "DexCap/STEP2_build_dataset/leap_hand_mesh"
 GRASP_FORCE = 200
 

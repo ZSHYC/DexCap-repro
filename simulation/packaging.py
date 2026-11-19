@@ -8,6 +8,7 @@ measurements of the simulated bodies.
 
 from __future__ import annotations
 
+from itertools import combinations
 from pathlib import Path
 from typing import Any
 
@@ -16,10 +17,10 @@ import pybullet as p
 import pybullet_data
 from scipy.spatial.transform import Rotation
 
-from simulation.leap import LeapSimulation, wxyz
+from simulation.leap import GRASP_FORCE, LINKS_PER_FINGER, LeapSimulation, wxyz
 
 
-DEMO_OBJECT_XY = np.array([[0.50, 0.14], [0.534, -0.219]])
+DEMO_OBJECT_XY = np.array([[0.50, 0.14], [0.517, -0.223]])
 TABLE_HEIGHT = -0.030
 BOX_HALF_XY = (0.13, 0.12)
 BOX_PANEL_HALF_THICKNESS = 0.006
@@ -30,7 +31,7 @@ FINGERTIP_LINKS = (4, 9, 14, 19)
 GRASP_OPENING_M = 0.04
 # Shape, half extents in metres, color, and the source demonstration.
 PACKAGING_OBJECTS = {
-    "red-box": ("box", (0.068, 0.030, 0.045), (0.78, 0.08, 0.04, 1), "demo_0"),
+    "red-box": ("box", (0.060, 0.015, 0.0435), (0.78, 0.08, 0.04, 1), "demo_0"),
     "blue-block": ("box", (0.055, 0.0275, 0.018), (0.04, 0.45, 0.72, 1), "demo_50"),
     "green-pear": ("ellipsoid", (0.029, 0.025, 0.027), (0.31, 0.47, 0.09, 1), "demo_100"),
     "green-can": ("cylinder", (0.0405, 0.0405, 0.034), (0.17, 0.45, 0.12, 1), "demo_150"),
@@ -144,6 +145,7 @@ class PackagingSimulation(LeapSimulation):
         )
 
         self._object_grasp = None
+        self._object_pivot = None
         self._object_released = False
         self._min_grasp_gap = np.inf
         self._right_object_contacts = 0
@@ -190,6 +192,7 @@ class PackagingSimulation(LeapSimulation):
         )
 
     def step(self, action) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
+        self._allow_supported_pivot()
         self._apply_hand_pose(action)
         for _ in range(self.substeps):
             p.stepSimulation(physicsClientId=self.client)
@@ -208,7 +211,7 @@ class PackagingSimulation(LeapSimulation):
             self._left_lid_contacts += len(lid_contacts)
             self._left_box_contacts += len(box_contacts)
             if self._object_grasp is None and not self._object_released:
-                self._object_grasp = self._attach(self.right_hand, self.object, object_contacts)
+                self._grasp_object(object_contacts)
             if self._object_grasp is not None and self._hand_opened():
                 self._release_object()
 
@@ -231,6 +234,43 @@ class PackagingSimulation(LeapSimulation):
             "sim_success": object_in_box and lid_closed,
         }
         return self.observation(), info
+
+    def _grasp_object(self, contacts):
+        opposing = [
+            (a, b) for a, b in combinations(contacts, 2)
+            if a[3] >= 0 and b[3] >= 0 and a[3] // LINKS_PER_FINGER != b[3] // LINKS_PER_FINGER
+            and a[9] > 0 and b[9] > 0 and np.dot(a[7], b[7]) < -0.25
+        ]
+        if not opposing:
+            return
+        pinch = max(opposing, key=lambda pair: min(pair[0][9], pair[1][9]))
+        self._object_grasp = self._attach(self.right_hand, self.object, pinch)
+        object_pose = p.getBasePositionAndOrientation(self.object, physicsClientId=self.client)
+        center = (np.asarray(pinch[0][6]) + pinch[1][6]) / 2
+        self._object_pivot = p.multiplyTransforms(
+            *p.invertTransform(*object_pose), center, [0, 0, 0, 1],
+        )[0]
+
+    def _allow_supported_pivot(self):
+        if self._object_pivot is None:
+            return
+        contacts = p.getContactPoints(self.object, self.container_bottom, physicsClientId=self.client)
+        if not any(contact[9] > 0 for contact in contacts):
+            return
+        parent = p.getConstraintInfo(self._object_grasp, physicsClientId=self.client)[1]
+        hand_pose = p.getLinkState(self.right_hand, parent, physicsClientId=self.client)[:2]
+        object_pose = p.getBasePositionAndOrientation(self.object, physicsClientId=self.client)
+        world = p.multiplyTransforms(*object_pose, self._object_pivot, [0, 0, 0, 1])[0]
+        local = p.multiplyTransforms(*p.invertTransform(*hand_pose), world, [0, 0, 0, 1])[0]
+        p.removeConstraint(self._object_grasp, physicsClientId=self.client)
+        # Let the package turn against the cardboard once the box supports it.
+        self._object_grasp = p.createConstraint(
+            self.right_hand, parent, self.object, -1, p.JOINT_POINT2POINT,
+            [0, 0, 0], local, self._object_pivot, physicsClientId=self.client,
+        )
+        p.changeConstraint(self._object_grasp, maxForce=GRASP_FORCE, erp=0.8,
+                           physicsClientId=self.client)
+        self._object_pivot = None
 
     def observation(self) -> dict[str, np.ndarray]:
         result = self._observe_hands()
@@ -301,6 +341,7 @@ class PackagingSimulation(LeapSimulation):
     def _release_object(self):
         p.removeConstraint(self._object_grasp, physicsClientId=self.client)
         self._object_grasp = None
+        self._object_pivot = None
         self._object_released = True
         self._set_hand_collision(self.right_hand, self.object, enabled=True)
         p.resetBaseVelocity(
