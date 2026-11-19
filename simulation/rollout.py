@@ -22,7 +22,12 @@ def rollout(args):
         camera = demo["states"][0].reshape(4, 4)
         actions = demo["actions"][:]
 
-    sim = PlateWipingSimulation()
+    if args.task == "packaging":
+        from simulation.packaging import PackagingSimulation
+
+        sim = PackagingSimulation()
+    else:
+        sim = PlateWipingSimulation()
     rng = np.random.default_rng(1)
 
     def observe(state):
@@ -46,8 +51,6 @@ def rollout(args):
             history = deque([observation] * 3, maxlen=3)
             steps = args.steps or 400
 
-        contact_steps = 0
-        peak_force = 0.0
         for i in range(steps):
             if args.checkpoint is None:
                 action = actions[i]
@@ -56,29 +59,26 @@ def rollout(args):
                 with torch.inference_mode():
                     action = policy(batch)
             state, info = sim.step(frames.to_bullet(action))
-            contact_steps += int(info["sponge_plate_contacts"] > 0)
-            peak_force = max(peak_force, info["contact_force"])
             if args.checkpoint is not None and i + 1 < steps:
                 history.append(observe(state))
     finally:
         sim.close()
 
     return {
+        "task": args.task,
         "dataset": str(args.dataset),
         "demo": "demo_0",
         "checkpoint": args.checkpoint,
         "steps": steps,
         "pointcloud_shape": list(observation["pointcloud"].shape),
-        "sponge_plate_contact_steps": contact_steps,
-        "peak_contact_force": peak_force,
-        "sim_success": info["wipe_passes"] >= 2 and info["plate_grasped"] and info["sponge_grasped"],
         **info,
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run a headless DexCap Plate Wiping episode")
+    parser = argparse.ArgumentParser(description="Run a headless DexCap episode")
     parser.add_argument("dataset", type=Path)
+    parser.add_argument("--task", choices=("wiping", "packaging"), default="wiping")
     parser.add_argument("--checkpoint", help="Use a policy checkpoint instead of recorded actions")
     parser.add_argument("--steps", type=int)
     parser.add_argument("--output", type=Path)

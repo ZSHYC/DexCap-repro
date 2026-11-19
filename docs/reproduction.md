@@ -251,9 +251,9 @@ cd "$DEXCAP/worktrees/setxf/DexCap/STEP3_train_policy/robomimic"
 
 2024 年新版采集代码使用 VIVE Ultimate Tracker 和 D435，保存的位姿文件和旧版处理脚本读取的 T265/L515 格式不同。新版采集数据接入旧构建流程需要明确的坐标变换和标定转换，当前仓库没有提供完整转换入口。
 
-## 8. Plate Wiping 仿真
+## 8. 仿真
 
-通过 `python -m simulation.rollout` 执行官方第一个示范的动作，或加载训练 checkpoint，让策略接收仿真点云和手部状态。仿真按任务动作记录接触和跨盘擦拭，论文表格采用不同的实验系统。 [命令、场景近似与指标](simulation.md)
+通过 `python -m simulation.rollout` 回放官方第一个示范，或加载训练 checkpoint，让策略接收仿真点云和手部状态。Wiping 记录接触和擦拭，Packaging 记录物体入盒和盖板闭合。 [命令、场景近似与指标](simulation.md)
 
 ## 公开材料带来的比较限制
 
