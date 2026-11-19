@@ -10,7 +10,7 @@
   "train": {
     "num_epochs": 3000,
     "batch_size": 16,
-    "num_data_workers": 2,
+    "num_data_workers": 8,
     "hdf5_cache_mode": null,
     "hdf5_load_next_obs": false,
     "seq_length": 20,

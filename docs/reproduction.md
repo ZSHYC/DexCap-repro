@@ -225,6 +225,8 @@ CUDA_VISIBLE_DEVICES=0 python -u scripts/train.py \
 
 官方训练参数为 batch size 16、学习率 `1e-4`、3000 epochs，每个 epoch 500 个梯度步。配置使用三帧观测、20 步动作预测和 DDIM。点云文件每帧保存 10,000 点，编码器前向时随机抽取 1,000 点。
 
+每次训练用一张 GPU，多个实验通过不同的 `CUDA_VISIBLE_DEVICES` 并行。在 `pro1` 的全量数据对照中，增加数据读取 worker 能缩短单个实验的数据等待。新启动的全量训练配置使用 8 个 worker。 [吞吐实测](runs.md#数据读取吞吐)
+
 训练输出位于：
 
 ```text
