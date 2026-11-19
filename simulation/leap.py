@@ -1,4 +1,6 @@
 from pathlib import Path
+from tempfile import NamedTemporaryFile
+from xml.etree import ElementTree
 
 import numpy as np
 import pybullet as p
@@ -34,6 +36,29 @@ def _encode_leap_joints(joints, left):
     return scaled
 
 
+def _write_mirrored_hand(source, target):
+    """Reflect the right-hand URDF across y=0 as the dataset builder does."""
+    tree = ElementTree.parse(source)
+    for origin in tree.iter("origin"):
+        if "xyz" in origin.attrib:
+            x, y, z = map(float, origin.attrib["xyz"].split())
+            origin.set("xyz", f"{x} {-y} {z}")
+        if "rpy" in origin.attrib:
+            roll, pitch, yaw = map(float, origin.attrib["rpy"].split())
+            origin.set("rpy", f"{-roll} {pitch} {-yaw}")
+    for axis in tree.iter("axis"):
+        x, y, z = map(float, axis.attrib["xyz"].split())
+        axis.set("xyz", f"{-x} {y} {-z}")
+    for mesh in tree.iter("mesh"):
+        mesh.set("filename", str(source.parent / mesh.attrib["filename"]))
+        x, y, z = map(float, mesh.attrib.get("scale", "1 1 1").split())
+        mesh.set("scale", f"{x} {-y} {z}")
+    for inertia in tree.iter("inertia"):
+        for term in ("ixy", "iyz"):
+            inertia.set(term, str(-float(inertia.attrib[term])))
+    tree.write(target, encoding="unicode")
+
+
 class LeapSimulation:
     """Shared 20 Hz kinematic hand control and 240 Hz Bullet physics."""
 
@@ -50,10 +75,11 @@ class LeapSimulation:
         p.setPhysicsEngineParameter(numSolverIterations=80, deterministicOverlappingPairs=1,
                                     physicsClientId=self.client)
         self.table = self._box([0.75, 0.6, 0.01], 0, [0.4, 0, table_height - 0.01], table_color)
-        self.right_hand = p.loadURDF(str(MESH_DIR / "robot_pybullet.urdf"), useFixedBase=True,
-                                     physicsClientId=self.client)
-        self.left_hand = p.loadURDF(str(MESH_DIR / "robot_left_pybullet.urdf"), useFixedBase=True,
-                                    physicsClientId=self.client)
+        source = MESH_DIR / "robot_pybullet.urdf"
+        self.right_hand = p.loadURDF(str(source), useFixedBase=True, physicsClientId=self.client)
+        with NamedTemporaryFile(suffix=".urdf") as left_model:
+            _write_mirrored_hand(source, left_model.name)
+            self.left_hand = p.loadURDF(left_model.name, useFixedBase=True, physicsClientId=self.client)
         self._hands = [(self.right_hand, False), (self.left_hand, True)]
         self._joints = [
             [index for index in range(p.getNumJoints(body, physicsClientId=self.client))

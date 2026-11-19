@@ -8,6 +8,8 @@
 
 两只 LEAP 手的掌部按目标做运动学移动，任务物体是动力学刚体。手碰到对应物体后，模拟器用固定约束近似抓取。手部碰撞使用近似的接触刚度 (2500 N/m) 和阻尼 (50 N·s/m)，限制运动学手在碰撞时产生的过大冲量。两个场景均以 `demo_0` 为标定参考，省略了机械臂运动学、软材料形变以及抓取的力学细节。仿真指标只描述对应场景。 [Bullet 柔性接触示例](https://github.com/bulletphysics/bullet3/blob/master/examples/MultiBody/MultiBodySoftContact.cpp)
 
+发布的数据构建代码把右手网格的局部 `y` 坐标取反，生成左手点云。仿真据此镜像同一右手 URDF 的关节、渲染和碰撞几何，使同组关节角在左右两手中生成镜像姿态。 [数据构建代码](../DexCap/STEP2_build_dataset/pybullet_ik_bimanual.py)
+
 ## 回放官方示范
 
 在 `pro1` 进入项目并激活训练环境。运行依赖来自 `requirements-train.txt`，回放本身使用 CPU：
