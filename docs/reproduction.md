@@ -186,7 +186,7 @@ CUDA_VISIBLE_DEVICES=0 python -u scripts/train.py \
 训练入口会捕获 Python 异常并打印 `run failed with error`，因此仅看进程退出码不够。日志必须出现：
 
 ```bash
-rg -n "finished run successfully|run failed with error|save checkpoint|Loss" \
+grep -nE "finished run successfully|run failed with error|save checkpoint|Loss" \
   "$DEXCAP/runs/$run_name.console.log"
 ```
 

@@ -12,6 +12,8 @@
 
 项目位于 `~/dexcap-repro`。Conda 环境位于 `envs/train`，Python 3.11.18，PyTorch `2.10.0+cu130`，GPU 为 RTX PRO 5000 72 GB Blackwell。CUDA 张量运算已成功执行。
 
+`60d5b3a` 的 `scripts/run_experiment.sh` 已在 `pro1` 的三个实验入口分别跑通 `smoke`。Wiping PointNet 使用当前项目源码，其余两组使用 `worktrees/setxf` 的 `4263783`。三个第 2 轮 checkpoint 均输出有限的 46 维动作。入口日志为 `runs/repro-entrypoint-pointnet.log`、`runs/repro-entrypoint-wiping-setxf.log` 和 `runs/repro-entrypoint-setxf.log`。   [运行方式](reproduction.md#运行一次完整实验)
+
 使用复现提交 `55963d8` 和该环境的 PyBullet，回放 Wiping 官方 `demo_0` 共 111 步，点云为 `10000 × 6`。两件物体触发抓取，海绵与盘子接触 4 步，相对盘面移动 0.0131 m，完整擦拭为 0 次。服务器记录为 `runs/wiping-demo0-pro1.json`。
 
 使用 `434cd64` 的台面和物体尺寸校准及柔性手部接触回放同一示范。两件物体均触发抓取，海绵与盘子接触 42 步，接触时累积相对移动 0.3730 m，完整擦拭仍为 0 次。服务器记录为 `runs/wiping-demo0-table-aligned-pro1.json`。 [场景参数与判据](simulation.md)
