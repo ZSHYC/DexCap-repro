@@ -1,8 +1,8 @@
 import h5py
 import json
-from scipy.linalg import svd
 from utils import *
 from hyperparameters import *
+from pointcloud_crop import table_point_mask
 from pybullet_ik_bimanual import LeapPybulletIK
 
 leapPybulletIK = None
@@ -234,17 +234,7 @@ def process_hdf5(output_hdf5_file, dataset_folders, action_gap, num_points_to_sa
                         color_pcd = np.concatenate((color_pcd, colored_hand_point_cloud_left), axis=0)
 
                     # remove the redundant points bellow the table surface and background
-                    centroid = np.mean(robot_table_corner_points, axis=0)
-                    A = robot_table_corner_points - centroid
-                    U, S, Vt = svd(A)
-                    normal = Vt[-1]
-                    d = -np.dot(normal, centroid)
-                    xyz = color_pcd[:, :3]
-                    for plane_gap in table_sweep_list: # sweep over the plane height
-                        below_plane = np.dot(xyz, normal[:3]) + d + plane_gap < 0
-                        if len(color_pcd[~below_plane]) > num_points_to_sample:
-                            color_pcd = color_pcd[~below_plane]
-                            break
+                    color_pcd = color_pcd[table_point_mask(color_pcd[:, :3], num_points_to_sample)]
 
                     # down sample input pointcloud
                     if len(color_pcd) > num_points_to_sample:

@@ -97,7 +97,8 @@ than downloading the 22.7 GB archive. It used the official calibration files,
 (`frame_2220` through `frame_2770`). The fixture clip mark was narrowed to that
 single frame so the full reconstruction could be exercised cheaply.
 
-With `DISPLAY` unset, the command completed in about five seconds and produced
+For this one-frame fixture, `--action-gap 1` produces a single sequence. With
+`DISPLAY` unset, the command completed in about five seconds and produced
 one HDF5 demo with:
 
 ```text
