@@ -12,6 +12,8 @@
 
 项目位于 `~/dexcap-repro`。Conda 环境位于 `envs/train`，Python 3.11.18，PyTorch `2.10.0+cu130`，GPU 为 RTX PRO 5000 72 GB Blackwell。CUDA 张量运算已成功执行。
 
+2026-11-19 20:01（北京时间），三个正式作业各已保存第 100 轮 checkpoint。每份约 280 MB，按每 100 轮保存一次估算，余下权重合计约 24.40 GB。清理 Conda 安装压缩包后，项目所在系统盘可用约 24.23 GB。`/data` 数据盘已挂载，当前项目账号尚无写权限。三个正式作业继续运行。
+
 `60d5b3a` 的 `scripts/run_experiment.sh` 已在 `pro1` 的三个实验入口分别跑通 `smoke`。Wiping PointNet 使用当前项目源码，其余两组使用 `worktrees/setxf` 的 `4263783`。三个第 2 轮 checkpoint 均输出有限的 46 维动作。入口日志为 `runs/repro-entrypoint-pointnet.log`、`runs/repro-entrypoint-wiping-setxf.log` 和 `runs/repro-entrypoint-setxf.log`。   [运行方式](reproduction.md#运行一次完整实验)
 
 ### Wiping 全量训练启动
@@ -56,6 +58,8 @@
 在与初次对照完全相同的三组随机摆放上，两组各跑 400 步。PointNet 抓盘回合由 1/3 增至 2/3，盘面正面接触仍为 0。SetXF 同时抓起两件物体的回合保持 1/3，种子 1 从无正面接触变为 5 步正面接触，接触期间累计相对移动 0.0133 m。修正前后两组均为 0/3 成功。记录为 `runs/wiping-{pointnet,setxf}-epoch100-action-aligned-trials.json`。
 
 官方 Wiping、Packaging 配置和 `pro1` 三个正式作业的生效配置均为 `algo.ema.enabled=false`。Wiping 两个第 100 轮 checkpoint 加载时没有 EMA 模型。尝试把点云编码器与去噪网络统一选到 EMA 分支后，两组 15 个时刻的逐项动作误差完全一致，确认该分支在本次实验中未启用。
+
+`dexcap-wiping-epoch200` 等两组第 200 轮 checkpoint 保存后，分别用 GPU 5 和 6 重跑相同的 3 个种子，每回合 400 步，结果写入 `runs/wiping-{pointnet,setxf}-epoch200-aligned-trials.json`。动作队列和 Wiping 摆放沿用第 100 轮修正后的对照。
 
 ### 数据读取吞吐
 
@@ -280,3 +284,30 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 用 `frame_2710` 原始深度中十处裸露桌面区域拟合台面，10,292 个有效点的拟合残差约 1.6 mm。结果在种子 2、4 的物体中心处约为 −20.0 和 −17.8 mm，对应原裁剪下界高于拟合桌面约 17 mm。直接将仿真桌面和物体改为该斜面，官方 `demo_0` 动作回放失去入盒和合盖。保留已验证的碰撞场景，将 Packaging 裁剪下界限制在仿真桌面上方 20 mm。该距离接近原始深度拟合后五组物体位置的裁剪高度中位数。
 
 补充裁剪规则后，45 个初始场景的 `10000 × 6` 策略点云都包含目标物体。弹簧夹种子 2、4 分别保留 249、221 个点。记录在 `runs/packaging-unseen-{visibility,floor-crop-ab}.json`，可见性脚本在 `runs/packaging-unseen-visibility.py`。这是初始观测覆盖对照，策略任务完成情况由闭环评估记录。
+
+### Packaging 第 100 轮动作与释放位置
+
+15 个参考摆放各完成一次 400 步闭环，均输出 `10000 × 6` 点云。六种训练物体全部触发抓取后释放，四次终点合盖，绿梨完成入盒和合盖。九种未见物体有八种触发抓取后释放，两次终点合盖，入盒为零。各物体仅一个参考回合，正式随机摆放的结果单独记录。
+
+在 `pro1` 用同一个 SetXF 第 100 轮 checkpoint 和 `93ffdda` 场景做单步动作对照。官方红银包装 `demo_0` 提供目标动作，仿真由这些官方动作推进。取帧索引 2、10、17、20、25、32、39、45、50、55、61、68、72、81、88、96、103、113、124，各用相同三帧窗口和种子 1、2、3。表中为左右腕位置误差的中位数，单位为 mm，数字按右腕、左腕排列。
+
+| 观测 | 全片 | 抓取与入盒阶段 | 合盖阶段 |
+|---|---:|---:|---:|
+| 官方点云、官方手部状态 | 16.7、15.3 | 16.3、14.3 | 16.7、13.3 |
+| 用录制相机渲染点云、官方手部状态 | 20.7、27.1 | 20.9、25.1 | 20.3、30.3 |
+| 固定首帧相机渲染点云、官方手部状态 | 21.3、23.6 | 24.8、20.5 | 19.2、27.5 |
+| 固定首帧相机渲染点云、仿真手部状态 | 21.2、23.4 | 22.5、20.5 | 19.8、27.5 |
+
+固定点云后更换手部状态对这些中位数的影响较小。渲染点云用录制相机时仍存在误差增量。逐帧结果在 `runs/packaging-setxf-epoch100-action-diagnostics.json`，运行脚本在 `runs/packaging-epoch100-replay-diagnostics.py`。
+
+对官方动作和两次策略闭环补记逐步状态。坐标为释放所在控制步结束时物体中心相对盒底刚体的位置。策略逐步记录的终点与先前参考闭环 JSON 完全一致。
+
+| 回合 | 首次抓取 | 释放控制步 | 释放后物体中心 `(x, y, z)` | 首次入盒 | 首次合盖 |
+|---|---:|---:|---|---:|---:|
+| 官方动作，红银包装 | 20 | 51 | `(10, −44, 66) mm` | 52 | 120 |
+| 第 100 轮策略，红银包装 | 31 | 86 | `(112, −254, 63) mm` | 未入盒 | 169 |
+| 第 100 轮策略，绿梨 | 118 | 137 | `(179, 23, 286) mm` | 143 | 276 |
+
+红银包装在策略松手后的物体中心已越过盒内侧边界约 17 cm，随后盖板闭合时物体仍在盒外。绿梨在较高处释放并落入盒内。时间序列在 `runs/packaging-{expert-reference,red-box-epoch100-reference,green-pear-epoch100-reference}-trace.json`。
+
+在 `dexcap-packaging-epoch100-placement` 会话中对红银包装和绿梨各做五次随机摆放，沿用同一 checkpoint、相同种子及每回合 400 步。结果写入 `runs/packaging-{red-box,green-pear}-epoch100-random5.json`。
