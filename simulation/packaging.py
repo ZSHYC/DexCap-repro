@@ -20,12 +20,13 @@ from scipy.spatial.transform import Rotation
 from simulation.leap import GRASP_FORCE, LINKS_PER_FINGER, LeapSimulation, wxyz
 
 
-DEMO_OBJECT_XY = np.array([[0.50, 0.14], [0.517, -0.223]])
+DEMO_OBJECT_XY = np.array([[0.482, 0.115], [0.517, -0.223]])
 TABLE_HEIGHT = -0.030
-BOX_HALF_XY = (0.13, 0.12)
+BOX_HALF_XY = (0.149, 0.095)
 BOX_PANEL_HALF_THICKNESS = 0.006
-BOX_YAW = np.deg2rad(-66)
+BOX_YAW = np.deg2rad(-62.8)
 LID_OPEN_ANGLE = 0.108
+LID_HINGE_DRAG = 0.003  # shortcut: use a dry hinge approximation until its torque is measured.
 RED_BOX_YAW = np.deg2rad(64)
 RED_BOX_TOP_COLOR = (0.93, 0.20, 0.06, 1)
 DEFAULT_OBJECT = "red-box"
@@ -168,7 +169,7 @@ class PackagingSimulation(LeapSimulation):
         next_angle = angle + speed / 240
         if 0 <= next_angle <= np.pi:
             p.setJointMotorControl2(
-                self.lid, self.lid_link, p.VELOCITY_CONTROL, targetVelocity=0, force=0.02,
+                self.lid, self.lid_link, p.VELOCITY_CONTROL, targetVelocity=0, force=LID_HINGE_DRAG,
                 physicsClientId=self.client,
             )
         else:
