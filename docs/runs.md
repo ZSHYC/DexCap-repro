@@ -18,6 +18,8 @@
 
 截至 20:08，脚本已处理五份权重，每份约省 19–20 MB。按这批实际大小估计，余下权重需约 22.25 GB，系统盘可用约 23.76 GB，约有 1.51 GB 余量。此数值随其他磁盘写入变化。
 
+在两组 Wiping 分别到第 477、476 轮、Packaging 到第 512 轮时复核。系统盘可用 19.89 GiB。按实际压缩大小估算，剩余正式权重、日志增长和增强组的一个 checkpoint 合计约需 19.21 GiB。余量约 0.68 GiB，压缩临时文件另计。
+
 `60d5b3a` 的 `scripts/run_experiment.sh` 已在 `pro1` 的三个实验入口分别跑通 `smoke`。Wiping PointNet 使用当前项目源码，其余两组使用 `worktrees/setxf` 的 `4263783`。三个第 2 轮 checkpoint 均输出有限的 46 维动作。入口日志为 `runs/repro-entrypoint-pointnet.log`、`runs/repro-entrypoint-wiping-setxf.log` 和 `runs/repro-entrypoint-setxf.log`。   [运行方式](reproduction.md#运行一次完整实验)
 
 ### Wiping 全量训练启动
@@ -188,6 +190,16 @@ PointNet 使用录制场景时，左腕误差的绝对中位数从 6.1 mm 增至
 PointNet 在擦拭阶段只换海绵时，左腕配对误差中位数下降 6.6 mm。SetXF 在全段只换盘子时两腕误差都下降。两种编码器对物体表面的敏感性不同。该对照使用对应时刻的录制表面，分析范围为离线首次动作。脚本和逐项输出在 `runs/wiping-object-surface-swap.py` 和 `runs/wiping-{pointnet,setxf}-epoch300-object-surface-swap.json`。
 
 另在帧索引 38–95 的拟合盘子点上估计径向剖面。每个半径区间每帧至少取 32 点。以 0–65 mm 区间为零，半径 65–90、95–105、110–120、120–130 mm 的表面高度分别为 −0.3、+5.0、+17.5、+16.5 mm，由每帧高度中位数再取跨帧中位数得到。这个剖面可作为盘面渲染的直接几何标定数据。
+
+#### 用实测剖面渲染盘面
+
+把径向测量做成直径 250 mm、总高度 21.5 mm 的闭合盘面网格，共 1024 个三角面。盘底到盘沿的高度用分段线性插值，厚度沿用 4 mm。先按原碰撞模型完成回放，再用已保存的物体和手部姿态渲染新网格。两个渲染版本使用相同材质参数，网格法向会影响明暗。
+
+![第 44 帧的原仿真盘面和实测剖面网格渲染。](assets/wiping-measured-plate-profile.png)
+
+这次实验沿用第 300 轮权重、13 个配对时刻和三个扩散种子。PointNet 的全段两腕配对误差中位数均变化约 0.0 mm，SetXF 右腕增加 1.6 mm、左腕增加 2.0 mm。图形换成更接近测量剖面的外形后，尚未得到稳定的动作改善。网格为 `runs/wiping-measured-plate-profile.obj`，脚本和输出为 `runs/wiping-plate-profile-ab.py`、`runs/wiping-{pointnet,setxf}-epoch300-plate-profile-ab.json`。
+
+对 SetXF 再令两种场景的非手部点共享同一帧的录制 RGB 中位数。此时网格相对原盘面的配对误差中位变化为右腕约 0.0 mm、左腕 −0.2 mm。原色条件下的误差增加在同色条件下没有出现，说明网格的成像颜色及其与几何的相互作用也影响该对照。正式仿真沿用原盘面。脚本及结果为 `runs/wiping-plate-profile-neutral.py` 和 `runs/wiping-setxf-epoch300-plate-neutral-{primitive,profile}.json`。
 
 ### 数据读取吞吐
 
