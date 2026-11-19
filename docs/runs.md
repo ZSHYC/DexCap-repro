@@ -34,7 +34,9 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 使用 `90d5e6c` 的凹面盘和正面接触判据回放 Wiping。111 步中有 32 步接触盘体，其中 0 步属于正面擦拭，完整擦拭为 0 次。服务器记录为 `runs/wiping-demo0-dish-pro1.json`。在同一 Conda 环境运行 `python -m unittest discover -s tests -p test_wiping_surface.py`，确认正面往返计 2 次，盘底往返计 0 次。
 
-完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 执行一组，每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
+使用 `b25cbd0` 和 Packaging 的接口短跑权重随机摆放 5 次，每回合 12 步。5 组盒位和物体位置均在设定的采样范围内，入盒为 0/5，完整成功为 0/5。服务器记录为 `runs/packaging-setxf-5trial-smoke-pro1.json`。 [摆放与指标](simulation.md)
+
+完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 在同一物体上执行 5 组摆放。每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ### Wiping 单示范训练
 
