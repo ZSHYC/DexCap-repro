@@ -32,6 +32,8 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 使用 `8e9a89b` 的镜像左手重跑两个官方示范。Wiping 的 111 步中有 47 步海绵与盘子接触，接触期间累计相对移动 0.2979 m，完整擦拭 0 次。Packaging 的 131 步中，盒体一度向桌面中心靠近 0.0482 m，包装物仍被右手抓持、盖板打开。服务器记录为 `runs/wiping-demo0-mirrored-pro1.json` 和 `runs/packaging-demo0-mirrored-pro1.json`。
 
+使用 `90d5e6c` 的凹面盘和正面接触判据回放 Wiping。111 步中有 32 步接触盘体，其中 0 步属于正面擦拭，完整擦拭为 0 次。服务器记录为 `runs/wiping-demo0-dish-pro1.json`。在同一 Conda 环境运行 `python -m unittest discover -s tests -p test_wiping_surface.py`，确认正面往返计 2 次，盘底往返计 0 次。
+
 完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 执行一组，每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ## 官方原始数据重建
