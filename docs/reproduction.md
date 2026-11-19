@@ -229,6 +229,8 @@ CUDA_VISIBLE_DEVICES=0 python -u scripts/train.py \
 
 每次训练用一张 GPU，多个实验通过不同的 `CUDA_VISIBLE_DEVICES` 并行。在 `pro1` 的全量数据对照中，增加数据读取 worker 能缩短单个实验的数据等待。新启动的全量训练配置使用 8 个 worker。 [吞吐实测](runs.md#数据读取吞吐)
 
+`pro1` 的 DexCap 作业只分配 GPU 0、1、2、3。GPU 0 跑 Wiping PointNet，GPU 1 跑 Wiping SetXF，GPU 2 跑 Packaging SetXF。这三组各自在训练完成后使用原卡评估。GPU 3 串行跑补充实验。需要并行做 CPU 诊断时，将 `CUDA_VISIBLE_DEVICES` 置空。
+
 训练输出位于：
 
 ```text

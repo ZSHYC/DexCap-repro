@@ -218,6 +218,28 @@ PointNet 在擦拭阶段只换海绵时，左腕配对误差中位数下降 6.6 
 
 在高度相同的两组之间，仅增加实测分层 RGB 使 PointNet 左腕配对误差下降 2.6 mm，使 SetXF 增加 0.9 mm。这里测量的是离线首次动作。正式仿真沿用原海绵外观。脚本和结果为 `runs/wiping-sponge-bands-ab.py`、`runs/wiping-{pointnet,setxf}-epoch300-sponge-bands-ab.json`。
 
+#### 第 500 轮 PointNet 海绵外观闭环对照
+
+用相同的第 500 轮权重、Wiping 摆放种子 1–3 和每回合 400 步比较原外观与 34 mm 分层外观。分层版本按当前海绵位姿给可见点着色，碰撞仍由原有 40 mm 高刚体处理。官方 `demo_0` 的 111 步动作回放，两版的手部和物体状态、每步接触和累计指标逐项一致，均有 28 步内盘面接触和 4 次擦拭。在分层版的首帧上，相同采样的着色前后 XYZ 逐项一致。
+
+从 `pro1` 的项目根目录复跑。前一条命令用于确认外观变更未改变官方动作的物理轨迹，通过后按相同起点跑两组策略。
+
+```bash
+export CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=6 MKL_NUM_THREADS=6 OPENBLAS_NUM_THREADS=1
+export PYTHONPATH="$PWD:$PWD/DexCap/STEP3_train_policy"
+dataset=data/official/e468f07000de0f8d3234a9c60a9d8208344675e0/hand_wiping_1-14_5actiongap_10000points.hdf5
+checkpoint=runs/wiping-pointnet-seed1-full-20261119T102945Z/20261119182948/models/model_epoch_500.pth
+
+envs/train/bin/python scripts/wiping_sponge_ab.py replay "$dataset" \
+  --output runs/wiping-sponge-layered-teacher.json
+for variant in baseline layered; do
+  envs/train/bin/python scripts/wiping_sponge_ab.py "$variant" "$dataset" \
+    --checkpoint "$checkpoint" --output "runs/wiping-pointnet-epoch500-sponge-${variant}.json"
+done
+```
+
+两组已在 `pro1` 的 `dexcap-wiping-sponge-epoch500` 会话中并行启动，均使用 CPU。结果待汇总。
+
 ### 数据读取吞吐
 
 Wiping 两组正式训练的近期一轮约为 28 s，等待 HDF5 数据约占一半。在 `pro1` 的 GPU 5 和 6 上分别用完整 Wiping 数据做短对照。每组在同一张卡上先以 2 个 worker、再以 8 个 worker 执行两轮各 200 个梯度步。batch size 16，表中为各次第二轮，计时按实际秒数换算。
