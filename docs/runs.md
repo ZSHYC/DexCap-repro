@@ -141,6 +141,23 @@ PointNet 使用录制场景时，左腕误差的绝对中位数从 6.1 mm 增至
 
 这批时刻里，离掌心较近的场景点带来的误差较大。这个分区同时包含操作物体和邻近桌面，结果指向这片操作区域。逐项记录及脚本在 `runs/wiping-{pointnet,setxf}-epoch300-scene-region-swap.json`、`runs/wiping-scene-region-swap.py`。
 
+#### 分别对齐盘子与海绵的位置
+
+从官方 `demo_0` 的近手点云恢复同一批 38 帧的物体中心。盘子用蓝色盘沿的 159–493 点作 110 mm 固定半径圆拟合。各帧径向残差中位数为 3.5–5.9 mm，并沿估计法向回退 12 mm 将可见圆心换算到 Bullet 盘底原点。海绵用左掌附近的 233–607 个黄色点取去除小离群簇后的包围中心，该中心仍受可见面遮挡影响。两套拟合与数据在 `runs/wiping-recorded-{plate,sponge}-poses.{py,json}`。
+
+先完成官方动作驱动的物理回放，再使用已记录的姿态渲染。直接在物理回放中挪动物体并恢复状态会改变后续回放，故正式试验的临时位移仅进入渲染层。第 44 帧的离线基线点云与正常物理回放的同帧渲染一致。单次只移动一个物体中心，沿用该帧仿真姿态、录制相机、腕位及手部点数。
+
+盘子中心的三维差距在仿真触发抓取前中位为 12.2 mm（10 帧），触发后为 21.5 mm（28 帧）。海绵分别为 20.6 mm（3 帧）和 40.3 mm（35 帧）。两种编码器的同一动作回放得到逐项一致的几何数据。
+
+下表为第 300 轮策略在 13 个时刻、三个扩散种子下，单独对齐物体中心相对于原仿真场景的腕位误差增量中位数，单位 mm。
+
+| 对齐的物体 | PointNet 右腕、左腕 | SetXF 右腕、左腕 |
+|---|---:|---:|
+| 盘子 | 0.0、+0.2 | +0.5、+0.2 |
+| 海绵 | −0.1、−0.7 | −0.2、+0.5 |
+
+对齐中心的配对变化在 1 mm 以内。单独对齐海绵后的 PointNet 左腕误差中位数为 11.7 mm，录制输入为 6.2 mm。SetXF 对齐盘子在擦拭阶段的配对左腕误差降幅为 0.6 mm，全段配对误差增加 0.2 mm。这两项位置修正都留下了多毫米的观测误差。逐项记录和脚本在 `runs/wiping-{pointnet,setxf}-epoch300-object-position-ab.json`、`runs/wiping-object-position-ab.py`。
+
 ### 数据读取吞吐
 
 Wiping 两组正式训练的近期一轮约为 28 s，等待 HDF5 数据约占一半。在 `pro1` 的 GPU 5 和 6 上分别用完整 Wiping 数据做短对照。每组在同一张卡上先以 2 个 worker、再以 8 个 worker 执行两轮各 200 个梯度步。batch size 16，表中为各次第二轮，计时按实际秒数换算。
@@ -474,3 +491,5 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 两组在 `pro1` 的 GPU 5 和 6 同时启动，训练分支为 `repro/setxf` 的 `379cf43`。训练结束后，使用红银包装和绿梨各五组相同随机摆放，每回合 400 步。配置、启动命令和结果保存到 `runs/packaging-translation-study/`，分别使用 `control` 和 `shift10` 前缀。按 `docs/reproduction.md` 的训练命令复跑时，将 `--config` 指向相应的 `control.json` 或 `shift10.json`。
 
 调整 `pro1` GPU 分配后停止两组补充训练。对照组和增强组的日志分别到第 64 轮和第 60 轮，尚未生成第 100 轮 checkpoint。GPU 0、1、2 上的三组正式训练继续运行。Packaging 第 300 轮的两组闭环改为在 GPU 3 上串行补跑，会话为 `dexcap-packaging-epoch300-gpu3`，脚本为 `runs/packaging-epoch300-paired-gpu3.sh`。随后 `dexcap-translation-gpu3` 沿用原配置，依次从头训练对照组与增强组，新输出和日志写入 `runs/packaging-translation-gpu3/`。
+
+GPU 3 重跑的对照组已结束 100 轮训练，权重位于 `runs/packaging-translation-gpu3/jobs/control/20261119213209/models/model_epoch_100.pth`。队列已加载该权重开始红银包装闭环，完成两种物体的评估后再启动增强组。
