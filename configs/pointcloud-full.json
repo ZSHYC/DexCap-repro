@@ -1,0 +1,31 @@
+{
+  "algo_name": "diffusion_policy",
+  "experiment": {
+    "name": "pointcloud-full",
+    "epoch_every_n_steps": 500,
+    "rollout": {"enabled": false},
+    "render_video": false,
+    "save": {"every_n_epochs": 100, "on_best_rollout_success_rate": false}
+  },
+  "train": {
+    "num_epochs": 3000,
+    "batch_size": 16,
+    "num_data_workers": 2,
+    "hdf5_cache_mode": null,
+    "hdf5_load_next_obs": false,
+    "seq_length": 20,
+    "action_config": {"actions": {"normalization": "min_max"}},
+    "seed": 1
+  },
+  "algo": {
+    "horizon": {"observation_horizon": 3, "action_horizon": 10, "prediction_horizon": 20},
+    "ema": {"enabled": false},
+    "ddpm": {"enabled": false},
+    "ddim": {"enabled": true}
+  },
+  "observation": {
+    "modalities": {
+      "obs": {"low_dim": ["robot0_eef_pos", "robot0_eef_quat", "robot0_eef_hand", "pointcloud"]}
+    }
+  }
+}
