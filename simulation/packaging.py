@@ -28,6 +28,13 @@ class PackagingSimulation(LeapSimulation):
 
     def reset(self, action) -> dict[str, np.ndarray]:
         self._reset_scene(action, [0.32, 0.24, 0.14, 1.0])
+        # shortcut: approximate hand compliance until measured contact parameters are available.
+        for hand, _ in self._hands:
+            for link in range(-1, p.getNumJoints(hand, physicsClientId=self.client)):
+                p.changeDynamics(
+                    hand, link, contactStiffness=2500, contactDamping=50,
+                    physicsClientId=self.client,
+                )
         cardboard = [0.62, 0.42, 0.22, 1.0]
         cx, cy = self.box_center
 

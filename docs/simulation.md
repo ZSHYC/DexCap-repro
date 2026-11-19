@@ -49,7 +49,7 @@ CUDA_VISIBLE_DEVICES=0 python -m simulation.rollout "$DATASET" \
 
 ## Packaging 仿真
 
-纸盒的底部和四壁构成一个有质量的刚体，盖板通过被动转动关节连接。左手可以通过接触推动纸盒和盖板。右手碰到红色包装物后触发抓取，持物移至当前盒口上方时解除约束。入盒和合盖均按移动后的纸盒坐标判断，两者同时满足时记录 `sim_success`。`box_displacement_m` 记录盒体最终平移，`box_center_progress_m` 单独记录回合内盒体向桌面中心推进的最大距离。
+纸盒的底部和四壁构成一个有质量的刚体，盖板通过被动转动关节连接。左手可以通过接触推动纸盒和盖板。手部碰撞使用近似的接触刚度 (2500 N/m) 和阻尼 (50 N·s/m)，限制运动学手在碰撞时产生的过大冲量。右手碰到红色包装物后触发抓取，持物移至当前盒口上方时解除约束。入盒和合盖均按移动后的纸盒坐标判断，两者同时满足时记录 `sim_success`。`box_displacement_m` 记录盒体起点与终点的水平距离，`box_center_progress_m` 记录回合中向桌面中心靠近的最大距离。 [Bullet 柔性接触示例](https://github.com/bulletphysics/bullet3/blob/master/examples/MultiBody/MultiBodySoftContact.cpp)
 
 ```bash
 PACKAGING_DATA="$DEXCAP/data/derived/packaging-demo-0-playback.hdf5"
