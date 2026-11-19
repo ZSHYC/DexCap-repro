@@ -8,13 +8,26 @@ from simulation.packaging import PackagingSimulation
 
 
 class PackagingGraspTest(unittest.TestCase):
-    def test_opposing_grip_can_pivot_after_touching_the_box(self):
-        sim = PackagingSimulation()
-        self.addCleanup(sim.close)
+    def setUp(self):
+        self.sim = PackagingSimulation()
+        self.addCleanup(self.sim.close)
         action = np.zeros(46)
         action[:6] = [0.2, -0.4, 0.5, 0.2, 0.4, 0.5]
         action[[6, 10]] = 1
-        sim.reset(action)
+        self.sim.reset(action)
+
+    def test_lid_stops_at_open_and_closed_positions(self):
+        sim = self.sim
+        for start, limit in ((-0.2, 0), (np.pi + 0.2, np.pi)):
+            with self.subTest(limit=limit):
+                p.resetJointState(sim.lid, sim.lid_link, start, physicsClientId=sim.client)
+                for _ in range(60):
+                    sim._step_physics()
+                angle = p.getJointState(sim.lid, sim.lid_link, physicsClientId=sim.client)[0]
+                self.assertAlmostEqual(angle, limit, delta=0.02)
+
+    def test_opposing_grip_can_pivot_after_touching_the_box(self):
+        sim = self.sim
         center, _ = p.getBasePositionAndOrientation(sim.object, physicsClientId=sim.client)
         finger = (None, None, None, 3, None, None, center, (0, 1, 0), None, 1)
         thumb = (None, None, None, 18, None, None, center, (0, -1, 0), None, 1)

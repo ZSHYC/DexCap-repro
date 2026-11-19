@@ -25,6 +25,7 @@ TABLE_HEIGHT = -0.030
 BOX_HALF_XY = (0.13, 0.12)
 BOX_PANEL_HALF_THICKNESS = 0.006
 BOX_YAW = np.deg2rad(-66)
+LID_OPEN_ANGLE = 0.108
 RED_BOX_YAW = np.deg2rad(64)
 DEFAULT_OBJECT = "red-box"
 FINGERTIP_LINKS = (4, 9, 14, 19)
@@ -112,7 +113,7 @@ class PackagingSimulation(LeapSimulation):
             linkVisualShapeIndices=[lid_visual],
             linkPositions=[[0, half_y, self.box_top]],
             linkOrientations=[[0, 0, 0, 1]],
-            linkInertialFramePositions=[[0, 0, 0]],
+            linkInertialFramePositions=[[0, half_y, 0]],
             linkInertialFrameOrientations=[[0, 0, 0, 1]],
             linkParentIndices=[0],
             linkJointTypes=[p.JOINT_REVOLUTE],
@@ -127,11 +128,7 @@ class PackagingSimulation(LeapSimulation):
         )
 
         p.resetJointState(
-            self.container_bottom, self.lid_link, 0.0, physicsClientId=self.client
-        )
-        p.setJointMotorControl2(
-            self.lid, self.lid_link, p.VELOCITY_CONTROL, targetVelocity=0, force=0.02,
-            physicsClientId=self.client
+            self.lid, self.lid_link, LID_OPEN_ANGLE, physicsClientId=self.client
         )
         p.changeDynamics(
             self.lid, self.lid_link, lateralFriction=0.9, angularDamping=0.25,
@@ -152,7 +149,7 @@ class PackagingSimulation(LeapSimulation):
         self._left_lid_contacts = 0
         self._left_box_contacts = 0
         for _ in range(self.substeps):
-            p.stepSimulation(physicsClientId=self.client)
+            self._step_physics()
         self._box_initial_position = np.asarray(p.getBasePositionAndOrientation(
             self.container_bottom, physicsClientId=self.client
         )[0])
@@ -164,6 +161,23 @@ class PackagingSimulation(LeapSimulation):
         ))
         self._minimum_center_distance = self._initial_center_distance
         return self.observation()
+
+    def _step_physics(self):
+        angle, speed, _, _ = p.getJointState(self.lid, self.lid_link, physicsClientId=self.client)
+        next_angle = angle + speed / 240
+        if 0 <= next_angle <= np.pi:
+            p.setJointMotorControl2(
+                self.lid, self.lid_link, p.VELOCITY_CONTROL, targetVelocity=0, force=0.02,
+                physicsClientId=self.client,
+            )
+        else:
+            # shortcut: approximate the cardboard stops at the open and closed positions.
+            p.setJointMotorControl2(
+                self.lid, self.lid_link, p.POSITION_CONTROL,
+                targetPosition=float(np.clip(next_angle, 0, np.pi)), targetVelocity=0, force=2,
+                physicsClientId=self.client,
+            )
+        p.stepSimulation(physicsClientId=self.client)
 
     def _create_object(self, xy):
         position = [*xy, TABLE_HEIGHT + self.object_half[2]]
@@ -195,7 +209,7 @@ class PackagingSimulation(LeapSimulation):
         self._allow_supported_pivot()
         self._apply_hand_pose(action)
         for _ in range(self.substeps):
-            p.stepSimulation(physicsClientId=self.client)
+            self._step_physics()
             object_contacts = p.getContactPoints(
                 bodyA=self.right_hand, bodyB=self.object, physicsClientId=self.client
             )
