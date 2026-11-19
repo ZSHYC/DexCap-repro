@@ -12,9 +12,12 @@ class SimulationSummaryTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             wiping_paths = [root / "pointnet.json", root / "setxf.json"]
-            for path in wiping_paths:
+            for index, path in enumerate(wiping_paths, start=1):
                 trials = [
                     {"seed": seed, "plate_xy": [seed, 0], "sponge_xy": [0, seed],
+                     "plate_grasped": seed <= index + 2, "sponge_grasped": seed in (1, 3, 5),
+                     "sponge_plate_contact_steps": 12 if seed <= 3 else 0,
+                     "wipe_surface_contact_steps": 6 if seed <= index else 0,
                      "sim_success": seed == 1}
                     for seed in range(1, 21)
                 ]
@@ -48,8 +51,16 @@ class SimulationSummaryTest(unittest.TestCase):
                     }))
 
             result = summarize(*wiping_paths, run)
-            self.assertEqual(result["wiping"]["pointnet"]["trial_count"], 20)
-            self.assertEqual(result["wiping"]["pointnet"]["success_count"], 1)
+            pointnet, setxf = (result["wiping"][name] for name in ("pointnet", "setxf"))
+            self.assertEqual(pointnet["trial_count"], 20)
+            self.assertEqual(pointnet["plate_grasped_count"], 3)
+            self.assertEqual(pointnet["sponge_grasped_count"], 3)
+            self.assertEqual(pointnet["both_grasped_count"], 2)
+            self.assertEqual(pointnet["interior_contact_count"], 1)
+            self.assertEqual(pointnet["interior_contact_rate"], 1 / 20)
+            self.assertEqual(pointnet["success_count"], 1)
+            self.assertEqual(setxf["plate_grasped_count"], 4)
+            self.assertEqual(setxf["interior_contact_count"], 2)
             self.assertEqual(result["packaging"]["trained"]["trial_count"], 30)
             self.assertEqual(result["packaging"]["trained"]["placement_count"], 12)
             self.assertEqual(result["packaging"]["unseen"]["trial_count"], 45)

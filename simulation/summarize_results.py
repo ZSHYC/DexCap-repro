@@ -36,10 +36,24 @@ def summarize(pointnet_path, setxf_path, packaging_run):
     setxf = read_report(setxf_path, "wiping", 20)
     if pairing(pointnet, "plate_xy", "sponge_xy") != pairing(setxf, "plate_xy", "sponge_xy"):
         raise ValueError(f"{setxf_path} and {pointnet_path} must use the same dataset and placements")
-    wiping = {
-        name: {"checkpoint": report["checkpoint"], **tally(report["trials"], {"success": "sim_success"})}
-        for name, report in (("pointnet", pointnet), ("setxf", setxf))
+    wiping_metrics = {
+        "plate_grasped": "plate_grasped",
+        "sponge_grasped": "sponge_grasped",
+        "both_grasped": "both_grasped",
+        "interior_contact": "interior_contact",
+        "success": "sim_success",
     }
+    wiping = {}
+    for name, report in (("pointnet", pointnet), ("setxf", setxf)):
+        trials = [
+            {
+                **trial,
+                "both_grasped": trial["plate_grasped"] and trial["sponge_grasped"],
+                "interior_contact": trial["wipe_surface_contact_steps"] > 0,
+            }
+            for trial in report["trials"]
+        ]
+        wiping[name] = {"checkpoint": report["checkpoint"], **tally(trials, wiping_metrics)}
 
     packaging = {}
     reference_placements = None

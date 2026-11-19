@@ -156,4 +156,4 @@ python -m simulation.summarize_results \
   --output runs/dexcap-formal-simulation.json
 ```
 
-命令要求第 3000 轮的权重、每回合 400 步，并核对两组 Wiping 的 20 个摆放以及 Packaging 所有物体的五个摆放。输出按实际回合统计 Wiping 成功率和 Packaging 两组的入盒率、合盖率与完整成功率，保留逐物体计数。六种训练物体共 30 回合，九种未见物体共 45 回合。
+命令要求第 3000 轮的权重、每回合 400 步，并核对两组 Wiping 的 20 个摆放以及 Packaging 所有物体的五个摆放。Wiping 汇总抓盘、抓海绵、同一回合两件都抓到、至少一步内盘面接触，以及完整成功的回合数和比例。Packaging 汇总入盒、合盖与完整成功，并保留逐物体计数。六种训练物体共 30 回合，九种未见物体共 45 回合。
