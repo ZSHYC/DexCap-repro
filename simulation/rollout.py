@@ -8,6 +8,11 @@ import numpy as np
 
 from simulation.camera import capture_pointcloud
 from simulation.frames import ActionFrames, BULLET_FROM_MOCAP
+from simulation.packaging import (
+    DEFAULT_OBJECT, PACKAGING_OBJECTS, PackagingSimulation,
+    sample_object_xy as sample_packaging_xy,
+)
+from simulation.wiping import PlateWipingSimulation, sample_object_xy as sample_wiping_xy
 
 
 PROPRIOCEPTION = ("robot0_eef_pos", "robot0_eef_quat", "robot0_eef_hand")
@@ -29,14 +34,12 @@ def rollout(args):
         policy, _ = policy_from_checkpoint(ckpt_path=args.checkpoint, device=torch.device("cuda:0"))
 
     if args.task == "packaging":
-        from simulation.packaging import PackagingSimulation, sample_object_xy
-
-        sim = PackagingSimulation()
+        sim = PackagingSimulation(args.object or DEFAULT_OBJECT)
+        sample_object_xy = sample_packaging_xy
         position_keys = ("box_xy", "object_xy")
     else:
-        from simulation.wiping import PlateWipingSimulation, sample_object_xy
-
         sim = PlateWipingSimulation()
+        sample_object_xy = sample_wiping_xy
         position_keys = ("plate_xy", "sponge_xy")
     start = frames.to_bullet(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
@@ -88,6 +91,8 @@ def rollout(args):
         "checkpoint": args.checkpoint,
         "steps": steps,
     }
+    if args.task == "packaging":
+        result.update(object=sim.object_name, object_reference_demo=sim.object_reference_demo)
     if args.trials == 1:
         return {**result, **results[0]}
     if args.task == "packaging":
@@ -103,6 +108,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run a headless DexCap episode")
     parser.add_argument("dataset", type=Path)
     parser.add_argument("--task", choices=("wiping", "packaging"), default="wiping")
+    parser.add_argument("--object", choices=PACKAGING_OBJECTS, help="Select the Packaging policy-evaluation object")
     parser.add_argument("--checkpoint", help="Use a policy checkpoint instead of recorded actions")
     parser.add_argument("--steps", type=int)
     parser.add_argument("--trials", type=int, default=1, help="Sample placements for policy evaluation")
@@ -114,6 +120,8 @@ def main():
         parser.error("--trials must be positive")
     if args.trials > 1 and args.checkpoint is None:
         parser.error("Multiple trials require a policy checkpoint")
+    if args.object is not None and (args.task != "packaging" or args.checkpoint is None):
+        parser.error("--object requires a Packaging policy checkpoint")
     result = json.dumps(rollout(args), indent=2)
     if args.output is not None:
         args.output.write_text(result + "\n")

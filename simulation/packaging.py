@@ -1,24 +1,35 @@
 """Approximate headless PyBullet environment for DexCap Packaging.
 
-The released digital twin is unavailable. Dimensions below are measured
-approximations from the released demo_0 image, first XYZRGB point cloud, and
-retargeted hand trajectories. Grasping begins only after Bullet reports hand--
+Dimensions approximate objects in the released images and XYZRGB clouds.
+Grasping begins only after Bullet reports hand--
 object contact. Placement, lid closure, and success are independent geometric
 measurements of the simulated bodies.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pybullet as p
+import pybullet_data
 from scipy.spatial.transform import Rotation
 
 from simulation.leap import LeapSimulation, wxyz
 
 
 DEMO_OBJECT_XY = np.array([[0.48, 0.12], [0.57, -0.27]])
+DEFAULT_OBJECT = "red-box"
+# Shape, half extents in metres, color, and the source demonstration.
+PACKAGING_OBJECTS = {
+    "red-box": ("box", (0.045, 0.033, 0.045), (0.78, 0.08, 0.04, 1), "demo_0"),
+    "blue-block": ("box", (0.055, 0.0275, 0.018), (0.04, 0.45, 0.72, 1), "demo_50"),
+    "green-pear": ("ellipsoid", (0.029, 0.025, 0.027), (0.31, 0.47, 0.09, 1), "demo_100"),
+    "green-can": ("cylinder", (0.0405, 0.0405, 0.034), (0.17, 0.45, 0.12, 1), "demo_150"),
+    "tape-measure": ("cylinder", (0.038, 0.038, 0.017), (0.78, 0.60, 0.08, 1), "demo_175"),
+    "yellow-cloth": ("box", (0.075, 0.065, 0.020), (0.91, 0.75, 0.09, 1), "demo_250"),
+}
 
 
 def sample_object_xy(rng):
@@ -32,7 +43,12 @@ class PackagingSimulation(LeapSimulation):
 
     box_inner_half = np.array([0.14, 0.11])
     box_top = 0.105
-    object_half = np.array([0.045, 0.033, 0.045])
+
+    def __init__(self, object_name=DEFAULT_OBJECT):
+        self.object_kind, half, self.object_color, self.object_reference_demo = PACKAGING_OBJECTS[object_name]
+        self.object_name = object_name
+        self.object_half = np.asarray(half)
+        super().__init__()
 
     def reset(self, action, object_xy=DEMO_OBJECT_XY) -> dict[str, np.ndarray]:
         self._reset_scene(action, [0.32, 0.24, 0.14, 1.0])
@@ -109,10 +125,7 @@ class PackagingSimulation(LeapSimulation):
             physicsClientId=self.client
         )
 
-        self.object = self._box(
-            self.object_half, 0.12, [*object_xy[1], 0.045],
-            [0.78, 0.08, 0.04, 1.0]
-        )
+        self.object = self._create_object(object_xy[1])
         p.changeDynamics(
             self.object, -1, lateralFriction=1.0, rollingFriction=0.003,
             physicsClientId=self.client
@@ -136,6 +149,30 @@ class PackagingSimulation(LeapSimulation):
         ))
         self._minimum_center_distance = self._initial_center_distance
         return self.observation()
+
+    def _create_object(self, xy):
+        position = [*xy, self.object_half[2]]
+        mass = 0.12
+        if self.object_kind == "box":
+            return self._box(self.object_half, mass, position, self.object_color)
+
+        if self.object_kind == "cylinder":
+            shape = p.GEOM_CYLINDER
+            radius, height = self.object_half[0], 2 * self.object_half[2]
+            collision_args = dict(radius=radius, height=height)
+            visual_args = dict(radius=radius, length=height)
+        else:
+            shape = p.GEOM_MESH
+            sphere = Path(pybullet_data.getDataPath()) / "sphere_smooth.obj"
+            collision_args = visual_args = dict(fileName=str(sphere), meshScale=self.object_half)
+        collision = p.createCollisionShape(shape, **collision_args, physicsClientId=self.client)
+        visual = p.createVisualShape(
+            shape, **visual_args, rgbaColor=self.object_color, physicsClientId=self.client,
+        )
+        return p.createMultiBody(
+            baseMass=mass, baseCollisionShapeIndex=collision,
+            baseVisualShapeIndex=visual, basePosition=position, physicsClientId=self.client,
+        )
 
     def step(self, action) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
         self._apply_hand_pose(action)
@@ -201,7 +238,14 @@ class PackagingSimulation(LeapSimulation):
             self.object, physicsClientId=self.client
         ))
         rotation = Rotation.from_quat(quaternion).as_matrix()
-        local_half = np.abs(rotation) @ self.object_half
+        if self.object_kind == "cylinder":
+            axis = np.abs(rotation[:, 2])
+            local_half = self.object_half[0] * np.sqrt(np.maximum(0, 1 - axis**2))
+            local_half += self.object_half[2] * axis
+        elif self.object_kind == "ellipsoid":
+            local_half = np.linalg.norm(rotation * self.object_half, axis=1)
+        else:
+            local_half = np.abs(rotation) @ self.object_half
         lower, upper = position - local_half, position + local_half
         return bool(
             np.all(lower[:2] >= -self.box_inner_half)
