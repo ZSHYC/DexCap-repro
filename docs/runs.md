@@ -44,6 +44,8 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 使用 `df4d58e` 的相向双指夹盘条件回放官方 Wiping。两件物体均触发抓取，111 步中有 41 步盘体接触、0 步正面接触、0 次完整擦拭。服务器记录为 `runs/wiping-demo0-opposing-grasp-pro1.json`。
 
+`b2741ee` 改用竖直擦拭计数。在 `pro1` 的倾斜盘面回归试验中，同一侧上下往返计 2 次，横向往返和盘底往返均计 0 次。官方 111 步回放仍为 41 步盘体接触、0 步正面接触、0 次完整擦拭。服务器记录为 `runs/wiping-demo0-vertical-strokes-pro1.json`。 [当前计数定义](simulation.md)
+
 完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 的六种物体各执行 5 组摆放。每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
 ### Wiping 单示范训练
@@ -80,6 +82,8 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 用帧索引 40 至 105 内每隔五帧的 14 个点云估计持物期间的海绵位置。仅改变固定约束的父链节，在相同回放动作下把海绵的平均 3D 位置误差从 54.9 mm 降至 25.5 mm。位置来自颜色分割后点云的中位数，与真实质心有偏差。
 
 用帧索引 40 至 95 的 12 个点云估计盘缘中心和盘面法向，在相同回放动作中对照夹盘条件。等待两根手指形成相向接触后，抓取由第 26 步推迟到第 28 步，盘心平均位置误差从 70.2 mm 降至 54.8 mm，法向平均夹角从 38.9° 降至 32.3°。
+
+在官方轨迹帧索引 65、75、80、85、90 上，海绵相对盘心沿盘面竖直方向的估计坐标约为 −119、−50、−120、−7、−125 mm。这个片段在盘心同侧有多次竖直转向。新仿真采用 60 mm 的单程位移阈值，仍要求正面载荷接触。
 
 ### 手指驱动对照
 

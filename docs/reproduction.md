@@ -112,6 +112,8 @@ PY
 
 `pro1` 当前不能稳定直连 Hugging Face。已验证的路径是让服务器通过本机 SSH 连接访问数据。
 
+本机用发布方的 Xet 客户端试拉过 Packaging。55 秒内只生成了约 0.13 MB 的会话文件，且本机试拉位置剩余约 12.5 GB。当前 29.1 GB 文件通过下文的 SSH 路径直接续传到 `pro1`。 [发布方的下载方式](https://huggingface.co/docs/hub/datasets-downloading)
+
 在本机终端保持以下连接：
 
 ```bash
