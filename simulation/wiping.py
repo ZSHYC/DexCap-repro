@@ -172,7 +172,11 @@ class PlateWipingSimulation(LeapSimulation):
         plate_pose = p.getBasePositionAndOrientation(self.plate, physicsClientId=self.client)
         rotation = np.asarray(p.getMatrixFromQuaternion(plate_pose[1])).reshape(3, 3)
         top = rotation[:, 2]
-        if not any(contact[9] > 0 and np.dot(contact[7], top) > 0.5 for contact in contacts):
+        if not any(
+            contact[9] > 0 and np.dot(contact[7], top) > 0.5
+            and np.linalg.norm(np.subtract(contact[6], plate_pose[0]) @ rotation[:, :2]) <= PLATE_INNER_RADIUS
+            for contact in contacts
+        ):
             self._last_contact_position = None
             self._stroke_axis = None
             return

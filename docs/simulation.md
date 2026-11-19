@@ -45,7 +45,7 @@ CUDA_VISIBLE_DEVICES=0 python -m simulation.rollout "$DATASET" \
 
 注意力模型用 `PYTHONPATH="$DEXCAP/worktrees/setxf/DexCap/STEP3_train_policy"`。策略每次读取最近三帧仿真观测。完成接口试跑后，去掉 `--steps` 用默认的 400 步时长评估。
 
-`sponge_plate_contact_steps` 统计海绵与盘子的所有接触步。`wipe_surface_contact_steps` 只统计在盘面正侧施加法向力的接触步。`wipe_distance` 以米计，只累计连续正面接触时海绵相对于盘面的位移。
+`sponge_plate_contact_steps` 统计海绵与盘子的所有接触步。`wipe_surface_contact_steps` 统计海绵在距盘心 95 mm 内的内盘面上施加正向法向力的步数。半径按 Bullet 给出的盘侧触点计算。`wipe_distance` 以米计，累计连续内盘面接触时海绵相对于盘面的位移。 [盘沿接触审计](runs.md#擦拭接触点审计)
 
 `wipe_passes` 沿世界竖直方向在盘面上的投影计数。每段连续正面接触确定一次投影方向，沿该方向的单程位移至少 6 cm，且竖直分量至少等于横向分量，才计一次。持续朝同一方向只计一次，随后可在转向后计下一次。同一侧的上下往返也可以计数。`sim_success` 要求两件物体都已触发抓取，并累计至少两次竖直擦拭。论文描述了方向和次数，6 cm 是本仿真根据公开轨迹采用的阈值。 [论文任务说明](https://arxiv.org/html/2403.07788v2#S5) · [实验记录](runs.md)
 

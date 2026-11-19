@@ -5,7 +5,10 @@ import numpy as np
 import pybullet as p
 
 from simulation.leap import GRASP_FORCE
-from simulation.wiping import HELD_PLATE_NORMAL, PLATE_SEATING_FORCE, PlateWipingSimulation, SPONGE_HALF_HEIGHT
+from simulation.wiping import (
+    HELD_PLATE_NORMAL, PLATE_INNER_RADIUS, PLATE_RADIUS, PLATE_SEATING_FORCE,
+    PlateWipingSimulation, SPONGE_HALF_HEIGHT,
+)
 
 
 class WipingSurfaceTest(unittest.TestCase):
@@ -86,6 +89,22 @@ class WipingSurfaceTest(unittest.TestCase):
                 self.assertEqual(info["wipe_passes"], expected)
                 if side == -1:
                     self.assertEqual(info["wipe_surface_contact_steps"], 0)
+
+    def test_front_looking_rim_normal_does_not_count_as_surface_contact(self):
+        sim = PlateWipingSimulation()
+        self.addCleanup(sim.close)
+        action = np.zeros(46)
+        action[:6] = [0.2, -0.4, 0.5, 0.2, 0.4, 0.5]
+        action[[6, 10]] = 1
+        sim.reset(action)
+        pose = p.getBasePositionAndOrientation(sim.plate, physicsClientId=sim.client)
+        rotation = np.asarray(p.getMatrixFromQuaternion(pose[1])).reshape(3, 3)
+
+        for radius, count in (((PLATE_INNER_RADIUS + PLATE_RADIUS) / 2, 0), (0.03, 1)):
+            point, _ = p.multiplyTransforms(*pose, [radius, 0, 0], [0, 0, 0, 1])
+            contact = (None, None, None, None, None, None, point, rotation[:, 2], None, 10)
+            sim._update_wipe_metrics([contact])
+            self.assertEqual(sim._surface_contact_steps, count)
 
 
 if __name__ == "__main__":

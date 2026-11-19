@@ -14,6 +14,10 @@
 
 2026-11-19 20:01（北京时间），三个正式作业各已保存第 100 轮 checkpoint。每份约 280 MB，按每 100 轮保存一次估算，余下权重合计约 24.40 GB。清理 Conda 安装压缩包后，项目所在系统盘可用约 24.23 GB。`/data` 数据盘已挂载，当前项目账号尚无写权限。三个正式作业继续运行。
 
+系统盘暂用无损压缩权重留出余量。PointNet 第 100 轮权重从 280,401,123 字节压到 260,871,659 字节，压缩前后逐张量完全相等，CUDA 在相同三帧观测和种子 1、2、3 下给出的 46 维动作逐元素相同。`dexcap-checkpoint-storage` 在三个训练日志确认文件写完后，逐字节验证 ZIP 内部数据，再把压缩文件原子替换到同一路径。第 3000 轮权重按训练器原格式保存。脚本与日志分别位于 `runs/compact-formal-checkpoints.py` 和 `runs/compact-formal-checkpoints.log`。
+
+截至 20:08，脚本已处理五份权重，每份约省 19–20 MB。按这批实际大小估计，余下权重需约 22.25 GB，系统盘可用约 23.76 GB，约有 1.51 GB 余量。此数值随其他磁盘写入变化。
+
 `60d5b3a` 的 `scripts/run_experiment.sh` 已在 `pro1` 的三个实验入口分别跑通 `smoke`。Wiping PointNet 使用当前项目源码，其余两组使用 `worktrees/setxf` 的 `4263783`。三个第 2 轮 checkpoint 均输出有限的 46 维动作。入口日志为 `runs/repro-entrypoint-pointnet.log`、`runs/repro-entrypoint-wiping-setxf.log` 和 `runs/repro-entrypoint-setxf.log`。   [运行方式](reproduction.md#运行一次完整实验)
 
 ### Wiping 全量训练启动
@@ -60,6 +64,25 @@
 官方 Wiping、Packaging 配置和 `pro1` 三个正式作业的生效配置均为 `algo.ema.enabled=false`。Wiping 两个第 100 轮 checkpoint 加载时没有 EMA 模型。尝试把点云编码器与去噪网络统一选到 EMA 分支后，两组 15 个时刻的逐项动作误差完全一致，确认该分支在本次实验中未启用。
 
 `dexcap-wiping-epoch200` 等两组第 200 轮 checkpoint 保存后，分别用 GPU 5 和 6 重跑相同的 3 个种子，每回合 400 步，结果写入 `runs/wiping-{pointnet,setxf}-epoch200-aligned-trials.json`。动作队列和 Wiping 摆放沿用第 100 轮修正后的对照。
+
+### Wiping 第 200 轮配对结果
+
+两种编码器的三个起点与各自第 100 轮逐项一致，两个编码器使用相同摆放。两组各跑完 3 × 400 步。表中擦拭次数沿用当时仅按法向区分正侧接触的判据。 [盘沿接触审计](#擦拭接触点审计)
+
+| 编码器 | 第 100 轮两件都抓到 | 第 200 轮两件都抓到 | 第 100 轮完成擦拭 | 第 200 轮完成擦拭 |
+|---|---:|---:|---:|---:|
+| PointNet | 0/3 | 2/3 | 0/3 | 1/3 |
+| SetXF | 1/3 | 2/3 | 0/3 | 0/3 |
+
+旧判据在 PointNet 种子 1 累计 47 步正侧接触，接触期间的相对位移为 0.4227 m，于第 37 和 77 步各计一次擦拭。SetXF 在同一摆放有 1 步正侧接触，擦拭为 0。正式对照以第 3000 轮的 20 组配对摆放为准。
+
+沿用第 100 轮动作对照的 15 个时刻、三个扩散种子和官方动作驱动的仿真观测，重测第 200 轮权重。PointNet 的仿真右、左腕中位误差由 16.5、18.0 mm 降至 10.4、11.4 mm，SetXF 由 20.4、18.9 mm 降至 12.9、16.0 mm。擦拭阶段，PointNet 和 SetXF 的左腕误差分别降至 12.8 mm 和 14.9 mm。逐帧数据位于 `runs/wiping-{pointnet,setxf}-epoch200-action-diagnostics.json`。
+
+#### 擦拭接触点审计
+
+用同一第 200 轮 PointNet checkpoint 和种子 1 重跑，逐步记录接触点在盘子自身坐标中的位置和法向力。两次计数发生时触点距盘心约 125–128 mm，高约 22 mm，位于斜盘沿。47 步正侧接触中，距离盘心最近的触点为 123.7 mm，内盘面半径为 95 mm。按内盘面接触计，该回合为 0 次擦拭。
+
+相同审计用于 111 步官方 `demo_0` 动作。原判据为 31 步正侧接触，内盘面判据为 28 步内盘面接触，两种判据均计 4 次擦拭。接触点和力的数据位于 `runs/wiping-{demo0,pointnet-epoch200-seed1}-face-contact-audit.json`。
 
 ### 数据读取吞吐
 
@@ -311,3 +334,5 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 红银包装在策略松手后的物体中心已越过盒内侧边界约 17 cm，随后盖板闭合时物体仍在盒外。绿梨在较高处释放并落入盒内。时间序列在 `runs/packaging-{expert-reference,red-box-epoch100-reference,green-pear-epoch100-reference}-trace.json`。
 
 在 `dexcap-packaging-epoch100-placement` 会话中对红银包装和绿梨各做五次随机摆放，沿用同一 checkpoint、相同种子及每回合 400 步。结果写入 `runs/packaging-{red-box,green-pear}-epoch100-random5.json`。
+
+两种物体的五组盒位和物体起点逐项相同。各有且仅有种子 5 触发抓取后释放。红银包装和绿梨的入盒、合盖与完整成功均为 0/5。绿梨在参考摆放的单次成功没有在五组随机摆放中重现。
