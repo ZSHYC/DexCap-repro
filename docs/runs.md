@@ -36,6 +36,17 @@ Packaging 的 6 梯度步 SetXF checkpoint 在当前场景也完成了 12 步闭
 
 完整 Wiping 和 Packaging HDF5 正在续传。完整数据到位后，`tmux` 会话 `dexcap-experiments` 下的 Wiping PointNet、Wiping SetXF 和 Packaging SetXF 作业各先执行完整文件短跑，成功后继续对应长训。`dexcap-full-sim` 等待每个成功完成的长训保存 epoch 3000 的 checkpoint。两种 Wiping 策略各执行 20 组配对摆放，Packaging 执行一组，每回合 400 步，结果写入对应的 `runs/*-final-sim.json`。 [服务器项目操作路径](reproduction.md)
 
+### Wiping 单示范训练
+
+在等待完整 HDF5 时，从同一官方数据版本提取 `demo_0` 的全部 111 帧，保存为 `data/derived/wiping-official-demo-0.hdf5`。PointNet 使用 `37361d1`，SetXF 训练使用 `4263783`，仿真均使用 `37361d1`。两组保留 `pointcloud-full.json` 的样本、优化和扩散设置，只调整为 5 个 epoch、每轮 100 个梯度步，并于第 5 轮保存。均使用种子 1。
+
+| 编码器 | 各轮训练损失 | 400 步盘体接触 | 正面接触 | 完整擦拭 |
+|---|---|---:|---:|---:|
+| PointNet | 1.0064、0.7120、0.4518、0.3940、0.3568 | 0 | 0 | 0 |
+| SetXF | 1.0063、0.7015、0.4467、0.3900、0.3542 | 22 | 0 | 0 |
+
+两组第 5 轮权重均输出有限的 46 维离线动作，并在同一参考摆放完成 400 步仿真闭环。各自的日志、配置和仿真 JSON 在服务器的 `runs/wiping-demo0-{pointnet,setxf}-seed1-pilot-20261119T091714Z*`。训练损失只描述这一条示范上的拟合，正式配对评估仍使用完整数据训练的权重。
+
 ## 官方原始数据重建
 
 从官方 Wiping 原始 ZIP 提取第一段示范的标定、`frame_0` 和 `frame_2220`，以单帧夹具运行无界面的 PyBullet 指尖 IK 和 RGB-D 点云构建。输出一个 HDF5 时间步、46 维动作和 `1000 × 6` 点云。 [重建命令与验证范围](raw-retarget.md)
