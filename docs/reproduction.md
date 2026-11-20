@@ -38,6 +38,8 @@
 └── runs/                # 配置快照、日志、checkpoint 和仿真结果
 ```
 
+`pro1` 已安排在本批正式仿真汇总和权重压缩结束后，将 `data/` 和 `runs/` 分别迁移到 `/data/dexcap-repro/data/` 和 `/data/dexcap-repro/runs/`。迁移通过复制、同步落盘和切换目录链接完成，保留上图的项目入口。运维日志为 `/data/dexcap-repro/storage-migration.log`。
+
 在每个新终端中设置项目路径：
 
 ```bash
