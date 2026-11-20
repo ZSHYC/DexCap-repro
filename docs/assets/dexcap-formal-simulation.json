@@ -1,0 +1,194 @@
+{
+  "epoch": 3000,
+  "steps_per_trial": 400,
+  "wiping": {
+    "pointnet": {
+      "checkpoint": "/home/zhangshihao/dexcap-repro/runs/wiping-pointnet-seed1-full-20261119T102945Z/20261119182948/models/model_epoch_3000.pth",
+      "trial_count": 20,
+      "plate_grasped_count": 8,
+      "plate_grasped_rate": 0.4,
+      "sponge_grasped_count": 10,
+      "sponge_grasped_rate": 0.5,
+      "both_grasped_count": 6,
+      "both_grasped_rate": 0.3,
+      "interior_contact_count": 0,
+      "interior_contact_rate": 0.0,
+      "success_count": 0,
+      "success_rate": 0.0
+    },
+    "setxf": {
+      "checkpoint": "/home/zhangshihao/dexcap-repro/runs/wiping-setxf-seed1-full-20261119T103025Z/20261119183028/models/model_epoch_3000.pth",
+      "trial_count": 20,
+      "plate_grasped_count": 13,
+      "plate_grasped_rate": 0.65,
+      "sponge_grasped_count": 12,
+      "sponge_grasped_rate": 0.6,
+      "both_grasped_count": 10,
+      "both_grasped_rate": 0.5,
+      "interior_contact_count": 1,
+      "interior_contact_rate": 0.05,
+      "success_count": 0,
+      "success_rate": 0.0
+    }
+  },
+  "packaging": {
+    "checkpoint": "/home/zhangshihao/dexcap-repro/runs/packaging-setxf-seed1-full-20261119T111945Z/20261119191947/models/model_epoch_3000.pth",
+    "trained": {
+      "trial_count": 30,
+      "placement_count": 0,
+      "placement_rate": 0.0,
+      "lid_closed_count": 9,
+      "lid_closed_rate": 0.3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "objects": {
+        "red-box": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "blue-block": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "green-pear": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 2,
+          "lid_closed_rate": 0.4,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "green-can": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 2,
+          "lid_closed_rate": 0.4,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "tape-measure": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "yellow-cloth": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 2,
+          "lid_closed_rate": 0.4,
+          "success_count": 0,
+          "success_rate": 0.0
+        }
+      }
+    },
+    "unseen": {
+      "trial_count": 45,
+      "placement_count": 0,
+      "placement_rate": 0.0,
+      "lid_closed_count": 9,
+      "lid_closed_rate": 0.2,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "objects": {
+        "red-apple": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 2,
+          "lid_closed_rate": 0.4,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "earplug-jar": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 0,
+          "lid_closed_rate": 0.0,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "golden-curry": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 2,
+          "lid_closed_rate": 0.4,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "tape-dispenser": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "stacked-bricks": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 2,
+          "lid_closed_rate": 0.4,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "blue-mug": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 2,
+          "lid_closed_rate": 0.4,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "giraffe": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 0,
+          "lid_closed_rate": 0.0,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "lion": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 0,
+          "lid_closed_rate": 0.0,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "spring-clamp": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 0,
+          "lid_closed_rate": 0.0,
+          "success_count": 0,
+          "success_rate": 0.0
+        }
+      }
+    }
+  }
+}

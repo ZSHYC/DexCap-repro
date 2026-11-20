@@ -38,7 +38,7 @@
 └── runs/                # 配置快照、日志、checkpoint 和仿真结果
 ```
 
-`pro1` 已安排在本批正式仿真汇总和权重压缩结束后，将 `data/` 和 `runs/` 分别迁移到 `/data/dexcap-repro/data/` 和 `/data/dexcap-repro/runs/`。迁移通过复制、同步落盘和切换目录链接完成，保留上图的项目入口。运维日志为 `/data/dexcap-repro/storage-migration.log`。
+2026-11-20，本批正式仿真汇总和权重压缩结束后，`pro1` 将 `data/` 和 `runs/` 分别迁到 `/data/dexcap-repro/data/` 和 `/data/dexcap-repro/runs/`。项目通过原目录名访问数据盘上的内容。迁移后已通过原路径打开两份官方 HDF5、核对三份最终权重，并重新汇总全部 115 个回合。运维日志为 `/data/dexcap-repro/storage-migration.log`。
 
 在每个新终端中设置项目路径：
 
@@ -47,7 +47,7 @@ export DEXCAP="$HOME/dexcap-repro"
 export DATA_REV="e468f07000de0f8d3234a9c60a9d8208344675e0"
 ```
 
-源码基线定位在上游提交 `4b0bed0966c87368f3cde4476aadb7585c3b94b5`。实验改动提交到私有仓库 `ZSHYC/DexCap-repro`，数据、Conda 环境和训练产物不进入 Git。每次实验的里程碑和证据摘要记录在 `docs/runs.md`；该文件记录结论，不收纳大型原始日志或 checkpoint。
+源码基线定位在上游提交 `4b0bed0966c87368f3cde4476aadb7585c3b94b5`。私有仓库 `ZSHYC/DexCap-repro` 保存代码、复现文档和正式结果汇总。HDF5、Conda 环境、原始日志和权重保留在服务器。 [实验记录](runs.md) · [正式汇总 JSON](assets/dexcap-formal-simulation.json)
 
 ## 运行一次完整实验
 

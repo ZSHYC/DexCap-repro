@@ -4,7 +4,20 @@
 
 ## 项目入口
 
-所有运行从 `pro1:~/dexcap-repro` 进入。`configs/` 保存训练配置，`envs/train` 保存 Conda 环境，`data/official/<revision>/` 保存官方数据，`runs/` 保存模型和日志。环境、数据和训练产物保留在服务器上。 [复现操作说明](docs/reproduction.md)
+所有运行从 `pro1:~/dexcap-repro` 进入。`configs/` 保存训练配置，`envs/train` 是 Conda 环境。`data/` 和 `runs/` 分别链接到 `/data/dexcap-repro/data/` 和 `/data/dexcap-repro/runs/`，后续下载、预处理和训练输出通过这些入口写入数据盘。 [复现操作说明](docs/reproduction.md)
+
+## 正式仿真结果
+
+三组训练各完成 3000 轮，每轮 500 个梯度步。正式评估使用第 3000 轮权重，合计 115 个回合，每回合 400 步。
+
+| 实验 | 分项结果 | 完整成功 |
+| --- | --- | ---: |
+| Wiping PointNet | 两件均抓取 6/20，内盘面接触 0/20 | 0/20 |
+| Wiping SetXF | 两件均抓取 10/20，内盘面接触 1/20 | 0/20 |
+| Packaging 训练物体 | 入盒 0/30，合盖 9/30 | 0/30 |
+| Packaging 未见物体 | 入盒 0/45，合盖 9/45 | 0/45 |
+
+上表记录 PyBullet 策略闭环的结果。论文表格中的百分比来自真实机器人。 [正式汇总 JSON](docs/assets/dexcap-formal-simulation.json) · [实验记录](docs/runs.md) · [评估口径](docs/reproduction.md#与论文表格的对应关系)
 
 ## 训练环境
 

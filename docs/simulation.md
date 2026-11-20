@@ -159,7 +159,7 @@ done
 
 ## 汇总正式仿真结果
 
-在 `pro1` 上，以下命令读取三个正在运行的正式实验将产生的结果。换到另一组训练时，传入对应的两个 Wiping JSON 和 Packaging 训练目录。
+在 `pro1` 上用以下命令从正式实验的逐回合记录重新生成汇总。换到另一组训练时，传入对应的两个 Wiping JSON 和 Packaging 训练目录。 [本次正式汇总 JSON](assets/dexcap-formal-simulation.json)
 
 ```bash
 cd "$DEXCAP"
