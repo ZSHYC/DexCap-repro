@@ -58,11 +58,11 @@ scripts/run_experiment.sh wiping-setxf full
 scripts/run_experiment.sh packaging-setxf full
 ```
 
-`pro1` 的 DexCap 作业只用 GPU 0、1、2、3。Wiping PointNet、Wiping SetXF、Packaging SetXF 各占 GPU 0、1、2，训练完成后分别在原卡上评估。GPU 3 串行跑补充实验。训练器将各作业的可见卡映射为 `cuda:0`，CPU 诊断将 `CUDA_VISIBLE_DEVICES` 置空。
+`pro1` 的 DexCap 作业只用 GPU 0、1、2、3。Wiping PointNet、Wiping SetXF、Packaging SetXF 分别使用 GPU 0、1、2 训练。训练完成后，两组 Wiping 和 Packaging 的训练物体评估继续使用原卡，Packaging 的未见物体评估使用 GPU 3。训练器将各作业的可见卡映射为 `cuda:0`，CPU 诊断将 `CUDA_VISIBLE_DEVICES` 置空。
 
 每个命令先短训并加载第 2 轮权重，随后按完整配置训练，加载第 3000 轮权重做仿真。两种 Wiping 策略各跑同一组 20 个摆放，Packaging 的六种训练物体各跑 5 回合。每组的有效配置、日志、权重和仿真 JSON 都在 `runs/`。
 
-`pro1` 上的 `dexcap-packaging-unseen` 会话等六种训练物体评估全部结束，再用同一第 3000 轮权重在 GPU 2 上逐一评估九种未见物体，每种 5 回合。新启动的实验可按相同步骤手动运行。 [未见物体及运行命令](simulation.md#未见物体)
+`pro1` 上的 `dexcap-packaging-unseen` 会话在训练完成后，用第 3000 轮权重在 GPU 3 上逐一评估九种未见物体，每种 5 回合。它与 GPU 2 上的训练物体评估并行。两组使用同一权重，汇总前等待两组各自完成。 [未见物体及运行命令](simulation.md#未见物体)
 
 只验证训练与离线推理时使用 `smoke`。第三个参数可以指定已提取的 HDF5，用于在完整数据下载期间验证入口。
 

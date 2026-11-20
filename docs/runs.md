@@ -532,9 +532,9 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 
 `8196a31` 补齐九种未见物体，新增的六种复合刚体按各碰撞部件在纸盒坐标系中的朝向判断是否入盒。本地四项 Packaging 测试通过，覆盖复合体创建和有方向限制的入盒。使用官方完整 HDF5 上的第 2 轮短训 SetXF checkpoint，九种未见物体各完成一次 6 步 CUDA 闭环，均使用 `10000 × 6` 仿真观测。记录在 `runs/packaging-unseen-smoke-8196a31/`。同一源码重放官方 `demo_0` 的 131 个动作后，默认红银包装仍入盒并合盖，记录为 `runs/packaging-demo0-unseen-model-regression.json`。 [物体几何及来源](simulation.md#未见物体)
 
-`dexcap-packaging-unseen` 等待 Packaging 正式训练与六种训练物体的仿真完成。它读取第 3000 轮权重，在 GPU 2 上依次对九个未见物体各跑五次，每回合 400 步，输出到 `runs/packaging-setxf-seed1-full-20261119T111945Z-unseen-final/`。同一个种子的盒位和物体起点在九种物体间一致，逐物体 JSON 汇总为 `summary.json`。会话日志为 `runs/packaging-unseen-evaluation.log`。
+2026-11-20，Packaging 正式训练仍在运行时，将 `dexcap-packaging-unseen` 调度到空闲的 GPU 3。该会话在训练进程退出、日志记录成功且第 3000 轮权重落盘后，依次对九个未见物体各跑五次，每回合 400 步。GPU 2 同时使用该权重评估六种训练物体。未见物体输出在 `runs/packaging-setxf-seed1-full-20261119T111945Z-unseen-final/`。同一个种子的盒位和物体起点在九种物体间一致，逐物体 JSON 汇总为 `summary.json`。会话日志为 `runs/packaging-unseen-evaluation.log`。
 
-`dexcap-formal-summary` 等待两种 Wiping 与 Packaging 的正式评估会话结束，然后在 CPU 上核对第 3000 轮的逐回合记录并生成 `runs/dexcap-formal-simulation.json`。输出包含 Wiping 每组 20 回合，以及 Packaging 训练物体 30 回合、未见物体 45 回合的计数。等待及汇总日志为 `runs/formal-summary.log`。 [手动汇总命令](simulation.md#汇总正式仿真结果)
+`dexcap-formal-summary` 等待两种 Wiping 评估与 Packaging 的两个物体组评估结束，然后在 CPU 上核对第 3000 轮的逐回合记录并生成 `runs/dexcap-formal-simulation.json`。输出包含 Wiping 每组 20 回合，以及 Packaging 训练物体 30 回合、未见物体 45 回合的计数。等待及汇总日志为 `runs/formal-summary.log`。 [手动汇总命令](simulation.md#汇总正式仿真结果)
 
 ### Packaging 分项判据验证
 
