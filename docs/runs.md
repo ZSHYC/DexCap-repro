@@ -42,6 +42,8 @@ Packaging 保存第 700 轮权重后，用同一方法无损压缩 22 份已结�
 
 08:43（北京时间），已用 `rsync` 将 20 份完成的短训和单示范试验权重复制到本地工作区的 `runs/auxiliary-checkpoint-archive/`，按原相对路径保存。传输成功，20 份文件的大小逐项匹配，共 5,190,853,965 字节。清单为该目录的 `sources.tsv`。服务器副本保留原路径，释放这些空间等待转存授权。此时两组 Wiping 的第 1700 轮与 Packaging 第 2300 轮权重均已保存并压缩，系统盘可用 5.50 GiB，预计完训还需约 8.55 GiB。
 
+10:02（北京时间），确认 `/data` 已对项目账号开放写入。将这 20 份完成的辅助权重复制至同一台服务器的 `/data/dexcap-repro/auxiliary-checkpoints/`，逐文件字节比对并同步落盘后，用指向数据盘的链接替换原路径入口。原命令仍可从项目的 `runs/` 加载这些权重，磁盘之间转存的文件清单在数据盘目录的 `sources.tsv`。系统盘可用 8.82 GiB，按生效保存配置和实测文件大小，余下权重、日志及压缩临时空间约需 7.01 GiB，预计留有 1.81 GiB 余量。此时两组 Wiping 均已保存第 1900 轮，Packaging 到第 2543 轮，三组训练进程均在运行。
+
 `60d5b3a` 的 `scripts/run_experiment.sh` 已在 `pro1` 的三个实验入口分别跑通 `smoke`。Wiping PointNet 使用当前项目源码，其余两组使用 `worktrees/setxf` 的 `4263783`。三个第 2 轮 checkpoint 均输出有限的 46 维动作。入口日志为 `runs/repro-entrypoint-pointnet.log`、`runs/repro-entrypoint-wiping-setxf.log` 和 `runs/repro-entrypoint-setxf.log`。   [运行方式](reproduction.md#运行一次完整实验)
 
 ### Wiping 全量训练启动
