@@ -540,6 +540,17 @@ Packaging 第 20 帧官方有 3280 个零 RGB 手点，匹配该帧外参时，�
 
 `dexcap-formal-summary` 等待两种 Wiping 评估与 Packaging 的两个物体组评估结束，然后在 CPU 上核对第 3000 轮的逐回合记录并生成 `runs/dexcap-formal-simulation.json`。输出包含 Wiping 每组 20 回合，以及 Packaging 训练物体 30 回合、未见物体 45 回合的计数。等待及汇总日志为 `runs/formal-summary.log`。 [手动汇总命令](simulation.md#汇总正式仿真结果)
 
+### Packaging 正式仿真结果
+
+2026-11-20 13:42（北京时间），两组 Packaging 评估出齐。15 个物体均使用同一份第 3000 轮 SetXF 权重和官方 HDF5，在种子 1–5 的五个配对摆放上各执行 400 步。
+
+| 物体组 | 右手接触物体 | 抓取后释放 | 入盒 | 合盖 | 完整成功 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 六种训练物体 | 9/30 | 6/30 | 0/30 | 9/30 | 0/30 |
+| 九种未见物体 | 16/45 | 10/45 | 0/45 | 9/45 | 0/45 |
+
+有 16 个回合触发过抓取并释放，释放后的物体都未满足仿真的入盒判据。完整成功要求同一回合入盒且合盖。训练物体的逐物体记录是 `runs/packaging-setxf-seed1-full-20261119T111945Z-<object>.final-sim.json`，未见物体记录在同名的 `-unseen-final/` 目录。按逐回合字段核对后的汇总为 `runs/packaging-formal-simulation.json`。 [仿真判据](simulation.md#packaging-仿真) · [与论文评估协议的对应](reproduction.md#与论文表格的对应关系)
+
 ### Packaging 分项判据验证
 
 `2eb8bbc` 使用盒底支撑判定入盒，使用盖板铰链角度判定合盖。让苹果、蓝杯和蓝色积木从盒内上方释放，三件物体在下落阶段都未计为入盒，落稳后均计为入盒，打开的盖板未触发完整成功。在盖板角度 165° 与 178° 的直接对照中，分别判为打开和闭合。本地六项 Packaging 测试通过。 [入盒与合盖判据](simulation.md#packaging-仿真)
