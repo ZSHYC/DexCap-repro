@@ -781,7 +781,7 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 双持补偿末段沿现有接触小幅让开右腕关节止挡，同时提高盘下净空。左腕保留海绵持姿接近盘面，下降时补偿中指和拇指实际夹持力。标准入口从默认摆放重放 3,240 个动作，记录 16 个内盘面接触周期，有效擦拭累计 31.79 mm，峰值海绵与盘接触力 0.837 N。计分仍为 0 笔，当前单笔投影要求 60 mm。原动力学续段再前进时，盘倾斜约 66°，右拇指卸载，桌面重新承受约 1.80 N。该时刻右腕第七轴仍有约 0.087 rad 余量。动作见 `data/derived/wiping-dual-hold-interior-contact-reference.hdf5`，标准回放与续段载荷见 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/full-interior-contact-rollout.json` 和同目录的 `plate-support-endpoints.json`。
 
-逐接触测得，原路径的海绵先压住远侧盘沿。右拇指受力点从距盘心约 125 mm 滑到约 134 mm，随后卸载。单独保持左腕时，右无名指可从盘下提供约 1.89 N 的额外向上载荷，但该分支在 1.75 s 时失去左侧海绵夹持。改为保留原右手执行器序列、保持左腕世界朝向，并先将海绵移到内盘面上方。3,266 步标准回放在默认摆放完成第一笔，记录 48 个有效内盘面接触周期，累计距离 64.66 mm，峰值接触力 0.653 N，两手在计分时仍分别相向持有离桌物体。全程无求解器警告、机械臂碰撞或双手碰撞。回程试验中右拇指沿盘沿向外滑并卸载。提高往返速度或增加辅助支撑的分支能延长右手持盘，但左手中指可能先失去海绵接触。仍未达到第二笔。右手保持住盘的一个分支中，左腕目标单步由约 2 mm 跳至 11.21、20.63 mm。随后海绵和盘面约 1.20 N 的接触伴随左中指卸载。海绵倾角在后三个动作从约 37° 变到 78°，拇指也卸载。保留接触力、关节和位姿实测数据于同目录的 `left-return-contact-audit.json`。回放和逐周期记录在 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/stroke-support/`。
+逐接触测得，原路径的海绵先压住远侧盘沿。右拇指受力点从距盘心约 125 mm 滑到约 134 mm，随后卸载。单独保持左腕时，右无名指可从盘下提供约 1.89 N 的额外向上载荷，但该分支在 1.75 s 时失去左侧海绵夹持。改为保留原右手执行器序列、保持左腕世界朝向，并先将海绵移到内盘面上方。3,266 步标准回放在默认摆放完成第一笔，记录 48 个有效内盘面接触周期，累计距离 64.66 mm，峰值接触力 0.653 N，两手在计分时仍分别相向持有离桌物体。全程无求解器警告、机械臂碰撞或双手碰撞。回程试验中右拇指沿盘沿向外滑并卸载。提高往返速度或增加辅助支撑的分支能延长右手持盘，但左手中指可能先失去海绵接触。仍未达到第二笔。右手保持住盘的一个分支中，左腕目标单步由约 2 mm 跳至 11.21、20.63 mm。随后海绵和盘面约 1.20 N 的接触伴随左中指卸载。海绵倾角在后三个动作从约 37° 变到 78°，拇指也卸载。保留接触力、关节和位姿实测数据于同目录的 `left-return-contact-audit.json`。回放和逐周期记录在 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/stroke-support/`。 接续把左腕单步平移限至 2 mm 后，双持仍只维持 0.60 s。按实测接触法向做双腕反馈，发现盘上两组接触斑块相距约 130 mm，法向速度方向相反。同步调整保持双持约 0.65 s，盘体仍产生约 20° 滚转误差。绕外侧接触转动海绵后，内侧斑块卸载，单斑块维持 0.45 s，峰值法向力约 2.56 N，实测接触力矩峰值约 0.202 N·m。后续盘体下沉，未形成第二笔。逐步结果见同目录的 `left-return-{bounded-continuation,coordinated-contact-axis,single-patch-pivot}.json`。
 
 ```bash
 python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference.hdf5 \
@@ -805,6 +805,8 @@ python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference
 上述关节控制诊断自行编译场景，采用默认摩擦锥与桌面参数，并从预先沉降的工具姿态开始。在项目正式 `MujocoScene` 中保留正式桌面摩擦、椭圆摩擦锥和默认工具位置，再通过执行器沉降并重放同一关节路径。第 1,646 个子步右手中指末节先与固定环第 17 段接触，法向力约 0.0931 N，侵入约 0.0098 mm，未到活动柄。正式场景的复验位于 `runs/scissor_89a2f80_moving_handle_underlift/scissor-move40-production-control.json`。 对这个实测姿态求中指关节对碰撞间隙的导数后，将其第二关节目标降低 0.020 rad，再次用正式场景和受限关节力矩运行。活动环净抬升 40.01 mm，固定环净抬升 19.54 mm，工具基座净抬升 18.62 mm。789 个 2 ms 子步有预期食指接触，峰值 0.200 N，无其他机器人接触或物理警告。结束时刀片仍由桌面、前隔板和托盘底承托。生产模型结果见同目录的 `production_middle_joint5_minus020.json`。
 
 每 50 ms 取一次受限关节控制的实测腕位和手形，转换为标准 46 维动作后，从默认摆放完成 214 步腕位控制回放。剪刀基座最高抬升 16.87 mm，无物理警告、机械臂或双手碰撞。剪刀仍未完全离盘，纸张未抬起，未切开纸张。逐步数据和标准结果位于同目录的 `scissor-move40-standard-source.json` 和 `scissor-move40-standard-rollout.json`。
+
+进一步加大抬升目标后，生产场景的活动柄实际峰值为 42.68 mm，固定环约 22.75 mm。腕位误差扩大到约 47 mm 后，右食指与活动柄失去接触。2 ms 动力学状态和执行目标保存在同目录 `production_middle_joint5_minus020_lift60_peak_{checkpoint,targets}.npz`。峰值时固定环下缘高出托盘外壁约 23.74 mm，可供指尖截面的毛余量约 2.11 mm。完整左手和机械臂的进孔拟合仍有约 8.68 mm 的掌部桌面侵入和约 1.30 mm 的食指近端与固定环侵入。以真实活动刀片支撑点为枢轴，静态转动 5.75° 可让开掌部，近端与环仍侵入约 3.74 mm。两次执行器试验中剪刀沿相反方向转动后脱开。证据见同目录的 `dual-ring-fullmesh-allpair-fit.json` 和 `dual-ring-pivot-*`。这些结果用于定位左手接取所需的额外净空。
 
 ```bash
 python -m simulation.rollout data/derived/scissor-cutting-moving-handle-reference.hdf5 \
@@ -831,6 +833,13 @@ python -m simulation.rollout data/derived/scissor-cutting-moving-handle-referenc
 
 将同一动作的实测腕位换成 46 维标准输入后，从默认包装摆放重放 159 个动作。实测包装平移约 13.04 mm、转动约 14.87°。54 个动作端点记录到左手载荷超过 0.015 N，峰值约 1.08 N。重放无物理警告、机械臂碰撞、双手碰撞或关节越限失败。该文件覆盖包装重新摆位，包装尚未被右手夹起。接触和位移数据在 `/data/dexcap-repro/benchmarks/runs/left-overhead-red-carton-cartesian-observed-trace.json`。 继续保持末目标 2 s 时，包装额外移动约 0.92 mm，左手仍有约 0.087 N 支撑载荷。执行向上退让时，左手瞬态接触载荷约 0.307 N，包装回退约 12.8 mm。此阶段的位姿依赖左手支撑，后续右手接近需要保留该支撑或换退出方向。对照见 `/data/dexcap-repro/benchmarks/runs/red-reposition-fit-causal-control.json`。
 
+重新拟合右手食指与拇指时保留左手支撑并让开左拇指。269 步标准回放末端左无名指仍承受约 0.066 N。用实测预抓状态和整臂碰撞间隙规划右侧关节路线，受限力矩重放达到预抓位，右手两指约为 1.69 和 1.80 N，对向法线点积约 −0.918。继续上提时，挂耳和左中指一度仍在承载。左手退出后的 2 ms 连续检查中，右手独立相向夹持且桌面和左手载荷低于 0.005 N 的最长区间为 9 个子步，即 18 ms。随后挂耳重新承重，继续上提时两指滑脱。把关节路线转为标准腕位目标做对照，912 个动作记录到 151 个右手与包装接触，仍出现双手碰撞，未形成稳定提起。在右手短暂独立承托的实际腕姿下，拟合非抓取指时最接近的无名指尖网格仍距包装约 28.6 mm。几何结果见 `carton-third-real-mesh-surface.json`。物理与标准数据位于 `/data/dexcap-repro/benchmarks/runs/` 下的 `carton-native-dual-margin.json`、`carton-right-only-substep-physical.json`、`carton-standard-grasp-candidate-rollout.json`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-supported-transfer-prefix.hdf5 \
+  --task packaging --object red-box --output runs/packaging-red-carton-supported-transfer-rollout.json
+```
+
 ```bash
 python -m simulation.rollout data/derived/packaging-red-carton-left-reposition-reference.hdf5 \
   --task packaging --object red-box --output runs/packaging-red-carton-left-reposition-rollout.json
@@ -847,6 +856,6 @@ python -m simulation.rollout data/derived/packaging-red-carton-left-reposition-r
 
 将原工具接触腕位变换到实测倾转约 38° 的镊子末态后，沿托盘外侧的 55 个候选腕位可达。加入原推指所需的 8 mm 下压后，中指先与木托外端和侧壁分别侵入约 1.97、1.50 mm。只重调中指可避开木托，但会触及其他指链。保留当时托盘、木托和工具的真实几何，未在该路线执行动态推送。见 `runs/tea-ed8bba8-outward-static.json` 与 `runs/tea-ed8bba8-link8-retune.json`。
 
-保留右食指接触点，以腕工具轴旋转约 −15° 后，在该镊子摆放上得到 3 条完整手部静态无干涉路径。筛选覆盖高位预姿、下降和沿 −Y 移动约 25 mm 的 51 个位置。备茶木托、托盘和镊子支撑未在该静态试验中移除。物理回放用于确认负载下的接触和离架。静态数据见 `runs/tea-89a2f80-index-pivot-static.json`。
+保留右食指接触点，以腕工具轴旋转约 −15° 后，在该镊子摆放上得到 3 条完整手部静态无干涉路径。筛选覆盖高位预姿、下降和沿 −Y 移动约 25 mm 的 51 个位置。备茶木托、托盘和镊子支撑未在该静态试验中移除。物理回放用于确认负载下的接触和离架。静态数据见 `runs/tea-89a2f80-index-pivot-static.json`。 两次真实推移后衔接这条腕位路线，标准 OSC 的预抓和下降末端误差分别约 17.18 和 18.15 mm。手与镊子接触力为 0，后续外推未执行，木托仍承担约 0.0923 N。记录见 `runs/tea-89a2f80-index-pivot-physical.json`。受限关节力矩接续首先保存从默认摆放所得的第一段工具状态，供复用的积分状态见 `runs/tea-pivot-joint-pd-stage1-first-slide-settled.npz`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
