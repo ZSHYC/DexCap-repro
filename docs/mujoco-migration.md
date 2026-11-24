@@ -26,12 +26,15 @@ source envs/conda/etc/profile.d/conda.sh
 conda activate "$PWD/envs/train"
 export LD_LIBRARY_PATH="$PWD/data/mujoco-gl/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export MUJOCO_EGL_DEVICE_ID=0 CUDA_VISIBLE_DEVICES=0
+export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 bash scripts/fetch_mujoco_assets.sh
 MUJOCO_GL=egl python -m simulation.rollout data/derived/wiping-demo-0-playback.hdf5 \
   --output runs/wiping-replay.json
 MUJOCO_GL=egl python -m simulation.rollout data/derived/packaging-demo-0-playback.hdf5 \
   --task packaging --output runs/packaging-replay.json
 ```
+
+精细接触的回放固定 BLAS 与 OpenMP 各用一个线程。用同一份原生动作重放擦盘时，多线程计算曾改变盘子和海绵的接触轨迹。单线程诊断与标准入口的擦拭结果一致。
 
 ## 官方动作回放和策略接入
 
@@ -184,6 +187,14 @@ python -m simulation.rollout data/derived/packaging-red-carton-table-clear-refer
 蓝积木后来用校正后的双 LEAP 回放了官方 `demo_50`。右手与物体接触 25 个周期，积木未抬起。以红盒参考为起点调整到蓝积木的实测位置后，静态腕姿候选可产生相向法线，但从上方实际进入时仍未取得相向夹持。最高积木中心离桌约 18 mm，与它平放时的半高相符。记录见 `runs/packaging-blue-block-official-reference-rollout.json` 和 `runs/packaging-blue-block-tilted-grasp-probe.json`。
 
 复合掌心下，把蓝积木预抓腕姿倾斜约 −35°，右食指与拇指在默认摆放形成相向抓持，积木实际离桌约 18.6 mm 后滑落。减慢抬升后积木曾稳定在约 32 mm 高处，但接触点移动后已不满足相向抓持判据。两次均未完成入盒。数据见 `runs/packaging-blue-block-opposed-grasp-66b7507.json` 和 `runs/packaging-blue-block-opposed-grasp-slow-lift-66b7507.json`。
+
+
+保持蓝积木的初始预抓姿态，在抬升中将腕俯仰从 −35° 缓调至 −30°，延长食指与拇指的相向抓持。50 动作标准入口重放在 `demo_50` 默认摆放获得 `object_grasped=true`，机械臂碰撞计数 0。此时积木中心高约 61.8 mm，长轴接近竖直，最低角比盒沿低约 49.0 mm。继续抬升和转腕的试验均失去抓持，尚未入盒。
+
+```bash
+python -m simulation.rollout data/derived/packaging-blue-block-apex-grasp-native.hdf5 \
+  --task packaging --object blue-block --output runs/packaging-blue-block-apex-grasp-native-rollout.json
+```
 
 
 绿罐的官方 `demo_150` 参考有 143 个右手接触周期。减少折叠预抓姿态的自碰撞后实际执行下探和抬升，仍未建立持续的相向抓持。记录见 `runs/packaging-green-can-official-contact-trace.json` 和 `runs/packaging-green-can-neutral-pregrasp-lift-probe.json`。
@@ -443,6 +454,24 @@ python -m simulation.rollout data/derived/wiping-palm-over-rim-f.hdf5 \
 ```bash
 python -m simulation.rollout data/derived/wiping-palm-centered-wipe-d.hdf5 \
   --task wiping --output runs/wiping-palm-centered-wipe-d-rollout.json
+```
+
+
+逐控制周期的整机复查确认，两个较长的擦拭片段中断时双手仍夹住物体，海绵与内盘面的接触先消失。两段中断前的连续投影分别为 23.36 mm 和 36.40 mm，均未达到 60 mm。盘内接触半径仍小于 90 mm。证据位于 `/data/dexcap-repro/benchmarks/wiping-strict-reset-{wipe-d,loaded-f}-thread1.json`。
+
+按实测法向力逐步补偿压力后，1121 动作标准回放得到 267 个内盘面接触周期，累计有效擦拭约 60.97 mm，机械臂碰撞计数 0。补偿后的最后 260 个采样都保持双手离桌夹持，其中 258 个采样的内盘面法向接触力超过 0.08 N。连续投影仍未达到完整笔画长度。生成轨迹和逐步数据见 `runs/wiping-palm-sustained-preload-e.json`。
+
+```bash
+python -m simulation.rollout data/derived/wiping-palm-sustained-preload-e.hdf5 \
+  --task wiping --output runs/wiping-palm-sustained-preload-e-rollout.json
+```
+
+
+保留原擦拭的切向目标，只在内盘面即将失去接触时小幅补偿左腕法向位移。标准回放在第 895 个动作完成向上的第一笔，触发时连续投影约 61.73 mm。接触连续保持到第 897 个动作，投影达到约 68.13 mm。双手在触发时分别相向夹住已离桌的盘子和海绵，机械臂碰撞计数为 0。反向回程仍未达到 60 mm 的连续阈值。逐动作计分和接触证据见 `/data/dexcap-repro/benchmarks/wiping-first-pass-reversal-diagnostic.json`。
+
+```bash
+python -m simulation.rollout data/derived/wiping-palm-gap-correction-f.hdf5 \
+  --task wiping --steps 897 --output runs/wiping-palm-first-stroke-rollout.json
 ```
 
 
