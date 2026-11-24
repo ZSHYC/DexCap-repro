@@ -52,6 +52,7 @@ Packaging 红银包装使用原始深度的 14.0 × 5.6 × 8.8 cm 包络。盒�
 
 - 渲染关键帧位于 `runs/dexcap-mujoco-replay-keyframes.png`。
 - 回放指标位于 `runs/wiping-measured-sponge-demo0.json` 和 `runs/packaging-measured-hinge-demo0.json`。
+- Packaging 的抓取、掉落和合盖最早见于第 21、26、123 步。包装物始终未接触盒底。每步的物体位置和盒口边界见 `runs/packaging-measured-hinge-contact-trace.json`。
 - 手部几何、持盘姿态和相机条件诊断位于 `runs/wiping-geometry-alignment.json`、`runs/wiping-demo0-plate-facing.json` 和 `runs/wiping-action-diagnostics-mujoco.json`。
 
 ## 复用权重评估
