@@ -214,6 +214,15 @@ python -m simulation.rollout data/derived/ball-collecting-scripted-reference.hdf
 
 在改正后的正式场景中，按约 1 mm 的插入间隔控制左腕，测得食指尖穿过固定柄孔平面约 7.1 mm，拇指尖穿过活动柄孔平面约 4.3 mm。两处网格的截面均在各自孔内，剪刀位移小于 0.4 mm。该阶段没有手与剪刀受力接触，中指也未入孔。记录在 `runs/scissor_left_two_pad_insertion_clear_tray.{py,json}`。
 
+同一插入动作已导出 71 个标准动作，`simulation.rollout` 在 `pro1` 上输出 `10000 × 6` 点云，未记录机械臂碰撞。动作到两指穿孔为止。
+
+```bash
+python -m simulation.rollout data/derived/scissor-left-through-loops-reference.hdf5 \
+  --task scissor-cutting --output runs/scissor-left-through-loops-rollout.json
+```
+
+后续分步加载让两个柄孔短暂在同一 2 ms 子步受力。锁定该姿态和直接向上提拉均失去双柄接触，剪刀未抬起。右手在前格内按压并拖动平放纸带时，只维持了 4 ms 指尖接触，纸带没有移到墙边。记录在 `runs/scissor_left_two_pad_{contact_latch,immediate_lift}.json` 和 `runs/scissor_right_paper_edge_present.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -225,7 +234,7 @@ python -m simulation.rollout data/derived/ball-collecting-scripted-reference.hdf
 
 自由瓶身的左手探针将腕跟踪误差降到约 1.55 mm，接触仍在瓶体同一侧。瓶体仍受茶盘承托，未达到离桌对向夹持。记录在 `runs/tea-leap-joint-clearance-wrap-probe.{py,json}`。
 
-另一条轨迹用左手侧推，让起始竖直的自由瓶身绕托盘接触点倾斜。瓶身倾到约 82° 时出现了拇指和食指的真实相向接触。瓶身随后沿托盘滑约 19 mm，食指接触丢失。记录在 `runs/tea-leap-tilt-pivot-grip-probe.{py,json}`。
+另一条轨迹用左手侧推，让起始竖直的自由瓶身绕托盘接触点倾斜。瓶身倾到约 82° 时出现了拇指和食指的真实相向接触。瓶身随后沿托盘滑约 19 mm，食指接触丢失。记录在 `runs/tea-leap-tilt-pivot-grip-probe.{py,json}`。 跟随瓶身平移时，相向接触最长只持续约 50 ms。跟踪瓶身相对姿态的试验在首个保持周期出现约 52 mm 左腕误差，未进入提瓶。
 
 ## 六个场景的渲染与接入验证
 
