@@ -48,11 +48,16 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         start_slide = data.qpos[slide.qposadr[0]]
         start_cap_z = data.xpos[metrics.cap_body, 2]
         one_turn = None
-
+        carriage = model.body("tea_thread_carriage").id
+        minimum_alignment = 1.0
         for _ in range(10000):
             data.xfrc_applied[metrics.cap_body, 5] = 0.007
             mujoco.mj_step(model, data)
             turns = metrics._turns(data)
+            cap_rotation = data.xmat[metrics.cap_body].reshape(3, 3)
+            carriage_rotation = data.xmat[carriage].reshape(3, 3)
+            alignment = (np.trace(cap_rotation.T @ carriage_rotation) - 1) / 2
+            minimum_alignment = min(minimum_alignment, alignment)
             if one_turn is None and turns >= 1:
                 one_turn = (
                     data.qpos[slide.qposadr[0]] - start_slide,
@@ -62,6 +67,7 @@ class MujocoTeaPreparingTest(unittest.TestCase):
             if turns >= 1.995:
                 break
         self.assertIsNotNone(one_turn)
+        self.assertGreater(minimum_alignment, np.cos(.05))
         self.assertAlmostEqual(one_turn[0], THREAD_PITCH, delta=0.00025)
         self.assertAlmostEqual(one_turn[1], THREAD_PITCH, delta=0.00025)
         self.assertTrue(data.eq_active[metrics.thread_weld])
@@ -75,7 +81,6 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         np.testing.assert_array_equal(data.qpos[cap_qpos:cap_qpos + 7], pose_before)
         np.testing.assert_array_equal(data.qvel[cap_dof:cap_dof + 6], velocity_before)
 
-        carriage = model.body("tea_thread_carriage").id
         start_separation = np.linalg.norm(
             data.xpos[metrics.cap_body, :2] - data.xpos[carriage, :2]
         )
@@ -97,6 +102,51 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         )
         self.assertGreater(separation, start_separation + 0.003)
         self.assertEqual(model.joint("tea_cap_free").type[0], mujoco.mjtJoint.mjJNT_FREE)
+
+    def test_cap_skirt_clears_bottle_neck_at_every_relative_angle(self):
+        model, _, metrics = self.make_scene()
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        skirt = [geom for geom in metrics.cap_geoms if model.geom(geom).name.startswith("tea_cap_wall_")]
+        skirt_bottom = min(data.geom_xpos[geom, 2] - model.geom_size[geom, 2] for geom in skirt)
+        axis_xy = data.xpos[metrics.bottle_body, :2]
+        skirt_radius = min(
+            np.linalg.norm(data.geom_xpos[geom, :2] - axis_xy) - model.geom_size[geom, 0]
+            for geom in skirt
+        )
+        # Bound every bottle-wall corner that overlaps the lowest skirt position.
+        neck_radius = max(
+            np.hypot(
+                np.linalg.norm(data.geom_xpos[geom, :2] - axis_xy) + model.geom_size[geom, 0],
+                model.geom_size[geom, 1],
+            )
+            for geom in metrics.bottle_geoms
+            if data.geom_xpos[geom, 2] + model.geom_size[geom, 2] >= skirt_bottom
+        )
+        self.assertGreater(skirt_radius - neck_radius, .002)
+
+    def test_partially_unscrewed_cap_holds_without_hand_torque(self):
+        model, data, metrics = self.make_scene(fix_bottle=True)
+        cap_axis_torque = data.xfrc_applied[metrics.cap_body]
+        cap_axis_torque[5] = 0.007
+        for _ in range(5000):
+            mujoco.mj_step(model, data)
+            if metrics._turns(data) >= 0.75:
+                break
+        opened_turns = metrics._turns(data)
+        self.assertGreaterEqual(opened_turns, 0.75)
+        self.assertTrue(data.eq_active[metrics.thread_weld])
+
+        cap_axis_torque[5] = 0
+        for _ in range(2000):
+            mujoco.mj_step(model, data)
+        paused_turns = metrics._turns(data)
+        self.assertGreaterEqual(paused_turns, opened_turns - 0.005)
+
+        cap_axis_torque[5] = -0.007
+        for _ in range(500):
+            mujoco.mj_step(model, data)
+        self.assertLess(metrics._turns(data), paused_turns - 0.1)
 
     def test_only_a_particle_physically_settled_inside_hollow_pot_counts(self):
         from simulation.mujoco_tea_preparing import POT_HEIGHT

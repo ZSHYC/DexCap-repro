@@ -26,6 +26,7 @@ TRAY_ROTATION = np.array([
 TRAY_FLOOR_HALF = 0.012
 TRAY_TOP = TABLE_HEIGHT + 2 * TRAY_FLOOR_HALF
 BOTTLE_RADIUS, BOTTLE_INNER_RADIUS, BOTTLE_HEIGHT = 0.030, 0.024, 0.105
+BOTTLE_NECK_RADIUS, BOTTLE_NECK_HEIGHT = 0.027, 0.014
 CAP_RADIUS, CAP_HALF_HEIGHT = 0.035, 0.014
 THREAD_PITCH, THREAD_TURNS = 0.002, 2.0
 THREAD_LIMIT = 2 * np.pi * THREAD_TURNS
@@ -95,9 +96,16 @@ def _add_bottle_cap_and_tea(spec, xy):
         size=[BOTTLE_INNER_RADIUS, .003, 0], rgba=[.10, .15, .14, 1],
         density=900, friction=[.8, .01, .001],
     )
+    bottle_color = [.10, .22, .19, 1]
+    shoulder_height = BOTTLE_HEIGHT - BOTTLE_NECK_HEIGHT
     _ring(
         bottle, "tea_bottle_wall", (BOTTLE_RADIUS + BOTTLE_INNER_RADIUS) / 2,
-        BOTTLE_HEIGHT, BOTTLE_RADIUS - BOTTLE_INNER_RADIUS, [.10, .22, .19, 1], 850,
+        shoulder_height, BOTTLE_RADIUS - BOTTLE_INNER_RADIUS, bottle_color, 850,
+    )
+    _ring(
+        bottle, "tea_bottle_neck", (BOTTLE_NECK_RADIUS + BOTTLE_INNER_RADIUS) / 2,
+        BOTTLE_NECK_HEIGHT, BOTTLE_NECK_RADIUS - BOTTLE_INNER_RADIUS, bottle_color, 850,
+        z_center=shoulder_height + BOTTLE_NECK_HEIGHT / 2,
     )
 
     carriage = bottle.add_body(
@@ -109,9 +117,11 @@ def _add_bottle_cap_and_tea(spec, xy):
         damping=.002, solref_limit=[.004, 1],
         solimp_limit=[.95, .99, .001, .5, 2],
     )
+    # Dry drag holds against gravity. Added inertia reduces slip in the cap weld.
     carriage.add_joint(
         name="tea_thread_hinge", type=mujoco.mjtJoint.mjJNT_HINGE,
-        axis=[0, 0, 1], limited=True, range=[0, THREAD_LIMIT], damping=.003,
+        axis=[0, 0, 1], limited=True, range=[0, THREAD_LIMIT],
+        damping=.003, frictionloss=.00016, armature=.00001,
     )
     carriage.add_geom(
         name="tea_thread_carriage_inertial", type=mujoco.mjtGeom.mjGEOM_SPHERE,

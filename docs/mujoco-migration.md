@@ -410,6 +410,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 持瓶和取镊子的判据要求相应一侧机器人手的两个不同指节或掌部构件产生相向的正法向力，而且器具已经离开桌面和托盘支撑。镊子在开盖后才能记录为已使用，归位时必须由托盘承托并已松手。回归测试覆盖没有手接触的器具位移。 [论文任务顺序](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
 
+官方开盖画面可见收窄的瓶颈。默认模型据此加入估计半径 27 mm、高 14 mm 的空心瓶颈。帽壁内半径与瓶颈多边形最大外接半径之间留有约 3.2 mm 净空。直接加入瓶颈暴露出帽体与螺杆支架的角度漂移。在沿螺纹正向施加 0.007 N·m 的固定瓶身试验中，原连接设置的最大角度差接近 180°，未完成退丝。按瓶身直径设置焊接角度权重、校准等效铰链惯量与约束阻抗，并加入 0.00016 N·m 的估计干摩擦后，角度差降至约 1.29°，轴向导程的最大误差约 0.00049 mm。停施力矩 4 s 回退约 0.00014 圈，反向力矩仍能回拧，继续正转后帽体实际脱离。八项备茶测试和双臂三步入口验证已通过。证据见 `runs/tea-thread-neck-coupling-{calibration,refined}.json` 与 `runs/tea-thread-neck-production-entry.json`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4) [MuJoCo 焊接约束](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#equality-weld)
+
+
 ## 六个场景的渲染与接入验证
 
 六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview-grasp-physics/six-mujoco-scenes.png` 和 `runs/task-scene-overview-grasp-physics/smoke.json`。Scissor Cutting 和 Tea Preparing 已验证关键机构的物理响应，仍缺整段双臂任务动作。
