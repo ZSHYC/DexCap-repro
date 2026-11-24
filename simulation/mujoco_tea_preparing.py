@@ -301,7 +301,7 @@ class TeaPreparingMetrics:
         for geom in self.left_hand_geoms | self.right_hand_geoms:
             link = model.geom(geom).name.partition("_hand_collision_")[2]
             # LEAP numbers four collision links per finger after the palm.
-            self.hand_digits[geom] = (int(link) - 1) // 4 if link else -1
+            self.hand_digits[geom] = (int(link.partition("_")[0]) - 1) // 4 if link else -1
         self.cap_support_geoms = self.tray_geoms | {
             g for g in geoms if model.geom(g).name == "table"
         }

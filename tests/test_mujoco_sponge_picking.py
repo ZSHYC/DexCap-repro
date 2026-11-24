@@ -17,10 +17,15 @@ class SpongePickingTest(unittest.TestCase):
         spec = mujoco.MjSpec()
         for side in ("left", "right"):
             for finger in range(2):
-                spec.worldbody.add_geom(
+                body = spec.worldbody.add_body(name=f"{side}_finger_{finger}")
+                body.add_geom(
                     name=f"{side}_hand_{finger}", type=mujoco.mjtGeom.mjGEOM_SPHERE,
                     pos=[0, finger, 1], size=[0.01],
                 )
+        spec.body("right_finger_0").add_geom(
+            name="right_hand_0_piece_1", type=mujoco.mjtGeom.mjGEOM_SPHERE,
+            pos=[0.02, 0, 1], size=[0.01],
+        )
         spec.worldbody.add_geom(
             name="table", type=mujoco.mjtGeom.mjGEOM_PLANE, pos=[0, 0, -0.03],
             size=[1, 1, 0.01],
@@ -48,6 +53,8 @@ class SpongePickingTest(unittest.TestCase):
         contacts[1].geom = (other, -1)
         self.assertFalse(metrics.update(sample)["sim_success"])
         contacts[1].geom = (second, -1)
+        self.assertFalse(metrics.update(sample)["sim_success"])
+        contacts[1].geom = (-1, model.geom("right_hand_0_piece_1").id)
         self.assertFalse(metrics.update(sample)["sim_success"])
         contacts[1].geom = (-1, second)
         self.assertTrue(metrics.update(sample)["sim_success"])

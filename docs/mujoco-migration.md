@@ -708,4 +708,11 @@ python -m simulation.rollout data/derived/wiping-palm-search-return-a.hdf5 \
 
 取实际约 30 N 自碰时的关节角进行静态几何复核，MuJoCo 在中指近端与远端的单凸包之间报告约 0.982 mm 侵入。导入的原始三角表面在同一姿态下最近约相距 5.94 mm。碰撞和显示网格来自完全相同的 STL、比例及姿态，凸碰撞点到远端原始表面约 6.43 mm，表明单凸包填充了原网格的凹区。原网格并非闭合实体，距离来自三角表面测量。记录见 `/data/dexcap-repro/benchmarks/wiping-middle-collision-geometry.json`。
 
+LEAP V1 食指、中指和无名指共用的 MCP 与 DIP 碰撞网格现各由两块凸体构成。离线生成沿 STL 的三角形边进行精确切片，再对两个半区分别求凸包。MCP 切面沿局部 `x-y` 的投影中点，DIP 切面沿局部 `y` 的投影中点。每块凸体包含对应的所有裁切三角面，双手沿用发布模型的网格比例、左右镜像与关节位置。三个实测姿态的原单凸包假穿透为 0.98、1.56 和 4.45 mm，分块后间隙分别为 4.85、4.52 和 1.54 mm。同一组样本中，中指 DIP 与无名指指尖的有效接触仍报告约 1.89 mm 碰撞深度。渲染继续使用原模型，Wiping 与 Sponge Picking 以不同物理连杆上的相向接触认定夹持。生成脚本与测试数据见 `/data/dexcap-repro/benchmarks/leap-middle-triangle-slices.py` 和 `/data/dexcap-repro/benchmarks/leap-middle-slices/validation.json`。
+
+六个场景均通过标准入口验证，输出 `10000 × 6` 点云，49 项 MuJoCo 测试通过。Wiping 重放 273 步撑盘动作，无物理警告或双臂碰撞。Ball Collecting 的 265 步参考成功将球抓起后释放到篮内。红银包装的原 610 步动作能够关盖，当前回放中物体未抓起或入盒。剪纸与备茶各验证三步入口。记录在 `runs/wiping-leap-finger-parts-high-tilt-rollout.json` 与 `runs/leap-finger-parts-*-rollout.json`。
+
+Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑增加 12 mm 上移目标后，标准入口回放实测抬升 310.5 mm，通过 300 mm 任务判据，且无物理警告或双臂碰撞。轨迹见 `data/derived/sponge-picking-finger-parts-lift-12mm.hdf5`，结果见 `runs/leap-finger-parts-sponge-lift-12mm-rollout.json`。
+
+
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。

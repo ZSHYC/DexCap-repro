@@ -152,18 +152,24 @@ class MujocoWipingTest(unittest.TestCase):
     def test_sponge_lift_requires_clearing_table_support(self):
         spec = base_spec()
         for finger in range(2):
-            spec.worldbody.add_geom(
+            body = spec.worldbody.add_body(name=f"left_finger_{finger}")
+            body.add_geom(
                 name=f"left_hand_{finger}", type=mujoco.mjtGeom.mjGEOM_SPHERE,
                 pos=[0, 0, 1 + finger], size=[0.01],
             )
+        spec.body("left_finger_0").add_geom(
+            name="left_hand_0_piece_1", type=mujoco.mjtGeom.mjGEOM_SPHERE,
+            pos=[0.02, 0, 1], size=[0.01],
+        )
         add_wiping_scene(spec)
         model = spec.compile()
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
         metrics = WipingMetrics(model)
         hits = [
-            SimpleNamespace(geom=(geom, -1), flex=(-1, metrics.sponge_flex), frame=np.array([1., 0, 0]))
-            for geom in (*metrics.left_hand_geoms, model.geom("table").id)
+            SimpleNamespace(geom=(model.geom(name).id, -1), flex=(-1, metrics.sponge_flex),
+                            frame=np.array([1., 0, 0]))
+            for name in ("left_hand_0", "left_hand_0_piece_1", "table")
         ]
         vertices = data.flexvert_xpos.copy()
         vertices[:, 2] += 0.02
@@ -174,6 +180,8 @@ class MujocoWipingTest(unittest.TestCase):
         sample.ncon -= 1
         self.assertFalse(metrics.update(sample)["sponge_grasped"])
         hits[1].frame *= -1
+        self.assertFalse(metrics.update(sample)["sponge_grasped"])
+        hits[1].geom = (model.geom("left_hand_1").id, -1)
         self.assertTrue(metrics.update(sample)["sponge_grasped"])
 
     def test_wipes_are_measured_in_a_vertical_plate_frame(self):

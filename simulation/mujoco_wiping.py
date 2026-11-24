@@ -200,9 +200,9 @@ class WipingMetrics:
             if not touching:
                 continue
             if first in hand_geoms:
-                hits.append((first, contact.frame[:3]))
+                hits.append((self.model.geom_bodyid[first], contact.frame[:3]))
             elif second in hand_geoms:
-                hits.append((second, -contact.frame[:3]))
+                hits.append((self.model.geom_bodyid[second], -contact.frame[:3]))
         return any(
             first != second and np.dot(a, b) < -0.25
             for (first, a), (second, b) in combinations(hits, 2)

@@ -274,13 +274,17 @@ class ScissorCuttingMetrics:
             if model.geom(geom).name in ("table", "room_floor_surface")
         }
         left_links = {
-            int(model.geom(geom).name.rsplit("_", 1)[1]): geom
+            model.geom(geom).name.removeprefix("left_hand_collision_"): geom
             for geom in self._geoms("left_hand_collision_")
         }
-        self.left_index = [left_links[i] for i in range(1, 5) if i in left_links]
-        self.left_middle = [left_links[i] for i in range(5, 9) if i in left_links]
-        self.left_thumb = {left_links[i] for i in range(13, 17) if i in left_links}
-        self.left_fingers = set(self.left_index + self.left_middle)
+        # A whole-link mesh measures passage even when its collision mesh is split.
+        left_surface = {int(link): geom for link, geom in left_links.items() if link.isdecimal()}
+        self.left_index = [left_surface[i] for i in range(1, 5) if i in left_surface]
+        self.left_middle = [left_surface[i] for i in range(5, 9) if i in left_surface]
+        self.left_thumb = {left_surface[i] for i in range(13, 17) if i in left_surface}
+        self.left_fingers = {
+            geom for link, geom in left_links.items() if 1 <= int(link.partition("_")[0]) <= 8
+        }
         self.fixed_opening = (
             model.geom("scissor_fixed_handle_top").id,
             model.geom("scissor_fixed_handle_bottom").id,
@@ -292,7 +296,7 @@ class ScissorCuttingMetrics:
             THUMB_OPENING_XY / 2,
         )
         self.right_pads = {
-            geom: int(model.geom(geom).name.rsplit("_", 1)[1]) >= 13
+            geom: int(model.geom(geom).name.removeprefix("right_hand_collision_").partition("_")[0]) >= 13
             for geom in self._geoms("right_hand_collision_")
         }
         self.right_pads.update(dict.fromkeys(self._geoms("right_hand_palm_collision_"), False))

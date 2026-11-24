@@ -20,6 +20,7 @@ _LEAP_FORCE_LIMIT = 0.95
 _LEAP_REFLECTED_INERTIA = 0.0005
 _HAND_MESHES = Path(__file__).resolve().parents[1] / "DexCap/STEP2_build_dataset/leap_hand_mesh"
 _PALM_PARTS = Path(__file__).with_name("assets") / "leap_v1_palm_parts.json"
+_FINGER_PARTS = Path(__file__).with_name("assets") / "leap_v1_finger_parts.json"
 # Provisional geometry registration: the released LEAP v1 Franka palm-upper
 # mates opposite flange normals; these palm mesh centers retain a 6 mm standoff.
 _PALM_MOUNT_QUATERNION = (0.0, 2**-0.5, 2**-0.5, 0.0)
@@ -67,15 +68,18 @@ def _split_hand_geometry(hand):
         )
 
 
-def _add_palm_collision_parts(hand):
-    palm = hand.geom("hand_collision_0")
-    scale = hand.mesh(palm.meshname).scale.copy()
-    # Reuse the URDF pose and contact parameters, including the left hand's mirror.
-    contact_fields = (
+def _collision_properties(geom):
+    fields = (
         "type", "pos", "quat", "group", "rgba", "contype", "conaffinity",
         "condim", "friction", "solref", "solimp", "solmix", "margin", "gap", "priority",
     )
-    geometry = {name: getattr(palm, name) for name in contact_fields}
+    return {name: getattr(geom, name) for name in fields}
+
+
+def _add_palm_collision_parts(hand):
+    palm = hand.geom("hand_collision_0")
+    scale = hand.mesh(palm.meshname).scale.copy()
+    geometry = _collision_properties(palm)
     for index, part in enumerate(json.loads(_PALM_PARTS.read_text())):
         mesh = hand.add_mesh(
             name=f"palm_part_{index}", scale=scale,
@@ -86,6 +90,33 @@ def _add_palm_collision_parts(hand):
         else:
             palm.parent.add_geom(
                 name=f"hand_palm_collision_{index}", meshname=mesh.name, **geometry,
+            )
+
+
+def _add_finger_collision_parts(hand):
+    parts_by_file = json.loads(_FINGER_PARTS.read_text())
+    mesh_names = {}
+    for geom in list(hand.geoms):
+        if not geom.name.startswith("hand_collision_") or geom.name == "hand_collision_0":
+            continue
+        mesh = hand.mesh(geom.meshname)
+        parts = parts_by_file.get(Path(mesh.file).name)
+        if parts is None:
+            continue
+        if mesh.name not in mesh_names:
+            mesh_names[mesh.name] = [
+                hand.add_mesh(
+                    name=f"{mesh.name}_part_{i}", scale=mesh.scale.copy(),
+                    uservert=part["vertices"], userface=part["faces"],
+                ).name for i, part in enumerate(parts)
+            ]
+
+        # Keep the imported surface available for full-link cross-section measurements.
+        geometry = _collision_properties(geom)
+        geom.contype = geom.conaffinity = 0
+        for i, name in enumerate(mesh_names[mesh.name]):
+            geom.parent.add_geom(
+                name=f"{geom.name}_piece_{i}", meshname=name, mass=0, **geometry,
             )
 
 
@@ -148,6 +179,7 @@ def _load_hand(side):
 
     _split_hand_geometry(hand)
     _add_palm_collision_parts(hand)
+    _add_finger_collision_parts(hand)
     hand.body("palm_lower").add_site(name="wrist", size=(0.006,))
     return hand
 

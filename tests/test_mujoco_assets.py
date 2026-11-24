@@ -15,6 +15,34 @@ ASSETS = Path(__file__).resolve().parents[1] / "data/mujoco_menagerie"
 
 @unittest.skipIf(mujoco is None, "mujoco is not installed")
 class MujocoRobotAssetsTest(unittest.TestCase):
+    def test_finger_collision_pieces_clear_concavities_and_retain_contact(self):
+        from simulation.mujoco_assets import _load_hand
+
+        positions = (
+            ([-.1530701, -.0733279, -.0837274, 0, 0, 0, 0, 0], None),
+            ([-.3144989, -1.0230371, -.4721639, -.366, 0, 0, 0, 0], None),
+            ([-.1409182, -.0970604, -.1112902, .2381753,
+              -.308781, -.3465988, -.0846278, -.2483467], (7, 12)),
+        )
+        for side in ("right", "left"):
+            model = _load_hand(side).compile()
+            data = mujoco.MjData(model)
+            qpos = [model.joint(f"hand_{i}").qposadr[0] for i in range(4, 12)]
+            body = {
+                i: model.jnt_bodyid[model.joint(f"hand_{i - 1}").id] for i in (5, 7, 12)
+            }
+            for pose, (angles, expected) in enumerate(positions):
+                with self.subTest(side=side, pose=pose):
+                    data.qpos[qpos] = angles
+                    mujoco.mj_forward(model, data)
+                    body_pairs = [
+                        set(model.geom_bodyid[np.asarray(c.geom)])
+                        for c in data.contact[:data.ncon] if c.dist < 0
+                    ]
+                    self.assertNotIn({body[5], body[7]}, body_pairs)
+                    if expected is not None:
+                        self.assertIn({body[i] for i in expected}, body_pairs)
+
     def test_distal_joint_stop_resists_a_servo_strength_external_load(self):
         from simulation.mujoco_assets import _load_hand
 
@@ -75,7 +103,7 @@ class MujocoRobotAssetsTest(unittest.TestCase):
             self.assertAlmostEqual(model.body(f"{side}_fingertip").mass[0], 0.016)
             self.assertAlmostEqual(model.body(f"{side}_thumb_fingertip").mass[0], 0.049)
             self.assertEqual(sum(
-                model.geom(index).name.startswith(f"{side}_hand_collision_")
+                model.geom(index).name.removeprefix(f"{side}_hand_collision_").isdecimal()
                 for index in range(model.ngeom)
             ), 17)
             wrist = model.site(WRIST_SITES[side])

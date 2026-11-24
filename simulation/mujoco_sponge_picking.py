@@ -33,6 +33,7 @@ class SpongePickingMetrics:
         self.vertices = slice(start, start + model.flex_vertnum[self.flex])
         self.initial_height = model.flex_vert[self.vertices, 2].mean()
         self.table = model.geom("table").id
+        self.link_by_geom = model.geom_bodyid
         self.hands = [
             {geom for geom in range(model.ngeom) if model.geom(geom).name.startswith(f"{side}_hand_")}
             for side in ("right", "left")
@@ -48,9 +49,9 @@ class SpongePickingMetrics:
                 for contact in contacts:
                     first, second = contact.geom
                     if first in hand:
-                        normals.append((first, contact.frame[:3]))
+                        normals.append((self.link_by_geom[first], contact.frame[:3]))
                     elif second in hand:
-                        normals.append((second, -contact.frame[:3]))
+                        normals.append((self.link_by_geom[second], -contact.frame[:3]))
                 if normals:
                     grips.append(normals)
             if len(grips) == 1 and any(
