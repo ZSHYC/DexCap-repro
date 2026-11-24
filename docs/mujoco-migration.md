@@ -504,6 +504,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 放盖后减慢右手接近并在高位停稳，沿托盘把盖子水平推移约 16.8 mm 后再次撤手。盖子仍获托盘支撑，`cap_on_right=false`。继续沿该方向的候选会让食指接触茶壶外壁。改沿茶壶外侧接近，推程采样没有形成有效施力，盖子仍在托盘中段。记录见 `runs/tea-threaded-tray-push-slow.json` 和 `runs/tea-threaded-tray-push-pot-arc.json`。
 
+直接从同一真实提盖状态在高位绕过茶壶，再向托盘右侧下降。第一条路线使盖子落到工具托槽，调整落点后，右手最后相向持盖时盖心高约 119.6 mm，下降过程中盖子在预定松指前滑脱，最后由托盘承托，脱手静置于 `[0.5041, -0.0763, 0.0289] m`，`cap_on_right=true`。无 MuJoCo 警告或手关节越限。该序列从同一满载瓶仍上螺纹的实际积分状态接续，瓶身全程由试验夹具固定。记录见 `runs/tea-threaded-to-right-{direct,open-pocket}.json`。
+
 左臂以真实接触把默认满载自由瓶推到托盘壁，最大支撑倾角约 101.43°，壁面峰值约 9.46 N。现行手部参数下，进一步合拢只让拇指碰到瓶身，未建立相向夹持。两手每个 2 ms 物理子步的实测关节均在 URDF 范围内。试验及腕部中点再推进 10 mm 的对照见 `runs/tea-loaded-xneg-rim-ab24e72{-telemetry,-midpoint40-telemetry}.json`。
 
 左手食指改对准托盘内的上半瓶壁，目标接触位置高约 44.5 mm。先垂直抬腕 50 mm 再旋转的完整路径仍使食指网格穿入托盘底面约 47.9 mm，该路线未送进物理控制。记录见 `runs/tea-loaded-b6d8e6d-upperwall-lift-then-rotate.json`。
@@ -635,5 +637,7 @@ python -m simulation.rollout data/derived/wiping-palm-search-return-a.hdf5 \
 在现行止挡模型上，左手改变外缘支点后，对侧盘底间隙可稳定保持约 11.2 mm。撤开右食指并先让右拇指接触后，接触可维持约 1.75 s。把食指在接近前预先合拢到约八成、仍留有净空时，最终获得连续约 5.35 s 的双指相向受力，并覆盖左手完整撤离。盘仍由桌面承托。绕盘沿调整腕姿约 8° 后，拇指接触法向仍主要朝下，腕部上抬时两指脱开，未形成自由抬盘。记录见 `/data/dexcap-repro/benchmarks/wiping-right-plate-lift-stop-{opposed-refit,thumb-first-settle,thumb-first-preshape,oriented-lift}-trace.json`。
 
 继续从盘沿下方接近时，完整拇指侧面先撞到外侧盘壁。最终实测法向力约 11.1 N，竖直分量约为向下 1.3 N，盘仍由桌面承托。在这次左支撑姿态，半径 115–125 mm 处的盘下净空约 30 mm。搜索 800 个腕姿与接触位置后，候选里拇指网格的最小竖直投影厚度约 38.6 mm。出现向上法向的候选同时与盘体穿入约 11.6 mm 或更多。物理轨迹见 `/data/dexcap-repro/benchmarks/wiping-right-plate-lift-stop-lower-rim-route-v2-trace.json`。
+
+改用左手压盘外缘，以自由盘与桌面的实际接触作支点。右侧外缘离桌间隙峰值约 46.7 mm，连续 4.0 s 超过 40 mm。273 动作独立重放的末状态倾角约 7.94°，半径 115 mm 处约有 41.76 mm 净空，半径 125 mm 处为 41.95–44.41 mm，桌面仍有七个实际支点接触且无物理警告。当前已复现撑盘姿态，右手接盘需在这段真实支撑状态上执行。记录见 `/data/dexcap-repro/benchmarks/wiping-left-high-tilt-{support-trace,reference-replay}.json`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
