@@ -52,12 +52,21 @@ class MujocoPackagingTest(unittest.TestCase):
                     mujoco.mj_step(model, data)
                 self.assertTrue(np.isfinite(data.qpos).all())
 
-    def test_red_box_uses_measured_visible_envelope(self):
-        model, _, _ = self.make_scene()
-        np.testing.assert_allclose(
-            model.geom("packaging_object_geom").size,
-            [0.070, 0.028, 0.044],
-        )
+    def test_red_carton_has_a_thin_hanger_with_an_open_slot(self):
+        model, data, metrics = self.make_scene()
+        body_geom = model.geom("packaging_object_geom").id
+        np.testing.assert_allclose(model.geom_size[body_geom], [0.061, 0.017, 0.047])
+        self.assertEqual(len(metrics.object_geoms), 5)
+        self.assertAlmostEqual(model.body_mass[metrics.object_body], 0.12)
+
+        position = data.xpos[metrics.object_body]
+        rotation = data.xmat[metrics.object_body].reshape(3, 3)
+        direction = rotation[:, 1].copy()
+        for x, expected_hit in ((0.078, False), (0.092, True)):
+            origin = position + rotation @ [x, -0.04, -0.005]
+            geom = np.array([-1], dtype=np.int32)
+            distance = mujoco.mj_ray(model, data, origin, direction, None, 1, -1, geom)
+            self.assertEqual(distance >= 0 and geom[0] in metrics.object_geoms, expected_hit)
 
     def test_folded_cloth_deforms_and_requires_box_support_for_placement(self):
         model, data, metrics = self.make_scene("yellow-cloth")

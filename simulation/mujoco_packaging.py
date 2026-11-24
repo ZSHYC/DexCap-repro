@@ -28,8 +28,7 @@ LID_TAB_ANGLE = np.deg2rad(26)
 LID_TAB_HALF_XY = (0.145, 0.035)
 LID_CLOSED_TOLERANCE = np.deg2rad(6)
 DEFAULT_OBJECT = "red-box"
-RED_BOX_YAW = np.deg2rad(64)
-RED_BOX_HALF_SIZE = (0.070, 0.028, 0.044)
+RED_BOX_YAW = np.deg2rad(61.5)
 CARDBOARD = (0.62, 0.42, 0.22, 1.0)
 RED_BOX_TOP_COLOR = (0.93, 0.20, 0.06, 1.0)
 WORKSPACE_CENTER = np.array([0.4, 0.0])
@@ -179,8 +178,6 @@ def _object_definition(object_name):
         return parts, -lower[2]
     registry = UNSEEN_PRIMITIVES if object_name in UNSEEN_PRIMITIVES else PACKAGING_OBJECTS
     kind, size, color, _ = registry[object_name]
-    if object_name == DEFAULT_OBJECT:
-        size = RED_BOX_HALF_SIZE
     return ((kind, size, (0, 0, 0), color, (0, 0, 0, 1)),), size[2]
 
 
@@ -204,6 +201,27 @@ def _add_cloth(spec, xy):
         """
     )
     spec.attach(child, frame=spec.worldbody.add_frame(name="packaging_cloth_scene"), prefix="")
+
+
+def _add_red_box_hanger(body, rgba):
+    # Outside and slot bounds in the carton frame from frame_2710.
+    x0, x1, z0, z1 = 0.061, 0.099, -0.046, 0.037
+    slot_x0, slot_x1, slot_z0, slot_z1 = 0.072, 0.084, -0.020, 0.008
+    thickness = 0.0014
+    solid_area = (x1 - x0) * (z1 - z0) - (slot_x1 - slot_x0) * (slot_z1 - slot_z0)
+    density = 0.002 / (solid_area * thickness)
+    panels = (
+        (x0, slot_x0, z0, z1),
+        (slot_x1, x1, z0, z1),
+        (slot_x0, slot_x1, z0, slot_z0),
+        (slot_x0, slot_x1, slot_z1, z1),
+    )
+    for i, (a, b, c, d) in enumerate(panels):
+        _add_geom(
+            body, name=f"packaging_object_hanger_{i}", kind="box",
+            size=[(b - a) / 2, thickness / 2, (d - c) / 2],
+            pos=[(a + b) / 2, -0.019, (c + d) / 2], rgba=rgba, density=density,
+        )
 
 
 def _add_object(spec, xy, object_name):
@@ -235,7 +253,8 @@ def _add_object(spec, xy, object_name):
             )
     else:
         kind, size, pos, color, quat = definitions[0]
-        density = 0.12 / _geom_volume(kind, size)
+        mass = 0.118 if object_name == DEFAULT_OBJECT else 0.12
+        density = mass / _geom_volume(kind, size)
         _add_geom(
             body,
             name="packaging_object_geom",
@@ -247,6 +266,7 @@ def _add_object(spec, xy, object_name):
             density=density,
         )
         if object_name == DEFAULT_OBJECT:
+            _add_red_box_hanger(body, color)
             body.add_geom(
                 name="packaging_object_top_visual",
                 type=mujoco.mjtGeom.mjGEOM_BOX,
