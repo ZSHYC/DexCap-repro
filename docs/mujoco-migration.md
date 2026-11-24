@@ -886,6 +886,13 @@ python -m simulation.rollout data/derived/packaging-red-carton-complete-mujoco-r
   --task packaging --object red-box --output runs/packaging-red-carton-complete-rollout.json
 ```
 
+按论文的闭盖协作步骤，从同一平放入盒前缀继续让右食指抵住外侧箱壁，同时由左手拉折舌并合盖。首次从侧壁稳盒时，盖板在约 67.5° 处触及右中指。用同一实体盖板和折舌扫掠筛选右手姿态后，8,364 步标准回放从默认摆放完成推盒、入盒、右手稳盒、左手合盖和两手撤离。箱壁与右食指、盖板与左手同时持续受力 2,093 个 2 ms 子步，为 4.186 s。右手对箱壁峰值约 1.55 N，右手全程未触盖，机械臂碰撞、双手碰撞和物理警告均为 0。最终 `sim_success=true`。标准回放和逐个物理子步的受力位于数据盘 `benchmarks/runs/red-box-closing-right-brace-standard{,-audit}.json`。 [论文动作顺序](https://arxiv.org/html/2403.07788v2#A1.SS6)
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-bimanual-closure-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-red-carton-bimanual-closure-rollout.json
+```
+
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
 对现有工具另试中指与拇指夹持，在动力学回放中有 296 个 2 ms 子步出现相向接触，最佳同时法向力约 0.103 和 0.030 N，托架仍承重，随后拇指脱开。在默认镊子上从侧面尝试滚动未建立手部接触，工具仍由原托架支撑。证据见 `runs/tea-convex47-alt-digit-physical.json` 和 `runs/tea-tweezers-top-tangent-production-cradle-roll-a.json`。
@@ -900,5 +907,13 @@ python -m simulation.rollout data/derived/packaging-red-carton-complete-mujoco-r
 保留右食指接触点，以腕工具轴旋转约 −15° 后，在该镊子摆放上得到 3 条完整手部静态无干涉路径。筛选覆盖高位预姿、下降和沿 −Y 移动约 25 mm 的 51 个位置。备茶木托、托盘和镊子支撑未在该静态试验中移除。物理回放用于确认负载下的接触和离架。静态数据见 `runs/tea-89a2f80-index-pivot-static.json`。 两次真实推移后衔接这条腕位路线，标准 OSC 的预抓和下降末端误差分别约 17.18 和 18.15 mm。手与镊子接触力为 0，后续外推未执行，木托仍承担约 0.0923 N。记录见 `runs/tea-89a2f80-index-pivot-physical.json`。受限关节力矩接续首先保存从默认摆放所得的第一段工具状态，供复用的积分状态见 `runs/tea-pivot-joint-pd-stage1-first-slide-settled.npz`。 第二次推移的全场景积分状态也已保存为 `runs/tea-pivot-joint-pd-stage2-second-slide-settled.npz`。在该实际姿态上，原 −15° 路线的拇指末端与桌面静态侵入约 3.40 mm。调整拇指后静态扫掠通过，实际接近出现约 0.423 rad 的最大关节跟踪差，右食指没有给镊子施力。记录见 `runs/tea-pivot-joint-thumb-clear.json`。 根据实际关节误差限速后，最大跟踪差降至约 0.060 rad。镊子在完整到位前仍在木托内移动，手未给镊子施加载荷。记录见 `runs/tea-pivot-joint-rate-follow.json`。
 
 从备茶第一次推移后的实测姿态出发，重新进入镊子高端，使右食指—工具接触峰值达 0.316 N。后续保载超过 2.39 s，末端木托仍承担约 0.232 N，茶盘底载荷为零。该腕位下拇指无法接触工具，尚无相向夹持或离架。轨迹和接续积分状态位于 `runs/tea-pivot-joint-stage1-{grip,pinch}.json` 和相应的 `*.npz`。
+
+用当前生产模型重新从满载自由瓶和上紧的瓶盖起步。左手先在托盘承重下建立相向夹持，右手直接从帽顶拖动。第六轮达到 1.9955 圈并真实解除螺纹连接，末态左食指和拇指对瓶分别约 0.373 N 和 0.449 N，瓶身只平移约 3.82 mm。受限关节控制全程无 MuJoCo 警告或手指越限。脚本、动作和实际退丝积分状态位于 `/data/dexcap-repro/benchmarks/tea-bottle-native/` 下的 `cap-top-from-pregrasp.py`、`tea-production-cap{,-actions,-released}.*`。当前生产模型中的瓶身全程自由。
+
+从同一实测退丝状态，左右两手先撤开后按当前盖姿重拟合。最初的右手夹持上升约 4.65 mm 即滑脱。使用两指载荷反馈继续试验后，盖子离开瓶身并在相向夹持下累计抬高约 29.18 mm，随后失去抓持。记录分别在 `tea-raised-layout-left-raised-cap-lift.json` 和 `tea-production-cap-tactile-lift.json`。直接把受限关节轨迹的实测腕位用于标准 OSC 时，前 375 步未产生有效旋转。加 3 mm 顶压补偿后，180 步从闭盖转约 0.0995 圈，无机械臂或双手碰撞及物理警告。该补偿只用于标准转换试验。
+
+剪刀重排试验中，在线跟随固定柄网格使右中指首次与原有食指托力同时出现，中指约 0.079 N、食指约 0.112 N。随后限制在同一段柄面反馈，该阶段中指载荷峰值约 0.034 N，末关节距上限约 0.014 rad。剪刀仍由托盘支撑，该右手试验用于寻找可重排的抓法。记录位于 `runs/scissor_89a2f80_moving_handle_underlift/dual-ring-samehand-middle-{online-servo,force-hold-continue}.json`。
+
+擦盘的第二笔试验先撤掉原先向下压住海绵的左无名指接触。17 个约 50 ms 周期内，左中指和拇指仍各约有 4.3 N，双手继续同时持盘和海绵，末段连续 5 个周期无名指载荷为零。随后按实测状态尝试让无名指从海绵下侧进入，扫掠仍接触柔性海绵或其他刚体，未执行该路径。记录位于 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/stroke-support/left-return-ring-{release,under-from-release-plan}.json`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
