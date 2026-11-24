@@ -356,6 +356,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 另一次从分离悬停开始，让右食指先真实承托固定柄杆，再同步推进左手。右手支撑只能保持约 0.10 s，左食指最终以完整截面进入固定环，活动环随剪刀倾转，拇指仍未通过。组合动作中剪刀约移动 1.15 mm，右手峰值接触力约 4.66 N。记录见 `runs/scissor_current_oval_right_brace.{py,json}`。
 
+
+从实际入固定环的状态继续复核时，发现右手指节与左食指仍有约 3.8 mm 的交叠。改为右手完全撤离后才推进左手，实际采样的手间交叠降至零，但旧左手关节路径插入桌面约 38.8 mm，未重新取得入环。标准回放现记录 `hand_collision_steps` 和 `hand_max_penetration_m`，分别表示发生双手穿透的控制采样数和最大穿透深度，用于诊断接近路径。轨迹见 `runs/scissor_current_oval_{index_first_thumb,retreat_then_index}.json`，回放入口验证见 `runs/scissor-hand-collision-telemetry-entry.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的木质托槽、空心瓶和茶壶、弹簧镊子以及可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际茶盘或木槽接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -427,6 +430,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 根据官方视频侧视图的三条模压环带，正式瓶身采用 2 mm 壁厚、连接瓶颈的肩部及三条可接触环肋。环带高度按画面比例估计，塑料密度和壁厚暂无实物测量。计算出的空瓶身质量约 65.5 g，早期厚壁模型约 96.2 g。夹具将瓶身以 150° 倾角放在壶口上方，合盖时 8 粒全部留在瓶或盖内，初始开盖时 8 粒经瓶口进入壶内，无侧壁漏出。此前按球半径缩小壶内判定区域会遗漏壶底实际支撑的两粒。现在按颗粒中心是否在壶内、实际壶接触和速度判定，凸多边形边角的颗粒也能计入。默认双臂入口输出点云且无物理警告。标准几何记录见 `runs/tea-bottle-production-ribbed-transfer.json` 与 `runs/tea-bottle-ribbed-production-entry.json`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
 
 在新版瓶身的固定瓶体夹具上复跑右手换握动作，实际帽体峰值约 0.907 圈，轴向约 1.814 mm，结束时约 0.904 圈。自由瓶身的初步合拢试验曾出现瞬时离托盘，未形成相向夹持，不算抬瓶。记录见 `runs/tea-live-cap-regrasp-ribbed-probe.json` 和 `runs/tea-bottle-material-ribbed-physical-close.json`。
+
+
+把瓶内填充从 8 颗球换成 63 块估计尺寸的茶叶团是独立试验。装料质量由 12 g 增至约 25.9 g，站立时最高粒中心约 27 mm。150° 倾角下，封盖留住全部 63 粒。开盖后，63 粒最终都在壶中，其中只有 30 粒直接触壶，其它由茶粒层承托。正式计数现在沿壶内受支持的颗粒接触链判断，包含稳定叠放的茶粒。默认场景仍使用 8 粒球，较高填充量、叶团尺寸和机械臂动作仍待与视频校准并联调。数据见 `runs/tea-filled-bottle-transfer-sensitivity.json` 和 `runs/tea-filled-bottle-pot-support.json`。
 
 
 ## 六个场景的渲染与接入验证

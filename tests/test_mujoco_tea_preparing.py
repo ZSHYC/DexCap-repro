@@ -179,6 +179,31 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         self.assertTrue(info["tea_deposited"])
         self.assertFalse(info["sim_success"])
 
+    def test_grain_resting_on_other_grains_in_the_pot_counts(self):
+        from simulation.mujoco_tea_preparing import TEA_RADIUS
+
+        model, data, metrics = self.make_scene()
+        pot_pos = data.xpos[metrics.pot_body].copy()
+        pot_rotation = data.xmat[metrics.pot_body].reshape(3, 3).copy()
+        circle = 2 * TEA_RADIUS / np.sqrt(3)
+        bottom = [
+            [circle * np.cos(angle), circle * np.sin(angle), .013]
+            for angle in np.arange(3) * 2 * np.pi / 3
+        ]
+        top = [0, 0, .013 + np.sqrt((2 * TEA_RADIUS) ** 2 - circle ** 2)]
+        for joint, local in zip(metrics.tea_joints, [*bottom, top]):
+            qpos = model.jnt_qposadr[joint]
+            dof = model.jnt_dofadr[joint]
+            data.qpos[qpos:qpos + 7] = [*(pot_pos + pot_rotation @ local), 1, 0, 0, 0]
+            data.qvel[dof:dof + 6] = 0
+        mujoco.mj_forward(model, data)
+        for _ in range(500):
+            mujoco.mj_step(model, data)
+        top_geom = {metrics.tea_geoms[3]}
+        self.assertFalse(metrics._contact(data, top_geom, metrics.pot_geoms))
+        self.assertTrue(metrics._contact(data, top_geom, set(metrics.tea_geoms[:3])))
+        self.assertEqual(metrics._tea_deposited_count(data), 4)
+
     def test_released_cap_can_rest_on_table_next_to_right_rim(self):
         model, data, metrics = self.make_scene()
         data.eq_active[metrics.thread_weld] = 0

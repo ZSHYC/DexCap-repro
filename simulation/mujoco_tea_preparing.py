@@ -363,7 +363,7 @@ class TeaPreparingMetrics:
 
     def _tea_deposited_count(self, data):
         rotation = data.xmat[self.pot_body].reshape(3, 3)
-        count = 0
+        settled_inside = set()
         for geom, body, joint in zip(self.tea_geoms, self.tea_bodies, self.tea_joints):
             local = rotation.T @ (data.xpos[body] - data.xpos[self.pot_body])
             inside = (
@@ -371,10 +371,28 @@ class TeaPreparingMetrics:
                 and TEA_RADIUS - .003 <= local[2] <= POT_HEIGHT - TEA_RADIUS
             )
             dof = self.model.jnt_dofadr[joint]
-            linear_settled = np.linalg.norm(data.qvel[dof:dof + 3]) < .12
-            if inside and self._contact(data, {geom}, self.pot_geoms) and linear_settled:
-                count += 1
-        return count
+            if inside and np.linalg.norm(data.qvel[dof:dof + 3]) < .12:
+                settled_inside.add(geom)
+
+        if not settled_inside:
+            return 0
+
+        supported = set()
+        grain_contacts = []
+        for contact in data.contact[:data.ncon]:
+            pair = {contact.geom1, contact.geom2}
+            if pair & self.pot_geoms:
+                supported.update(pair & settled_inside)
+            elif pair <= settled_inside:
+                grain_contacts.append(pair)
+
+        # Upper grains in a pile are supported through lower grains.
+        while supported:
+            reached = supported.union(*(pair for pair in grain_contacts if pair & supported))
+            if reached == supported:
+                break
+            supported = reached
+        return len(supported)
 
     def update(self, data: mujoco.MjData) -> dict:
         cap_turns = self._turns(data)

@@ -91,11 +91,15 @@ class MujocoScene:
         self.metrics = metrics_type(self.model, *metrics_args)
         self.physics_step = getattr(self.metrics, "physics_step", None)
         self.camera = DexCapCamera(self.model, camera)
-        self.arm_geoms = np.array([
-            (self.model.geom(index).name or "").startswith(("right_arm_", "left_arm_"))
-            for index in range(self.model.ngeom)
+        names = [self.model.geom(index).name or "" for index in range(self.model.ngeom)]
+        self.arm_geoms = np.array([name.startswith(("right_arm_", "left_arm_")) for name in names])
+        self.hand_sides = np.array([
+            int(name.startswith("right_hand_")) - int(name.startswith("left_hand_"))
+            for name in names
         ])
         self.arm_contact_steps = 0
+        self.hand_collision_steps = 0
+        self.hand_max_penetration_m = 0.0
 
     def reset(self, initial):
         self.control.initialize(initial)
@@ -107,6 +111,14 @@ class MujocoScene:
             geometries = self.data.contact.geom[:self.data.ncon]
             rigid_contacts = geometries[geometries >= 0]
             self.arm_contact_steps += int(self.arm_geoms[rigid_contacts].any())
+            if self.data.ncon:
+                rigid_pairs = np.all(geometries >= 0, axis=1)
+                sides = self.hand_sides[geometries[rigid_pairs]]
+                opposite_hands = sides[:, 0] * sides[:, 1] < 0
+                distances = self.data.contact.dist[:self.data.ncon][rigid_pairs]
+                penetration = float(np.max(-distances[opposite_hands], initial=0))
+                self.hand_collision_steps += int(penetration > 0)
+                self.hand_max_penetration_m = max(self.hand_max_penetration_m, penetration)
             metrics = self.metrics.update(self.data)
             if self.data.warning.number.any() or (
                 control_cycles is None

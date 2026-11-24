@@ -138,6 +138,8 @@ def rollout(args):
                 "max_wrist_error_m": max_position_error.tolist(),
                 "max_wrist_error_rad": max_angle_error.tolist(),
                 "arm_contact_steps": scene.arm_contact_steps,
+                "hand_collision_steps": scene.hand_collision_steps,
+                "hand_max_penetration_m": scene.hand_max_penetration_m,
                 "executed_steps": len(position_errors),
                 "physics_warnings": physics_warnings,
                 "simulation_time_s": simulation_time,

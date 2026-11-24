@@ -14,7 +14,7 @@ class RigCalibrationTest(unittest.TestCase):
         np.testing.assert_allclose(rig_base_positions(frames),
                                    [[0.25, -0.50, 0.085], [0.06, 0.46, 0.035]])
 
-    def test_a_wrist_target_advances_after_reaching_pose_or_ten_cycles(self):
+    def test_step_tracks_contacts_and_advances_after_reaching_pose_or_limit(self):
         scene = MujocoScene.__new__(MujocoScene)
         scene.control = Mock()
         scene.data = SimpleNamespace(
@@ -24,8 +24,11 @@ class RigCalibrationTest(unittest.TestCase):
         )
         scene.metrics = Mock()
         scene.physics_step = scene.metrics.physics_step
-        scene.arm_geoms = np.zeros(1, dtype=bool)
+        scene.arm_geoms = np.array([True, False, False, False])
+        scene.hand_sides = np.array([0, 1, -1, 1])
         scene.arm_contact_steps = 0
+        scene.hand_collision_steps = 0
+        scene.hand_max_penetration_m = 0.0
         pose = np.zeros(2)
         scene.control.track.return_value = iter([(pose, pose)] * 10)
         scene.step("reachable")
@@ -43,6 +46,21 @@ class RigCalibrationTest(unittest.TestCase):
         scene.step("recorded", control_cycles=2)
         scene.control.track.assert_called_once_with("recorded", 2, physics_step=scene.metrics.physics_step)
         self.assertEqual(scene.metrics.update.call_count, 2)
+
+        scene.data.contact.geom = np.array([[1, 2], [1, -1], [3, 1], [0, 2]])
+        scene.data.contact.dist = np.array([-.0038, -.12, -.04, -.01])
+        scene.data.ncon = 4
+        scene.control.track.return_value = iter([(pose, pose)] * 2)
+        scene.step("opposite hand contact", control_cycles=2)
+        self.assertEqual(scene.hand_collision_steps, 2)
+        self.assertAlmostEqual(scene.hand_max_penetration_m, .0038)
+        self.assertEqual(scene.arm_contact_steps, 2)
+
+        scene.data.contact.dist[0] = .0002
+        scene.control.track.return_value = iter([(pose, pose)] * 2)
+        scene.step("opposite hand separated", control_cycles=2)
+        self.assertEqual(scene.hand_collision_steps, 2)
+        self.assertAlmostEqual(scene.hand_max_penetration_m, .0038)
 
         scene.metrics.update.reset_mock()
         scene.data.warning.number[0] = 1
