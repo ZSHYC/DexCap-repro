@@ -248,6 +248,17 @@ python -m simulation.rollout data/derived/scissor-two-handle-carry-reference.hdf
   --task scissor-cutting --output runs/scissor-two-handle-carry-reference-rollout.json
 ```
 
+起刀后，左腕再上提约 30 mm 并向中央平移，同时绕已接触的位置缓慢转腕约 30°。双柄持续受力且无托盘或桌面支撑的区间约 7.4 s，剪刀轴在该区间沿 Y 方向向中央移动约 232 mm。458 步标准回放记录剪刀轴最高比初始位置高约 145 mm，机械臂碰撞计数为 0。逐子步数据见 `runs/scissor_center_roll_roll30.json`。
+
+```bash
+python -m simulation.rollout data/derived/scissor-grasp-and-transfer-reference.hdf5 \
+  --task scissor-cutting --output runs/scissor-grasp-and-transfer-reference-rollout.json
+```
+
+另一次沿同一前缀让中指随姿态接近固定柄，连续 439 个物理子步（三指约 0.88 s）同时受力，且剪刀无外部支撑。拇指网格穿过活动柄孔，食指和中指的受力仍来自固定柄外侧。见 `runs/scissor_three_finger_aperture_bottom402.json`。在测得的悬空姿态上固定腕位，静态求解能让中指截面进入固定柄孔。用真实手指执行由外侧进入的过渡时未保持该入孔状态。见 `runs/scissor_middle_aperture_clearance_fit.json`。
+
+纸带试验保留 35 mm 原托盘墙和原剪刀摆放，将纸带两端沿现有外墙自然垂到桌面和托盘底。实测接缝在墙顶稳定，距桌面约 39 mm。右拇指在该候选的一次无数值警告试验中短暂带起全部纸段，最低纸段上升约 2.1 mm，食指未接触。按实际接触逐子步延伸食指的试验仍未形成对夹。关节空间力矩控制将拟合腕误差降至约 23 mm，在 0.15 s 内食指仍未到达纸面。记录见 `runs/scissor_paper_normal_tray_overhang_settle.json`、`runs/scissor_right_paper_force_conditioned_acquire.json` 和 `runs/scissor_right_paper_joint_pd_highgain.json`。
+
 现在 `cut_length_m` 记录实际断开的全部接缝。只有在两物均无桌面或托盘支撑、左拇指接触活动柄、左食指或中指接触固定柄、右手相向夹持纸带时断开的接缝才计入 `held_cut_length_m`。后者超过 3 mm 才记为完整任务成功。直接驱动机构的试验仍会得到真实 4 mm 切口，完整任务成功标志保持为假。见 `runs/scissor-production-held-cut-probe.json`。
 
 
@@ -273,6 +284,9 @@ python -m simulation.rollout data/derived/scissor-two-handle-carry-reference.hdf
 
 
 另一条试验用真实左拇指和托盘支点将自由瓶停在约 37.4°。此姿态离线拟合到左手两面相向接触，全臂最小关节余量约 0.89 rad。物理执行闭合时，瓶体在第二侧形成受力前出现摆动，左手仍只有短暂单侧支撑。该姿态的两支右腕拟合也未形成可用的对向指尖接触。见 `runs/tea-leap-midtilt-study-result.json`。
+
+
+默认镊子短轴桥的两处静态指垫间隙约为 +0.026 mm 和 −0.127 mm。完整接触诊断显示，该末端拟合姿态同时使右臂和手部与桌面重叠约 100 mm，与托盘重叠约 63 mm。关节空间控制也被碰撞推离，0.4 s 内腕部漂移约 89 mm，未进入闭合。沿两支弹簧臂的 30 个候选也未找到双指对向接触且具有足够关节余量的姿态。见 `runs/tea-leap-tweezers-joint-pd-result.json` 和 `runs/tea-leap-tweezers-outer-arm-result.json`。
 
 
 ## 六个场景的渲染与接入验证
