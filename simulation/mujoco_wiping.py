@@ -1,6 +1,7 @@
 """MuJoCo objects and physical metrics for DexCap plate wiping."""
 
 import math
+from itertools import combinations
 from pathlib import Path
 
 import mujoco
@@ -179,16 +180,24 @@ class WipingMetrics:
             contact.flex[1] == self.sponge_flex and contact.geom[0] in self.plate_geoms
         )
 
-    def _hand_contacts(self, contacts, hand_geoms, target):
-        hits = set()
+    def _opposed_hand_grip(self, contacts, hand_geoms, target):
+        hits = []
         for contact in contacts:
+            first, second = contact.geom
             if target == "plate":
-                pair = set(contact.geom)
-                if pair & self.plate_geoms:
-                    hits.update(pair & hand_geoms)
-            elif contact.flex[0] == self.sponge_flex or contact.flex[1] == self.sponge_flex:
-                hits.update(set(contact.geom) & hand_geoms)
-        return hits
+                touching = first in self.plate_geoms or second in self.plate_geoms
+            else:
+                touching = self.sponge_flex in contact.flex
+            if not touching:
+                continue
+            if first in hand_geoms:
+                hits.append((first, contact.frame[:3]))
+            elif second in hand_geoms:
+                hits.append((second, -contact.frame[:3]))
+        return any(
+            first != second and np.dot(a, b) < -0.25
+            for (first, a), (second, b) in combinations(hits, 2)
+        )
 
     def update(self, data):
         contacts = [data.contact[index] for index in range(data.ncon)]
@@ -210,17 +219,22 @@ class WipingMetrics:
             if (local := plate_rotation.T @ (contact.pos - plate_pos))[2] >= -PLATE_CONTACT_TOLERANCE
             and np.linalg.norm(local[:2]) <= PLATE_INNER_RADIUS
         ]
-        self._update_wipe(interior, data, plate_pos, plate_rotation)
+        self.surface_contact_steps += int(bool(interior))
 
         table_contacts = [contact for contact in contacts if self.table_geom in contact.geom]
-        if not self.plate_grasped and plate_pos[2] > self.initial_plate_z + 0.01:
-            supported = any(self.plate_geoms.intersection(contact.geom) for contact in table_contacts)
-            fingers = self._hand_contacts(contacts, self.right_hand_geoms, "plate")
-            self.plate_grasped = len(fingers) >= 2 and not supported
-        if not self.sponge_grasped and self._sponge_center(data)[2] > self.initial_sponge_z + 0.01:
-            supported = any(self.sponge_flex in contact.flex for contact in table_contacts)
-            fingers = self._hand_contacts(contacts, self.left_hand_geoms, "sponge")
-            self.sponge_grasped = len(fingers) >= 2 and not supported
+        plate_held = (
+            plate_pos[2] > self.initial_plate_z + 0.01
+            and not any(self.plate_geoms.intersection(contact.geom) for contact in table_contacts)
+            and self._opposed_hand_grip(contacts, self.right_hand_geoms, "plate")
+        )
+        sponge_held = (
+            self._sponge_center(data)[2] > self.initial_sponge_z + 0.01
+            and not any(self.sponge_flex in contact.flex for contact in table_contacts)
+            and self._opposed_hand_grip(contacts, self.left_hand_geoms, "sponge")
+        )
+        self.plate_grasped |= bool(plate_held)
+        self.sponge_grasped |= bool(sponge_held)
+        self._update_wipe(interior if plate_held and sponge_held else (), data, plate_pos, plate_rotation)
 
         return {
             "sponge_plate_contacts": len(plate_contacts),
@@ -243,7 +257,6 @@ class WipingMetrics:
             self.last_contact_position = None
             self.stroke_axis = None
             return
-        self.surface_contact_steps += 1
         local = plate_rotation.T @ (self._sponge_center(data) - plate_pos)
         tangent = local[:2]
         if self.last_contact_position is not None:

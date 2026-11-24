@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 import mujoco
 import numpy as np
@@ -160,7 +161,7 @@ class MujocoWipingTest(unittest.TestCase):
         mujoco.mj_forward(model, data)
         metrics = WipingMetrics(model)
         hits = [
-            SimpleNamespace(geom=(geom, -1), flex=(-1, metrics.sponge_flex))
+            SimpleNamespace(geom=(geom, -1), flex=(-1, metrics.sponge_flex), frame=np.array([1., 0, 0]))
             for geom in (*metrics.left_hand_geoms, model.geom("table").id)
         ]
         vertices = data.flexvert_xpos.copy()
@@ -170,6 +171,8 @@ class MujocoWipingTest(unittest.TestCase):
         )
         self.assertFalse(metrics.update(sample)["sponge_grasped"])
         sample.ncon -= 1
+        self.assertFalse(metrics.update(sample)["sponge_grasped"])
+        hits[1].frame *= -1
         self.assertTrue(metrics.update(sample)["sponge_grasped"])
 
     def test_wipes_are_measured_in_a_vertical_plate_frame(self):
@@ -183,18 +186,26 @@ class MujocoWipingTest(unittest.TestCase):
         rotation = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0.0]])
         half_sqrt = np.sqrt(0.5)
 
-        result = None
         stroke = np.linspace(-0.035, 0.035, 36)
-        for y in np.concatenate((stroke, stroke[::-1])):
-            set_free_plate_and_flex_pose(
-                model, data, plate_position, [half_sqrt, half_sqrt, 0, 0], rotation,
-                np.array([0.0, y, 0.019]),
-            )
-            result = metrics.update(data)
+        def sweep():
+            for y in np.concatenate((stroke, stroke[::-1])):
+                set_free_plate_and_flex_pose(
+                    model, data, plate_position, [half_sqrt, half_sqrt, 0, 0], rotation,
+                    np.array([0.0, y, 0.019]),
+                )
+                result = metrics.update(data)
+            return result
 
-        self.assertGreater(result["wipe_surface_contact_steps"], 60)
-        self.assertEqual(result["wipe_passes"], 2)
-        self.assertGreater(result["wipe_distance"], 0.12)
+        unheld = sweep()
+        self.assertGreater(unheld["wipe_surface_contact_steps"], 60)
+        self.assertEqual(unheld["wipe_passes"], 0)
+        self.assertFalse(unheld["sim_success"])
+
+        with patch.object(metrics, "_opposed_hand_grip", return_value=True):
+            held = sweep()
+        self.assertEqual(held["wipe_passes"], 2)
+        self.assertGreater(held["wipe_distance"], 0.12)
+        self.assertTrue(held["sim_success"])
 
     def test_sampler_matches_paper_areas_and_keeps_objects_apart(self):
         rng = np.random.default_rng(4)
