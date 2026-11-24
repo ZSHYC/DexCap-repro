@@ -974,3 +974,13 @@ ball=/data/dexcap-repro/benchmarks/ball-seeded-reference/world/stowed
 python -m simulation.rollout "$ball/ball-collecting-open-rest-reference.hdf5" \
   --task ball-collecting --output "$ball/open-rest-rollout.json"
 ```
+
+### 备茶的标准腕位控制退丝
+
+从默认满载茶瓶和上紧瓶盖起步，用标准 46 维腕位和手指目标控制完整双臂。沿原录制的旋拧弧段重复施力，每个周期用实际帽顶载荷调节右手高度，并跟随自由瓶实测位置补偿双腕。第 2,301 个 50 ms 控制周期，约 115.05 s，旋转到 1.995295 圈并解除模型中的螺纹连接。该实测无机械臂碰撞、双手碰撞或物理警告。末态积分状态已保存供取盖接续，未完成右侧放盖或倒茶。记录在数据盘 `benchmarks/tea-bottle-native/after-scaled-trough/` 的 `tea-standard-arc-repetition.json` 和 `tea-standard-osc-cap-released.npz`。
+
+```bash
+tea=/data/dexcap-repro/benchmarks/tea-bottle-native/after-scaled-trough
+python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5" \
+  --task tea-preparing --output "$tea/tea-standard-osc-cap-unthread-rollout.json"
+```
