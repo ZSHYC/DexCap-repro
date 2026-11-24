@@ -51,6 +51,11 @@ class MujocoScene:
 
             add_sponge_picking_scene(spec, object_xy)
             metrics_type = SpongePickingMetrics
+        elif task == "ball-collecting":
+            from simulation.mujoco_ball_collecting import BallCollectingMetrics, add_ball_collecting_scene
+
+            add_ball_collecting_scene(spec, object_xy)
+            metrics_type = BallCollectingMetrics
         else:
             from simulation.mujoco_packaging import PackagingMetrics, add_packaging_scene
 
@@ -58,6 +63,10 @@ class MujocoScene:
             metrics_type = PackagingMetrics
             metrics_args = (object_name,)
 
+        # The table is finite, so a dropped object also needs a physical room floor.
+        floor = spec.worldbody.add_body(name="room_floor", pos=[0, 0, TABLE_HEIGHT - 0.75])
+        floor.add_geom(name="room_floor_surface", type=mujoco.mjtGeom.mjGEOM_PLANE,
+                       size=[0, 0, 0.025], group=3, friction=[0.8, 0.008, 0.0005])
         self.model = spec.compile()
         self.data = mujoco.MjData(self.model)
         self.control = DualArmController(self.model, self.data)

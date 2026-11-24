@@ -9,7 +9,7 @@ import mujoco
 import numpy as np
 
 from simulation.frames import ActionFrames
-from simulation import mujoco_packaging, mujoco_sponge_picking, mujoco_wiping
+from simulation import mujoco_ball_collecting, mujoco_packaging, mujoco_sponge_picking, mujoco_wiping
 from simulation.mujoco_control import CONTROL_INTERVAL
 from simulation.mujoco_scene import MAX_CONTROL_CYCLES, MujocoScene, PHYSICS_STEP, rig_base_positions
 
@@ -20,6 +20,7 @@ TASKS = {
     "wiping": (mujoco_wiping, ("plate_xy", "sponge_xy")),
     "packaging": (mujoco_packaging, ("box_xy", "object_xy")),
     "sponge-picking": (mujoco_sponge_picking, ("sponge_xy",)),
+    "ball-collecting": (mujoco_ball_collecting, ("basket_xy", "ball_xy")),
 }
 
 

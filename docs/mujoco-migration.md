@@ -145,3 +145,10 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 六条带完整双臂和点云采集的回放均在 `pro1` 完成，结果位于 `runs/packaging-reference-replays/`。这是参考动作实验，闭环评估仍从相同的随机种子采样。
 
 红银包装的录制红色表面在第 37 步约位于 z = 223 mm。分件模型使用上一版参考起点时，同一步质心高 89 mm，右腕沿目标的位置误差约 4.4 mm，盒体高度滞后远超腕位差。相应录制轨迹在 `runs/packaging-official-red-surface-track.json`。六个原始 RGB-D 帧拟合出的台面倾角可辨，局部高度随帧变化约 12–15 mm。只把首帧倾斜桌面代入回放会提前失去抓持，暂作为标定诊断记录在 `runs/packaging-table-plane-multi-frame.json` 与 `runs/packaging-red-carton-tilted-table-probe.json`。
+
+
+## Ball Collecting
+
+`python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
+
+判据要求右手形成相向接触、球实际抬离桌面，再释放到篮中。进篮通过完整球体位置、篮底铁丝接触和低速度判定。物理试验验证了球经重力落入篮底后能够稳定承托。实际双臂的控制与摄像已运行，接触试验中的现有候选手姿仍会把球推走，尚未跑通机械臂抓球到入篮。物体落下桌面后由估计在桌面下 0.75 m 的地面承托。实际落球和模板动作记录在 `runs/ball-collecting-finger-clearance-probe.json` 与 `runs/ball-collecting-sim-smoke.json`。
