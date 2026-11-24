@@ -468,6 +468,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 在现行止挡模型上单独验证取盖。夹具固定满载瓶身，起始声明盖子已脱扣并停在瓶颈，左臂在停放位。右手食指和拇指实际相向夹持，使盖子完全脱离瓶颈并上升 56.3 mm，连续 0.44 s 的采样同时满足对向受力与不接触瓶身。增加合拢预载后，盖子在同样条件下横移 56.3 mm，之后滑脱，尚未放置到托盘右侧。取盖与搬运试验所记录的两个手的关节均未越出 URDF 范围。记录见 `runs/tea-detached-cap-home-fixture-pinch.json` 和 `runs/tea-detached-cap-home-fixture-place-preload.json`。
 
+左臂以真实接触把默认满载自由瓶推到托盘壁，最大支撑倾角约 101.43°，壁面峰值约 9.46 N。现行手部参数下，进一步合拢只让拇指碰到瓶身，未建立相向夹持。两手每个 2 ms 物理子步的实测关节均在 URDF 范围内。试验及腕部中点再推进 10 mm 的对照见 `runs/tea-loaded-xneg-rim-ab24e72{-telemetry,-midpoint40-telemetry}.json`。
+
 ## 六个场景的渲染与接入验证
 
 六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview-grasp-physics/six-mujoco-scenes.png` 和 `runs/task-scene-overview-grasp-physics/smoke.json`。Scissor Cutting 和 Tea Preparing 已验证关键机构的物理响应，仍缺整段双臂任务动作。关闭离屏多重采样后，重新用五个场景各执行一步，并与满载泡茶三步结果一起确认六个场景都输出相同结构的点云，且无物理警告。记录见 `runs/no-msaa-*-entry.json` 与 `runs/tea-production-filled-entry.json`。
