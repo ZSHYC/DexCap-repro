@@ -165,7 +165,12 @@ python -m simulation.rollout data/derived/packaging-red-carton-scripted-placemen
   --task packaging --object red-box --output runs/packaging-red-carton-scripted-placement-rollout.json
 ```
 
-同一场景和求解参数下，单独回放 22 个左手动作可把空盒的主铰链合至 182.2°，撤手后保持合盖。自由纸盒随动作移动约 100 mm。直接用世界坐标目标执行的 585 步组合试验已完成红银包装入盒、盒盖合至 180.5° 和左手撤离。最终包装由盒底稳定承托，贴靠内壁处穿透约 1.3 µm。入盒判据允许软接触产生的 0.1 mm 内壁误差，仍需测到盒底承托。该组合动作导出到 HDF5 后，标准式重放保留入盒，合盖没有重现。记录在 `runs/packaging-lid-physical-closure-impratio12-newton-retargeted.json`、`runs/packaging-red-carton-native-approach-bounds.json` 和 `runs/packaging-red-carton-scripted-reference-rollout.json`。
+同一场景和求解参数下，单独回放 22 个左手动作可把空盒的主铰链合至 182.2°，撤手后保持合盖。自由纸盒随动作移动约 100 mm。首次组合轨迹在标准重放中夹折舌时，无名指撞桌的接触力约 96 N，扰动了拇指。保持无名指的接近姿态，继续用拇指夹住折舌，可在同一初始摆放下完成 585 步标准回放。右手抓起红银包装、放到盒底并撤回，左手合盖后撤离。最终 `object_in_box=true`、`lid_closed=true`、`sim_success=true`，机械臂碰撞计数为 0，自由纸盒移动约 81.5 mm。对照和最终动作生成脚本在 `runs/packaging-lid-contact-trace-{world,canonical}.json` 和 `runs/packaging-red-carton-table-clear-closure.py`。标准回放只验证了这一种物体和固定摆放。
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-table-clear-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-red-carton-table-clear-rollout.json
+```
 
 
 ## Ball Collecting

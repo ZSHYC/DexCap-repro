@@ -1,6 +1,6 @@
 # DexCap 论文复现
 
-`repro/mujoco` 分支的 `simulation.rollout` 使用双 Franka、双 LEAP，提供 Wiping、Packaging、Sponge Picking、Ball Collecting、Scissor Cutting 和 Tea Preparing 的 MuJoCo 场景。Wiping 和 Packaging 使用已发布数据训练的权重完成了 115 回合闭环评估。Ball Collecting 和 Sponge Picking 的默认摆放均已跑通。Packaging 红银包装已通过标准入口完成脚本入盒。 [MuJoCo 运行方式与当前验证](docs/mujoco-migration.md)
+`repro/mujoco` 分支的 `simulation.rollout` 使用双 Franka、双 LEAP，提供 Wiping、Packaging、Sponge Picking、Ball Collecting、Scissor Cutting 和 Tea Preparing 的 MuJoCo 场景。Wiping 和 Packaging 使用已发布数据训练的权重完成了 115 回合闭环评估。Ball Collecting 和 Sponge Picking 的默认摆放均已跑通。Packaging 红银包装的默认摆放也已通过标准入口完成脚本入盒和合盖。 [MuJoCo 运行方式与当前验证](docs/mujoco-migration.md)
 
 在 `pro1` 上复现 DexCap / DexIL 的点云策略训练，使用作者发布的 Wiping 和 Packaging 数据。当前阶段聚焦仿真，支持两项公开任务的无界面轨迹回放和策略闭环。公开源码位于 `DexCap/`，取自 [`j96w/DexCap@4b0bed0`](https://github.com/j96w/DexCap/tree/4b0bed0966c87368f3cde4476aadb7585c3b94b5)。原作者许可见 [DexCap/LICENSE](DexCap/LICENSE)。 [DexCap 论文](https://arxiv.org/html/2403.07788v2#S5) · [运行 MuJoCo](docs/mujoco-migration.md) · [与论文表格的对应关系](docs/reproduction.md#与论文表格的对应关系)
 
