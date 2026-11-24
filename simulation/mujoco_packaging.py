@@ -220,6 +220,9 @@ class PackagingMetrics:
         self.lid_body = model.body("packaging_lid").id
         self.lid_joint = model.joint("packaging_lid_hinge").id
         self.floor_geom = model.geom("packaging_box_floor").id
+        self.table_geom = model.geom("table").id
+        object_joint = model.body_jntadr[self.object_body]
+        self.initial_object_z = model.qpos0[model.jnt_qposadr[object_joint] + 2]
         self.object_geoms = self._body_geoms(self.object_body, collidable_only=True)
         self.box_geoms = self._body_geoms(self.box_body, collidable_only=True)
         self.lid_geoms = self._body_geoms(self.lid_body, collidable_only=True)
@@ -299,7 +302,10 @@ class PackagingMetrics:
         box_xy = np.asarray(data.xpos[self.box_body, :2]).copy()
         center_distance = np.linalg.norm(box_xy - WORKSPACE_CENTER)
         self.minimum_center_distance = min(self.minimum_center_distance, center_distance)
-        object_grasped = self._object_grasped(right_object)
+        lifted = data.xpos[self.object_body, 2] > self.initial_object_z + 0.01
+        object_grasped = lifted and self._object_grasped(right_object) and not self._contacts(
+            data, self.object_geoms, {self.table_geom}
+        )
         object_released = self.ever_grasped and not object_grasped
         self.ever_grasped |= object_grasped
         object_in_box = self._object_in_box(data)

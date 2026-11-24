@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -18,7 +19,7 @@ class MujocoPackagingTest(unittest.TestCase):
         spec = mujoco.MjSpec()
         spec.option.timestep = 0.002
         spec.worldbody.add_geom(
-            name="table_surface",
+            name="table",
             type=mujoco.mjtGeom.mjGEOM_PLANE,
             pos=[0, 0, -0.03],
             size=[1, 1, 0.01],
@@ -65,6 +66,17 @@ class MujocoPackagingTest(unittest.TestCase):
             sum(model.geom_bodyid == model.body("packaging_object").id), 14,
             "the hollow mug and handle must remain compound geometry",
         )
+
+    def test_grasp_requires_lifting_the_object_off_the_table(self):
+        model, data, metrics = self.make_scene()
+        opposed = [(None, np.array([1, 0, 0])), (None, np.array([-1, 0, 0]))]
+        with patch.object(metrics, "_contacts", side_effect=[opposed, [], [], []]):
+            self.assertFalse(metrics.update(data)["object_grasped"])
+        qpos = model.jnt_qposadr[model.joint("packaging_object_free").id]
+        data.qpos[qpos + 2] += 0.04
+        mujoco.mj_forward(model, data)
+        with patch.object(metrics, "_contacts", side_effect=[opposed, [], [], [], []]):
+            self.assertTrue(metrics.update(data)["object_grasped"])
 
     def test_metrics_use_settled_object_contact_and_physical_lid_angle(self):
         model, data, metrics = self.make_scene()

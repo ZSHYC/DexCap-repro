@@ -40,8 +40,10 @@ MUJOCO_GL=egl python -m simulation.rollout data/derived/packaging-demo-0-playbac
 | 回放 | 右腕误差中位数 | 左腕误差中位数 | 实际结果 |
 | --- | ---: | ---: | --- |
 | Wiping | 4.7 mm | 9.0 mm | 抓到盘子。海绵未稳定抓起，未达到内盘面擦拭。 |
-| Packaging | 5.6 mm | 14.5 mm | 触发抓取和释放。终点未入盒、未合盖。 |
+| Packaging | 5.6 mm | 14.5 mm | 手指夹碰后物体翻倒在桌面。终点未入盒、未合盖。 |
 
 两段回放在采样的控制周期均未出现机械臂碰撞接触，且能生成 `10000 × 6` 点云。当前泡棉材料、手指接触系数、纸盒铰链和物体表面参数仍需要用实测或录制行为标定。正式策略评估尚待进行。
 
 在 `pro1` 的同一个 Conda 环境验证了 EGL 渲染和三份现有第 3000 轮权重。PointNet Wiping、SetXF Wiping 和 SetXF Packaging 分别在 GPU 0、1、2 完成两步策略闭环，均输出 `10000 × 6` 点云。记录位于数据盘的 `runs/*-policy-smoke.json`。
+
+`pro1` 上的 `runs/wiping-grip-trace.json` 和 `runs/packaging-grip-trace.json` 保存前 70 步的物体位置、腕部误差和手物接触。海绵在接触中沿桌面移动约 8 cm，抓持阶段质心高度基本保持在桌面上方 2 cm。包装物被相对的手指表面接触时只抬高约 4 mm，随后翻倒。指标要求包装物质心抬升至少 1 cm、存在相对手指接触且没有桌面支撑才记录抓起。
