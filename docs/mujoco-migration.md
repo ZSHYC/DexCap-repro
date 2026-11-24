@@ -181,6 +181,8 @@ python -m simulation.rollout data/derived/packaging-red-carton-table-clear-refer
 ```
 
 
+蓝积木后来用校正后的双 LEAP 回放了官方 `demo_50`。右手与物体接触 25 个周期，积木未抬起。以红盒参考为起点调整到蓝积木的实测位置后，静态腕姿候选可产生相向法线，但从上方实际进入时仍未取得相向夹持。最高积木中心离桌约 18 mm，与它平放时的半高相符。记录见 `runs/packaging-blue-block-official-reference-rollout.json` 和 `runs/packaging-blue-block-tilted-grasp-probe.json`。
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
@@ -264,6 +266,19 @@ python -m simulation.rollout data/derived/scissor-grasp-and-transfer-reference.h
 
 正式场景现在让纸带以约 8° 的倾角靠在原有短墙内侧，纸带底边和托盘底均可实际接触。分段保持各自的自由关节，段间增加有限弯曲刚度，五个局部接缝仍由真实刀刃受力触发断开。旧接触参数使纸带在约 12 s 滑倒，提高纸带接触阻抗后通过 25 s 静置测试。458 步双臂回放中，22.90 s 后最高纸段中心仍高于托盘底约 88 mm，五个接缝完整。剪刀最高抬升约 145 mm，机械臂碰撞计数为 0。将纸带水平放入刀口的独立机构试验断开 8 mm 接缝，无刀刃接触的试验断开 0 mm，两条均未达到完整任务成功。记录见 `runs/scissor-upright-paper-transfer-trace.json`、`runs/scissor-grasp-and-transfer-upright-paper-rollout.json` 和 `runs/scissor-upright-paper-production-cut-probe.json`。
 
+从标准起点执行 334 步后，固定柄由左食指接触，活动柄由左拇指接触，剪刀已经离开托盘。保持测得的腕姿，只调四个拇指关节，然后继续 12 步。铰链角从 0.0885 rad 闭至 0.0480 rad。到达最小角度时，两柄接触力分别约 0.20 N 和 0.61 N，剪刀没有外部支撑。双柄同时受力且无外部支撑的最长区间为 0.348 s。仅保持腕姿的对照闭合约 0.0056 rad。346 步标准回放的机械臂碰撞计数为 0。动作生成脚本在 `runs/scissor-left-closure-reference.py`，逐子步接触记录在 `runs/scissor_left_finger_close_observed_reference.json`。
+
+```bash
+python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
+  --task scissor-cutting --output runs/scissor-left-closure-reference-rollout.json
+```
+
+右手隔离试验从纸带自然沉降后的状态和预抓姿态开始。最初两指相向受力点在纸面内相差约 25 mm。按实际 LEAP 网格的接触区域重新拟合，首次对夹时该距离下降到约 3.3 mm。纸带仍迅速旋转滑脱。多点碰撞、触觉力调节和第三指支撑的试验均未取得持续提纸。见 `runs/scissor_paper_wrench_known0.json`、`runs/scissor_paper_patch_capture_small-soft.json` 和 `runs/scissor_paper_tripod_capture_small-1.json`。
+
+网格截面复核显示，悬空闭合所用的食指和中指均在固定柄孔外。原轨迹第 264 步时，剪刀仍受托盘支撑，食指已实际进入固定柄孔。此时中指离开口约 21.5 mm，实际推进时先被活动柄挡住。记录见 `runs/scissor_left_aperture_prefix334.json`、`runs/scissor_left_aperture_supported_scan.json` 和 `runs/scissor_left_middle_supported_insert264_contactpair.json`。
+
+原预抓状态的闲置指节与掌部有约 26 mm 重叠，拇指根关节在前 0.1 s 偏离约 0.33 rad。把全部手指自碰撞纳入拟合后，有预抓候选的最小自碰撞净空约 0.06 mm。中部抓取候选在前 0.1 s 内的拇指根关节角变化不到 0.001 rad。相向接触期间最低纸段曾升约 5.5 mm，无托盘和桌面支撑。两垫各超过 0.05 N 的连续夹持仍只有 6 ms。逐步记录见 `runs/scissor_paper_jaw_tracking_mid.json` 和 `runs/scissor_paper_hand_clear_capture_m1.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -292,6 +307,8 @@ python -m simulation.rollout data/derived/scissor-grasp-and-transfer-reference.h
 
 
 将右腕的手背轴朝向校正后，默认镊子从上方接近的路径仍受瓶盖或茶壶阻挡。另设已开盖的分阶段场景，盖子自由放在托盘上。瓶子保持原位时，右腕下降路径与瓶壁重叠约 6.8 mm。将瓶子移开后最严重的下降干涉约为 4.8 mm，闭合时食指垫仍与托盘底重叠约 26.3 mm。自由沉降确认镊子的两根弹簧臂靠住托盘边，倾角约 4.6°。按 110 mm 杠杆长度估计，需再抬高约 9° 才能得到所需净空。两条侧向推入候选仍与桌面干涉，未执行。记录见 `runs/tea-leap-post-uncap-tweezers-result.json` 和 `runs/tea-leap-post-uncap-tweezers-support-result.json`。
+
+已开盖的分阶段场景中，镊子的托盘边缘支点与长臂端点相距约 69 mm。考虑到已有倾角，还需再抬约 9°。真实食指末端离镊子仍有约 17 mm 时便已贴近托盘边，采用食指中节的两条路线也被下游指节阻挡。另测试了 24 个位于托盘右上的自由初始摆放，8 个可形成部分悬挑。桥部净空约 14 mm 的摆放能静置。改为从同高度夹住左右侧面时，食指仍在距接触点约 52 mm 处遇到托盘底板。未执行碰撞路径。记录见 `runs/tea-leap-tweezers-rim-lever-result.json`、`runs/tea-tweezers-rim-placement-result.json` 和 `runs/tea-leap-sideface-grasp-result.json`。
 
 ## 六个场景的渲染与接入验证
 
