@@ -997,6 +997,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
 
+在上述高位支点沿原路径上撤左腕 60 mm，右手仍悬持纸带。合并进入、保持、撤腕为 465 步，通过标准 EGL 从同一初态独立回放。纸带与剪刀的峰值抬升分别为 57.41 和 28.38 mm，机械臂、双手间接触步数为零，无物理警告。剪刀最后在托盘侧边支点约 50.08 mm 高处静止。回放断键为 0，切纸长度为 0。HDF5 和 EGL 汇总在同一目录的 `standard223-middle-waypoint2-roll7-elevated-position-reference.hdf5` 与 `standard223-middle-waypoint2-roll7-elevated-position-egl.json`。
+
 擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。逐步复算确认海绵在盘坐标的法向高度仅变化约 −0.003 mm，而切向位移约 15.5 mm，盘本身同时平移和倾转。按实际斑块反向转动，法向开口约增加 1.03 mm，最深接触仍约 0.74 mm，载荷增至约 3.78 N。下一次接触调整从第一笔更早的轻载状态开始。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
 
 备茶的原尺寸木托与镊子从实际接触状态继续。右拇指顶到镊子桥的上沿时，镊子相对木托横移约 17.43 mm、抬高约 1.81 mm，木托自身只移动约 1 mm。拇指滑脱后木托仍以约 0.337 N 支撑镊子。再次下探桥端垂直侧面时，上木臂首先挡住拇指并承受约 0.310 N 向下载荷，尚未把镊子送到托盘上。记录在 `/data/dexcap-repro/benchmarks/tea-tool-source-model/scaledTrough/source-tool-cradle-to-tray-summary.md`。
