@@ -15,6 +15,29 @@ ASSETS = Path(__file__).resolve().parents[1] / "data/mujoco_menagerie"
 
 @unittest.skipIf(mujoco is None, "mujoco is not installed")
 class MujocoRobotAssetsTest(unittest.TestCase):
+    def test_distal_joint_stop_resists_a_servo_strength_external_load(self):
+        from simulation.mujoco_assets import _load_hand
+
+        spec = _load_hand("right")
+        spec.option.timestep = 0.002
+        spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
+        model = spec.compile()
+        joint = model.joint("hand_3")
+        actuator = model.actuator("finger_3")
+        for sign, limit in zip((-1, 1), joint.range):
+            with self.subTest(sign=sign):
+                data = mujoco.MjData(model)
+                data.qpos[joint.qposadr[0]] = limit - sign * .01
+                data.ctrl[actuator.id] = limit
+                data.qfrc_applied[joint.dofadr[0]] = sign * model.actuator_forcerange[actuator.id, 1]
+                peak_excess = 0.0
+                for _ in range(125):
+                    mujoco.mj_step(model, data)
+                    peak_excess = max(peak_excess, sign * (data.qpos[joint.qposadr[0]] - limit))
+
+                self.assertLess(peak_excess, .005)
+                self.assertFalse(np.any(data.warning.number))
+
     def test_adds_two_articulated_pandas_and_leap_hands(self):
         from simulation.hand_joints import decode_leap_joints
         from simulation.mujoco_assets import (

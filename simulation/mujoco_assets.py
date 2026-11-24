@@ -17,6 +17,7 @@ WRIST_SITES = {side: f"{side}_wrist" for side in SIDES}
 
 _ARM_FORCE_LIMITS = (87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0)
 _LEAP_FORCE_LIMIT = 0.95
+_LEAP_REFLECTED_INERTIA = 0.0005
 _HAND_MESHES = Path(__file__).resolve().parents[1] / "DexCap/STEP2_build_dataset/leap_hand_mesh"
 _PALM_PARTS = Path(__file__).with_name("assets") / "leap_v1_palm_parts.json"
 # Provisional geometry registration: the released LEAP v1 Franka palm-upper
@@ -130,6 +131,10 @@ def _load_hand(side):
 
     for index, joint in enumerate(physical_joints):
         joint.name = f"hand_{index}"
+        # The URDF gives link inertia and angle ranges but omits the geared rotor inertia.
+        joint.armature = _LEAP_REFLECTED_INERTIA
+        joint.solref_limit = (0.004, 1.0)
+        joint.solimp_limit = (0.95, 0.995, 0.001, 0.5, 2.0)
         actuator = hand.add_actuator(
             name=f"finger_{index}",
             trntype=mujoco.mjtTrn.mjTRN_JOINT,
