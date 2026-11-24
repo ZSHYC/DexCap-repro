@@ -368,6 +368,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 按指尖网格到环面的实测距离分别调节食指和拇指关节后，拇指截面共 15 个 2 ms 子步通过活动环，最长连续 10 步。食指尚未通过固定环。将食指先向环内侧移动再推进的对照增加了环缘受力，仍未取得同时入环。两次试验均无非预期碰撞。数据见 `runs/scissor_current_oval_ring_section_{digit_correction,sequential_digits}-0.06.json`。
 
+加入新纸带后，从实际初始位复跑原 80 mm 抬高路线，105 个观测周期无预期外接触，分离悬停腕误差仍约 0.123 mm。另找到了食指严格通过固定环、整手无接触的静态端点。从高位下降到这个端点时，伸直中指会碰固定环，收折中指与无名指又会使无名指碰环。该接近未执行。记录见 `runs/scissor_paper_grid_high_clearance_route.json` 及 `runs/scissor_current_oval_index_center_thread{,_route}.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的木质托槽、空心瓶和茶壶、弹簧镊子以及可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际茶盘或木槽接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -452,6 +454,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 用默认满载瓶验证右手退丝时，瓶身由试验夹具固定。原换握脚本将同一拇指的两个连杆误判为不同手指对握。单线程试验改为只有拇指与另一根手指对向受力时才再次转腕，第二次合拢阶段仅靠拇指接触将盖推至约 1.142 圈和 2.285 mm 的轴向行程。该阶段没有形成第二次对握，瓶盖仍在螺纹上。两次试验采用不同的 BLAS 线程数。记录见 `runs/tea-live-cap-regrasp-loaded-{probe,distinct-digits}.json`。
 
 重复使用右手张开、轴向撤离和合拢动作，把同一满载夹具上的瓶盖推进至峰值 1.752 圈和 3.504 mm。最后一段张手时下降到约 1.36 圈，随后已经脱离盖子的复位只损失约 0.002 圈。末次合拢后停在 1.246 圈，螺纹仍连接。回退主要发生在张手阶段。记录见 `runs/tea-live-cap-loaded-incremental-thumb.json`。
+
+在同一默认满载固定瓶身夹具上，最后一轮先保持指形，向外撤 20 mm 再沿瓶轴抬高 70 mm，瓶盖从 1.742 圈微退到 1.715 圈。随后张手时拇指末端再次触到盖沿，以正向转矩把盖子带过两圈，螺纹连接在子步中解除，峰值轴向行程 4.021 mm。用上一段实际积分保存的状态单独重放，得到同一退丝阶段和峰值，无物理警告。脱离后的盖子落回瓶颈附近，取走并放至茶盘右侧仍需执行。记录见 `runs/tea-live-cap-loaded-clear-then-open.json` 和 `runs/tea-live-cap-loaded-retreat-from-checkpoint.json`。
 
 ## 六个场景的渲染与接入验证
 
