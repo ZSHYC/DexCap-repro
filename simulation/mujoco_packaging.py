@@ -21,6 +21,7 @@ from simulation.packaging_objects import (
 TABLE_HEIGHT = -0.030
 BOX_HALF_XY = (0.149, 0.095)
 BOX_PANEL_HALF_THICKNESS = 0.0015
+BOX_CONTACT_TOLERANCE_M = 0.0001
 BOX_TOP = 0.078
 BOX_YAW = np.deg2rad(-62.8)
 LID_OPEN_ANGLE = np.deg2rad(3.35)
@@ -426,13 +427,14 @@ class PackagingMetrics:
         return center - extent, center + extent
 
     def _object_in_box(self, data):
+        # Settled soft contacts can overlap the inner wall by micrometers.
+        inner_half = np.asarray(BOX_HALF_XY) - 2 * BOX_PANEL_HALF_THICKNESS + BOX_CONTACT_TOLERANCE_M
         if self.object_flex >= 0:
             box_position = data.xpos[self.box_body]
             box_rotation = data.xmat[self.box_body].reshape(3, 3)
             local = (self._flex_vertices(data) - box_position) @ box_rotation
             lower = np.min(local, axis=0) - self.flex_radius
             upper = np.max(local, axis=0) + self.flex_radius
-            inner_half = np.asarray(BOX_HALF_XY) - 2 * BOX_PANEL_HALF_THICKNESS
             inside = np.all(lower[:2] >= -inner_half) and np.all(upper[:2] <= inner_half)
             supported = bool(self._flex_contacts(data, {self.floor_geom}))
             settled = np.max(np.abs(data.qvel[self.object_dofs])) < 0.05
@@ -441,7 +443,6 @@ class PackagingMetrics:
         bounds = [self._geom_extent_in_box(data, geom) for geom in self.object_geoms]
         lower = np.min([bound[0] for bound in bounds], axis=0)
         upper = np.max([bound[1] for bound in bounds], axis=0)
-        inner_half = np.asarray(BOX_HALF_XY) - 2 * BOX_PANEL_HALF_THICKNESS
         inside = np.all(lower[:2] >= -inner_half) and np.all(upper[:2] <= inner_half)
         supported = bool(self._contacts(data, self.object_geoms, {self.floor_geom}))
         joint = self.model.body_jntadr[self.object_body]

@@ -34,6 +34,10 @@ class MujocoScene:
         if task in ("wiping", "sponge-picking"):
             # Harder friction constraints keep soft sponge contacts from drifting under load.
             spec.option.impratio = SPONGE_FRICTION_IMPEDANCE
+        elif task == "packaging":
+            # Keep the measured cardboard geometry and suppress solver drift during carry.
+            spec.option.impratio = 12
+            spec.option.tolerance = 1e-10
         color = [0.12, 0.12, 0.12, 1] if task != "packaging" else [0.64, 0.59, 0.49, 1]
         spec.worldbody.add_geom(name="table", type=mujoco.mjtGeom.mjGEOM_BOX,
                                 pos=[0.40, 0, TABLE_HEIGHT - 0.025], size=[0.75, 0.60, 0.025],

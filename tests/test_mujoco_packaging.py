@@ -188,6 +188,15 @@ class MujocoPackagingTest(unittest.TestCase):
         self.assertTrue(closed_info["lid_closed"])
         self.assertTrue(closed_info["sim_success"])
 
+        inner_edge = model.geom("packaging_box_wall_4").pos[1] - model.geom("packaging_box_wall_4").size[1]
+        lower = np.array([-0.02, -0.02, 0.001])
+        wall_contact = np.array([0.02, inner_edge + 0.000002, 0.04])
+        with patch.object(metrics, "_geom_extent_in_box", return_value=(lower, wall_contact)):
+            self.assertTrue(metrics.update(data)["sim_success"])
+        beyond_wall = wall_contact + [0, 0.003, 0]
+        with patch.object(metrics, "_geom_extent_in_box", return_value=(lower, beyond_wall)):
+            self.assertFalse(metrics.update(data)["object_in_box"])
+
         self.assertEqual(
             set(closed_info),
             {
