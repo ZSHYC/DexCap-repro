@@ -471,6 +471,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 从修正后的真实沉降状态单独测试取镊子，右食指向桥部施加法向力后沿轴向拉动。镊子向槽外移动约 9.25 mm，并实际转出木槽。撤手后由茶盘底面和边沿承托。该状态下对桥部重新拟合侧夹，仍没有相向夹持且可全程通过的候选，未执行夹合。记录见 `runs/tea-raised-tool-traction{,-settle}.json` 和 `runs/tea-raised-tool-edge-pinch.json`。
 
+用新指形从实际静置姿态进入，并按触力调整指形。拇指和食指最终分别对镊子施加约 0.127 N 和 0.009 N，但法线未相向，镊子仍有茶盘和木槽接触。进一步合拢会先导致指尖之间接触。尚未出现离开支撑的有效抓持。记录见 `runs/tea-raised-tool-edge-tactile-full-tool.json`。
+
 
 以官方抓取画面为依据，在新布局试探镊子距合拢端约 35 mm 处两条弹簧臂的外侧接触。下降路线无负间隙，闭合时右拇指与盘底仍相交约 24.6 mm，未执行闭合。当前镊子臂厚 4 mm，后续需要用视频核准指垫接触处的截面。记录见 `runs/tea-official-tool-armgrasp-integrated-probe.json`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
 
@@ -534,9 +536,15 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 茶壶实际平移后，改用托盘右侧的桌面作为放盖位置。转运中让右腕绕世界竖直轴转 30°，避开原固定腕姿的右臂自碰撞。盖子在到达预定松指点前滑脱，最终由桌面独自承托，静置在 `[0.5137, -0.2248, -0.0160] m`，`cap_on_right=true`。瓶身仍自由并由托盘承托，结束时左手只有拇指与瓶身接触。整段接续同一次真实退丝、抓取和搬运动力学状态，无 MuJoCo 警告或 LEAP 关节越限。记录和末状态见 `runs/tea-free-upright-cap-on-table-reoriented.{json,npz}`。
 
+修正镊子初始高度后，从默认满载自由瓶重新执行整段开盖。五轮帽顶拖动再次达到约 1.995 圈、3.991 mm 并真实脱扣。原右手取盖姿态会碰到左拇指，改为左手先保留指形抬离托盘边沿，再张手撤开，右手相向夹持并抬起盖子约 63.2 mm。把最终平面目标向内移 22 mm 后，盖子在托盘右侧脱手静置，末状态确认由桌面独立承托，`cap_on_right=true`。瓶身仍自由、由托盘承托。退丝、提盖与搬运数据无 MuJoCo 警告或 LEAP 关节越限。记录见 `runs/tea-raised-layout-free-upright-cap-top-cycles.json`、`runs/tea-raised-layout-left-raised-cap-lift.json` 和 `runs/tea-raised-layout-cap-on-table-nearer.{json,npz}`。
+
+从新版放盖后的同一实际状态继续接近镊子桥部。右食指峰值约 0.594 N，镊子在拉动结束时相对初态转动约 43.8°、移动约 5.57 mm，桌上的盖子仍满足右侧静置判据。再撤离右手后，镊子仍由木槽承托，此时未形成有效持具。当前可接续的状态和物理记录见 `runs/tea-raised-layout-post-uncap-tool-{traction,settle}.{json,npz}`。
+
 从上述历史放盖状态另行恢复，左手增加食指预载后重新产生约 0.761 N 和 1.238 N 的两侧受力。跟随瓶身平面位置，手腕实际升高约 8.42 mm 时仍有对向接触，瓶身最高升约 1.28 mm，始终得到托盘支撑。继续抬腕后拇指沿壁滑脱。瓶盖位移小于 1 µm。记录见 `runs/tea-open-bottle-presentation-xyfollow-baseline.json`。同一放盖状态下，上下夹取原镊子桥的候选与桌面或木槽相交。改用食指从上方接近，到施力前，无名指远端连杆会先碰到桌上的瓶盖，因此没有测到有效镊子载荷。旧摆放的结果见 `runs/tea-post-uncap-{bridge-grip,tweezer-traction}.json`。
 
 利用实际打开的瓶口，左手退到高位后沿瓶轴下探，食指实测接触两处瓶颈内壁，最终法向力合计约 0.326 N。108 片茶粒都留在瓶里。原来外侧拇指在撤手时就失去接触，内外没有形成对向夹持，未提瓶。尝试同时保持拇指朝向时，腕部在入口前会让掌侧与拇指相交约 0.56 mm。记录见 `runs/tea-open-mouth-neck-{physical,route-orientation-preserved}.json`。
+
+保存上述实际食指内壁接触，改在食指进入后再合拢外侧拇指。食指仍在内壁施力，结束时约 0.315 N。外侧拇指间隙一度降至零，未测到对应法向力，瓶子在食指负载下横向滑动约 9.35 mm，仍由托盘承托。108 片茶粒无掉落。记录见 `runs/tea-open-mouth-inner-state.npz` 和 `runs/tea-open-mouth-thumb-physical.json`。
 
 从侧面施力结束时的实际自由瓶状态另做左手承重试验。右手离开后，左手保持对向受力超过 0.30 s。4 mm 抬腕命令使瓶子实际升高约 2.96 mm，但始终与托盘接触。抬升时拇指侧先滑脱，未形成无支撑搬运。记录见 `runs/tea-free-upright-counterhold-lift-pressure5.json`。
 
