@@ -321,6 +321,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 复合掌心下，以固定柄孔实际截面拟合中指先入的姿态。联合调整 Panda 腕姿、LEAP 关节与被动铰链角后，中指截面进入固定柄孔，手距桌面约 30 mm。活动柄仍与左手指节重叠约 3.37 mm，因此没有物理执行该接近动作。扩大开度会把干涉位置沿活动柄转移到掌侧。候选与间隙记录见 `runs/scissor_left_middle_first_coupled_seeded.{py,json}`。
 
 
+重新利用右手与剪刀柄及枢轴的实际接触，在托盘内将剪刀转向。转动阶段真实接触覆盖约 0.642 s，峰值法向力约 3.08 N，固定柄孔中心最高抬升约 12.8 mm。与托盘 +Y 外墙的间隙由约 58.7 mm 增至 69.2 mm，柄孔平面实测转动约 6.35°。这段动作提供了新的左手接近方向，尚未完成穿环。逐子步记录见 `runs/scissor_right_shank_roll_access_fine.{py,json}`。
+
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
