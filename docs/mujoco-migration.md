@@ -362,6 +362,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 右手完全撤离后，将旧的左手关节直线路径改为先去高位，再保持腕姿分 41 个目标沿 Cartesian 路线下降。从真实初始位执行抬高 80 mm 的路线，105 个观测周期内左手与桌面、托盘、剪刀及右臂接触均为零，最终分离悬停的腕位置误差约 0.123 mm。随后以剪刀当前位姿更新双环目标，完整扫掠可找到静态双指端点，动态峰值食指和拇指接触力约 0.54 N 和 0.30 N。剪刀在接触中移动约 2.21 mm，尚未测到实际同时入环。证据见 `runs/scissor_current_oval_{high_clearance_route,live_micro_entry}.json`。
 
+以 2 ms 物理步跟踪自由剪刀位姿，实际对向接触持续约 0.24 s。用实测关节位置更新目标后，食指和拇指对双环受力均大于 0.01 N 的连续样本首末间隔为 0.38 s，剪刀移动约 0.29 mm，无非预期碰撞。实测食指尖和拇指连杆距环面最小约 0.5–0.7 mm，增加轴向行程和向环内移动后仍未同时穿环。这里覆盖食指与拇指，中指入固定环及双手切割仍需执行。记录见 `runs/scissor_current_oval_physics_rate_{relative,measured_gate-0.06}.json` 和 `runs/scissor_current_oval_ring_section_inward_correction-0.06.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的木质托槽、空心瓶和茶壶、弹簧镊子以及可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际茶盘或木槽接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -443,9 +445,11 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 加入更多几何后，原离屏多重采样在木槽和托盘边缘将 RGB 编码的分割编号 351 和 137 混出了编号 361。禁用离屏多重采样后，标准双臂入口完成三步，输出 `10000 × 6` 点云且无物理警告。当前填充物使 CPU 求解更慢。Newton 在封盖夹具的对照中保持有限状态，CG 在 0.008 s 出现加速度警告。生产采用已验证的 Newton 设置。见 `runs/tea-production-filled-entry.json` 和 `runs/tea-loaded-solver-timing-probe.json`。 [MuJoCo 离屏多重采样参数](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#visual-quality)
 
 
+用默认满载瓶验证右手退丝时，瓶身由试验夹具固定。原换握脚本将同一拇指的两个连杆误判为不同手指对握。单线程试验改为只有拇指与另一根手指对向受力时才再次转腕，第二次合拢阶段仅靠拇指接触将盖推至约 1.142 圈和 2.285 mm 的轴向行程。该阶段没有形成第二次对握，瓶盖仍在螺纹上。两次试验采用不同的 BLAS 线程数。记录见 `runs/tea-live-cap-regrasp-loaded-{probe,distinct-digits}.json`。
+
 ## 六个场景的渲染与接入验证
 
-六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview-grasp-physics/six-mujoco-scenes.png` 和 `runs/task-scene-overview-grasp-physics/smoke.json`。Scissor Cutting 和 Tea Preparing 已验证关键机构的物理响应，仍缺整段双臂任务动作。
+六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview-grasp-physics/six-mujoco-scenes.png` 和 `runs/task-scene-overview-grasp-physics/smoke.json`。Scissor Cutting 和 Tea Preparing 已验证关键机构的物理响应，仍缺整段双臂任务动作。关闭离屏多重采样后，重新用五个场景各执行一步，并与满载泡茶三步结果一起确认六个场景都输出相同结构的点云，且无物理警告。记录见 `runs/no-msaa-*-entry.json` 与 `runs/tea-production-filled-entry.json`。
 
 
 ## 校正 LEAP 指尖碰撞与惯量
