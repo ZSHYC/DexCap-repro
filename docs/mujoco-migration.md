@@ -984,3 +984,23 @@ tea=/data/dexcap-repro/benchmarks/tea-bottle-native/after-scaled-trough
 python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5" \
   --task tea-preparing --output "$tea/tea-standard-osc-cap-unthread-rollout.json"
 ```
+
+### 退丝后的取盖与进剪刀柄
+
+从标准腕位控制实际退丝后的积分态撤手，再在高位调整右手指形并限速接近。食指和拇指首次相向抬盖约 11.98 mm。用这一实测夹持接续上提，盖子在无瓶身支撑时累计上移约 21.3 mm，其侧壁随后重新触到瓶颈。按实际接触法向侧向退出后，瓶颈接触短时消失，双指仍有载荷，继续移动时滑脱。取盖仍未完成右侧放置。逐步受力与实际积分态见数据盘 `benchmarks/tea-bottle-native/after-scaled-trough/after-standard-release/` 的 `tea-standard-cap-quiet-extraction.json`、`tea-standard-cap-carry-live-tilt.json` 和 `tea-standard-cap-unhook-and-carry.json`。
+
+从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
+
+擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。下一次接触调整需依据盘和海绵的实际相对姿态。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
+
+### 捡球的 20 个随机摆放标准复放
+
+初始收拢无名指后，中指与球的法向载荷曾从约 0.38 N 降至零，导致搬运中滑脱。调整中指的两关节目标，在第 96–140 个动作间逐步增加 0.03 rad，并依据实际持球位置规划两段搬运。闲置左手张开，左腕沿 y 轴移出搬运区 120 mm。第 20 个种子按实测腕位误差额外补偿搬运终点 `[15, -40] mm`。保留各动作实际执行的控制周期数。
+
+在 `pro1` 上，用真实 EGL 相机和相同种子复放 20 份轨迹。每份 345 步，种子 1–20 全部完成抬球、松手及落篮，球实际由篮底承托。机械臂接触步、双手穿透和采样到的同手最大穿透均为 0，无物理警告。每回合生成 `10000 × 6` 点云。这里验证的是按初始摆放生成的参考动作。HDF5 文件及实测逐回合汇总 `three-pad-open-left-seeds-01-20-egl-summary.json` 在数据盘 `benchmarks/ball-seeded-reference/world/stowed/`。
+
+```bash
+ball=/data/dexcap-repro/benchmarks/ball-seeded-reference/world/stowed
+python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" \
+  --task ball-collecting --first-seed 20 --output "$ball/seed-20-three-pad-open-left-reference-egl-standard.json"
+```
