@@ -232,6 +232,10 @@ python -m simulation.rollout data/derived/scissor-left-thumb-lift-reference.hdf5
 
 逐子步接触记录在 `runs/scissor_left_underhandle_swing_follow_lift.json`。独立纸带试验中的浅支撑可在原托盘稳定存在，纸带外缘下净空约 17 mm，完整 LEAP 拇指仍会撞桌。110 mm 墙高的候选试验中保留了原隔板拓扑，纸带边缘净空约 60 mm。该墙高来自图像比例估算，尚未用于标准模型，也未验证右手提纸。见 `runs/scissor_paper_tall_wall_calibration.json`。
 
+在正式场景尝试提前一个控制动作闭合左食指。剪刀轴离初始位置升高超过 110 mm 时，空中两个柄孔同时受力 2 ms。食指对固定柄主要向下施力，拇指从下方托住活动柄，两处接触随后失稳。记录见 `runs/scissor_airborne_fixed_loop_anticipatory_capture.{py,json}`。
+
+110 mm 高墙候选让右食指与拇指在提拉阶段累计有 140 个物理子步相向接触，短暂剥离时纸段平均升高约 6.3 mm，仍有纸段留在托盘上。静置后纸带折成沿底板和隔板贴合的 L 形，尝试提拉时右腕落后约 50 mm。原剪刀摆放还与候选外墙重叠约 17.5 mm。该候选留在试验目录。记录见 `runs/scissor_right_paper_tall_wall_pickup.{py,json}`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -239,6 +243,9 @@ python -m simulation.rollout data/derived/scissor-left-thumb-lift-reference.hdf5
 在支稳茶瓶的测试中，对帽体施加 0.007 N·m 力矩，转一圈时实际升约 2 mm 并保持连接，接近两圈和 4 mm 后成为独立刚体。正式双臂场景中，从壶口上方放开的一粒茶在约 1.75 s 后由壶底承托并计为入壶。整段双臂开盖、辅助倒茶和归位仍缺作者的动作与权重。结果见 `runs/tea-pot-production-drop.json`。
 
 把瓶体固定为试验夹具，右侧 Franka 与 LEAP 靠真实手指接触驱动瓶盖达到 **1.19 圈**，相应轴向行程 2.32 mm。重新夹持过程中会丢失非拇指接触，仍未达到两圈退丝。记录见 `runs/tea-leap-cap-robot-probe.{py,json}`。另一次换指试验在转到约 0.58 圈后失去拇指制动接触，盖回退至约 0.48 圈，见 `runs/tea-leap-cap-hinge-regrasp-probe.{py,json}`。固定腕后用手指交替推进，瓶盖在两个切向推动方向均回退。记录在 `runs/tea-leap-cap-finger-gait-probe.{py,json}`。
+
+
+最后一段退丝单独使用固定瓶身、编译时预旋约 1.7 圈的夹具。右手通过接触驱动剩余螺纹行程，盖在约 4 mm 轴向位移处释放。右手随后继续接触，将已独立的瓶盖上抬约 9 mm。记录在 `runs/tea-leap-cap-last-turn-lift-probe.{py,json}`。从零开始的重新抓握仍有回旋。提高螺纹干摩擦虽能抵住重力回退，却降低了换指过程的累计转角。另一次尝试沿瓶轴退离、径向重新靠近，盖在无手部接触的退离阶段已回到零，之后掌部和指节接触又产生偏心转矩。见 `runs/tea-leap-thread-friction-regrasp-probe.json` 和 `runs/tea-leap-cap-axial-radial-regrasp-probe.json`。
 
 
 自由瓶身的左手探针将腕跟踪误差降到约 1.55 mm，接触仍在瓶体同一侧。瓶体仍受茶盘承托，未达到离桌对向夹持。记录在 `runs/tea-leap-joint-clearance-wrap-probe.{py,json}`。
@@ -272,5 +279,16 @@ Wiping 的前 54 步中，第 24 步食指先撞盘沿。第 28 步仅一个控�
 对海绵单个残余桌面角点做剥离时，两个接触点合力从约 0.044 N 降到低于 0.012 N，拇指和中指维持相向夹持超过 2 s。继续旋转时两指先滑脱，海绵未完全离桌。记录在 `runs/wiping-left-sponge-contact-peel-corrected.{py,json}`。
 
 让左食指先压盘内缘，盘子绕桌面支点倾斜约 21°。沿右食指插入弧，净空大于 10 mm 的窗口约 0.4 s。固定右腕角度后重新拟合拇指，在盘底净空约 39 mm 时采到右食指在盘底、拇指在盘沿的一次有效相向接触。保持该姿态的试验缩小了盘面平移，仍未延长相向接触。试验未让左手提前释放。见 `runs/wiping-left-index-only-sector26-gap.json` 和 `runs/wiping-sector26-left-assisted-right-fixed35-contact-latch.json`。
+
+从默认物体摆放和无接触机器人预抓位出发，左食指先压盘内缘，右食指进入盘底。待腕部减速后小步闭合右拇指，维持食指和拇指相向受力，左手撤开。按固定世界目标抬升并根据盘姿有限速地调整右腕，盘子完全离桌，仅由右手接触时上抬约 109 mm。相向接触连续覆盖 26 个 50 ms 周期采样，首末间隔 1.25 s。记录在 `runs/wiping-right-plate-lift-reference-trace.json`。同批次让左手在右手抬盘时转向海绵，维持了独立持盘，但海绵未出现拇指和中指相向接触。记录在 `runs/wiping-plate-sponge-synchronized.{py,json}`。
+
+
+这段持盘动作已导出为 387 步，标准入口记录到 `plate_grasped=true`、机械臂碰撞计数 0 和 `10000 × 6` 点云。HDF5 的 `robot_frame=mujoco_world` 标明初始机器人目标和动作都采用 MuJoCo 世界坐标，`control_cycles_per_action=1` 标明每个动作执行一个 50 ms 的控制周期。试验中把贴近盘沿的动作经 DexCap 坐标往返转换后，回放未能完成持盘，因此参考文件直接保存实际发给控制器的目标。
+
+```bash
+python -m simulation.rollout data/derived/wiping-right-plate-lift-reference.hdf5 \
+  --task wiping --output runs/wiping-right-plate-lift-reference-rollout.json
+```
+
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。

@@ -100,14 +100,16 @@ class MujocoScene:
     def reset(self, initial):
         self.control.initialize(initial)
 
-    def step(self, targets):
-        cycles = self.control.track(targets, MAX_CONTROL_CYCLES, physics_step=self.physics_step)
+    def step(self, targets, *, control_cycles=None):
+        count = MAX_CONTROL_CYCLES if control_cycles is None else control_cycles
+        cycles = self.control.track(targets, count, physics_step=self.physics_step)
         for wrist_position_error, wrist_angle_error in cycles:
             geometries = self.data.contact.geom[:self.data.ncon]
             rigid_contacts = geometries[geometries >= 0]
             self.arm_contact_steps += int(self.arm_geoms[rigid_contacts].any())
             metrics = self.metrics.update(self.data)
-            if (np.max(wrist_position_error) <= WRIST_POSITION_TOLERANCE_M
+            if (control_cycles is None
+                    and np.max(wrist_position_error) <= WRIST_POSITION_TOLERANCE_M
                     and np.max(wrist_angle_error) <= WRIST_ANGLE_TOLERANCE_RAD):
                 break
         return metrics, wrist_position_error, wrist_angle_error

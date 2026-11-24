@@ -32,3 +32,10 @@ class RigCalibrationTest(unittest.TestCase):
         scene.control.track.return_value = iter([(np.full(2, 0.10), pose)] * 10)
         scene.step("obstructed")
         self.assertEqual(scene.metrics.update.call_count, 10)
+
+        scene.metrics.update.reset_mock()
+        scene.control.track.reset_mock()
+        scene.control.track.return_value = iter([(pose, pose)] * 2)
+        scene.step("recorded", control_cycles=2)
+        scene.control.track.assert_called_once_with("recorded", 2, physics_step=scene.metrics.physics_step)
+        self.assertEqual(scene.metrics.update.call_count, 2)

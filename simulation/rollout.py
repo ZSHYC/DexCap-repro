@@ -60,6 +60,17 @@ def rollout(args):
         reference_xy, object_yaw = task.replay_placement(object_name)
     frames, initial, camera, actions = load_demo(args.dataset, demo_name)
 
+    with h5py.File(args.dataset, "r") as source:
+        attributes = source[f"data/{demo_name}"].attrs
+        robot_frame = attributes.get("robot_frame", "dexcap")
+        control_cycles = attributes.get("control_cycles_per_action") if args.checkpoint is None else None
+    if robot_frame not in ("dexcap", "mujoco_world"):
+        raise ValueError(f"Unknown robot frame: {robot_frame}")
+    if control_cycles is not None and (
+        not isinstance(control_cycles, (int, np.integer)) or not 1 <= control_cycles <= MAX_CONTROL_CYCLES
+    ):
+        raise ValueError(f"control_cycles_per_action must be an integer from 1 to {MAX_CONTROL_CYCLES}")
+
     policy = None
     if args.checkpoint is not None:
         import torch
@@ -68,7 +79,8 @@ def rollout(args):
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         policy, _ = policy_from_checkpoint(ckpt_path=args.checkpoint, device=device)
 
-    start = frames.to_world(initial)
+    native_recording = robot_frame == "mujoco_world"
+    start = initial if native_recording else frames.to_world(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
 
     def episode(seed, object_xy):
@@ -89,12 +101,12 @@ def rollout(args):
                 history = deque([observation] * 3, maxlen=3)
             for i in range(steps):
                 if policy is None:
-                    action = actions[i]
+                    targets = actions[i] if native_recording else frames.to_world(actions[i])
                 else:
                     batch = {key: np.stack([frame[key] for frame in history]) for key in observation}
                     with torch.inference_mode():
-                        action = policy(batch)
-                info, position_error, angle_error = scene.step(frames.to_world(action))
+                        targets = frames.to_world(policy(batch))
+                info, position_error, angle_error = scene.step(targets, control_cycles=control_cycles)
                 position_errors.append(position_error)
                 max_position_error = np.maximum(max_position_error, position_error)
                 max_angle_error = np.maximum(max_angle_error, angle_error)
@@ -144,6 +156,10 @@ def rollout(args):
         "control_interval_s": CONTROL_INTERVAL,
         "max_control_cycles": MAX_CONTROL_CYCLES,
     }
+    if native_recording:
+        result["robot_frame"] = robot_frame
+    if control_cycles is not None:
+        result["control_cycles_per_action"] = int(control_cycles)
     if packaging:
         seen = object_name in mujoco_packaging.PACKAGING_OBJECTS
         result.update(object=object_name, object_group="trained" if seen else "unseen")
