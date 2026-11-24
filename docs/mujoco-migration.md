@@ -879,6 +879,13 @@ python -m simulation.rollout data/derived/packaging-red-carton-supported-deposit
   --task packaging --object red-box --output runs/packaging-red-carton-supported-deposit-rollout.json
 ```
 
+**现行完整双臂红盒回放。** 从同一次默认摆放开始，左手先推移外盒，右手用包装中段的相向夹点拾起红盒并运到盒口。腕位翻转后，红盒在盒底以宽面稳定，上缘距盒底约 38 mm。右手撤高并停到安全位置，左手通过折舌使盖板越过竖直位置，再沿盖沿完成合盖和撤离。7,665 个动作的标准回放得到 `object_in_box=true`、`lid_closed=true` 和 `sim_success=true`。终态外盒平移 81.10 mm，距工作区中心最近时缩短 59.48 mm。撤手后盖角约 180.31°。机械臂碰撞、双手碰撞与物理警告均为 0。该回放覆盖红银包装的固定参考摆放。完整指标在数据盘 `benchmarks/runs/packaging-red-carton-complete-standard.json`，收尾接触及逐步盖角在同目录 `box-flat-carton-live-closure.json`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-complete-mujoco-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-red-carton-complete-rollout.json
+```
+
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
 对现有工具另试中指与拇指夹持，在动力学回放中有 296 个 2 ms 子步出现相向接触，最佳同时法向力约 0.103 和 0.030 N，托架仍承重，随后拇指脱开。在默认镊子上从侧面尝试滚动未建立手部接触，工具仍由原托架支撑。证据见 `runs/tea-convex47-alt-digit-physical.json` 和 `runs/tea-tweezers-top-tangent-production-cradle-roll-a.json`。
