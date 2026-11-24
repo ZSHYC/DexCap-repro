@@ -154,7 +154,8 @@ class WipingMetrics:
         self.flex_count = model.flex_vertnum[self.sponge_flex]
         joint = model.body_jntadr[self.plate_body]
         self.initial_plate_z = model.qpos0[model.jnt_qposadr[joint] + 2]
-        self.initial_sponge_z = float(np.mean(model.flex_vert0[self.flex_start:self.flex_start + self.flex_count, 2]))
+        # Trilinear flex_vert0 stores normalized coordinates, not meters.
+        self.initial_sponge_z = float(np.mean(model.flex_vert[self.flex_start:self.flex_start + self.flex_count, 2]))
         self.contact_steps = 0
         self.surface_contact_steps = 0
         self.peak_contact_force = 0.0

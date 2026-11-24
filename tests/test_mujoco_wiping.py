@@ -74,6 +74,7 @@ class MujocoWipingTest(unittest.TestCase):
         vertices = data.flexvert_xpos[start:start + model.flex_vertnum[flex]]
         np.testing.assert_allclose(vertices.mean(axis=0)[:2], object_xy[1], atol=1e-12)
         self.assertAlmostEqual(np.ptp(vertices[:, 2]), 0.034)
+        self.assertAlmostEqual(WipingMetrics(model).initial_sponge_z, vertices[:, 2].mean())
         self.assertGreaterEqual(model.flex_matid[flex], 0)
         v = model.flex_texcoord[:, 1]
         self.assertGreater(v[vertices[:, 2].argmax()], v[vertices[:, 2].argmin()])
