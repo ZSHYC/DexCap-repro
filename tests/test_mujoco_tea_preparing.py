@@ -67,7 +67,7 @@ class MujocoTeaPreparingTest(unittest.TestCase):
             if turns >= 1.995:
                 break
         self.assertIsNotNone(one_turn)
-        self.assertGreater(minimum_alignment, np.cos(.05))
+        self.assertGreater(minimum_alignment, np.cos(.01))
         self.assertAlmostEqual(one_turn[0], THREAD_PITCH, delta=0.00025)
         self.assertAlmostEqual(one_turn[1], THREAD_PITCH, delta=0.00025)
         self.assertTrue(data.eq_active[metrics.thread_weld])
@@ -158,7 +158,11 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         outside_joint = model.joint("tea_particle_free_1")
         inside_qpos = inside_joint.qposadr[0]
         outside_qpos = outside_joint.qposadr[0]
-        inside_start = pot_position + pot_rotation @ [0, 0, POT_HEIGHT + 0.04]
+        # Near a wall corner a supported grain lies beyond the eroded circular radius.
+        corner_angle = np.pi / 12
+        inside_start = pot_position + pot_rotation @ [
+            .034 * np.cos(corner_angle), .034 * np.sin(corner_angle), .014,
+        ]
         outside_start = pot_position + pot_rotation @ [0.075, 0, POT_HEIGHT + 0.04]
         data.qpos[inside_qpos:inside_qpos + 7] = [*inside_start, 1, 0, 0, 0]
         data.qpos[outside_qpos:outside_qpos + 7] = [*outside_start, 1, 0, 0, 0]
@@ -166,13 +170,11 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         data.qvel[outside_joint.dofadr[0]:outside_joint.dofadr[0] + 6] = 0
         mujoco.mj_forward(model, data)
 
-        info = None
-        for _ in range(1500):
+        for _ in range(500):
             mujoco.mj_step(model, data)
             metrics.physics_step(data)
-            info = metrics.update(data)
-            if info["tea_deposited_count"]:
-                break
+        info = metrics.update(data)
+        self.assertTrue(metrics._contact(data, {metrics.tea_geoms[0]}, metrics.pot_geoms))
         self.assertEqual(info["tea_deposited_count"], 1)
         self.assertTrue(info["tea_deposited"])
         self.assertFalse(info["sim_success"])

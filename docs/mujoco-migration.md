@@ -353,6 +353,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 在当前椭圆柄环上，以错开的食指和拇指姿态重新拟合。静态最优端点的指网格截面都能通过双环，目标接触最大重叠约 0.985 mm。沿环面法向后退 10 mm 得到完全分离的起点，61 个接近样本无非预期碰撞。正常控制器执行 3 s 的实际接近时，剪刀仅移动约 0.09 mm，仍未同时穿环。腕误差约 0.73 mm。腕误差补偿和关节空间力矩控制也未建立动态同时入环，剪刀在接触中轻微移动。相关数据见 `runs/scissor_current_oval_{thumb_refine,progressive_entry,adaptive_entry,joint_pd_entry}.json`。
 
+
+另一次从分离悬停开始，让右食指先真实承托固定柄杆，再同步推进左手。右手支撑只能保持约 0.10 s，左食指最终以完整截面进入固定环，活动环随剪刀倾转，拇指仍未通过。组合动作中剪刀约移动 1.15 mm，右手峰值接触力约 4.66 N。记录见 `runs/scissor_current_oval_right_brace.{py,json}`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的木质托槽、空心瓶和茶壶、弹簧镊子以及可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际茶盘或木槽接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -415,10 +418,15 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 持瓶和取镊子的判据要求相应一侧机器人手的两个不同指节或掌部构件产生相向的正法向力，而且器具已经离开桌面和托盘支撑。镊子在开盖后才能记录为已使用，归位时必须由托盘承托并已松手。回归测试覆盖没有手接触的器具位移。 [论文任务顺序](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
 
-官方开盖画面可见收窄的瓶颈。默认模型据此加入估计半径 27 mm、高 14 mm 的空心瓶颈。帽壁内半径与瓶颈多边形最大外接半径之间留有约 3.2 mm 净空。直接加入瓶颈暴露出帽体与螺杆支架的角度漂移。在沿螺纹正向施加 0.007 N·m 的固定瓶身试验中，原连接设置的最大角度差接近 180°，未完成退丝。按瓶身直径设置焊接角度权重、校准等效铰链惯量与约束阻抗，并加入 0.00016 N·m 的估计干摩擦后，角度差降至约 1.29°，轴向导程的最大误差约 0.00049 mm。停施力矩 4 s 回退约 0.00014 圈，反向力矩仍能回拧，继续正转后帽体实际脱离。八项备茶测试和双臂三步入口验证已通过。证据见 `runs/tea-thread-neck-coupling-{calibration,refined}.json` 与 `runs/tea-thread-neck-production-entry.json`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4) [MuJoCo 焊接约束](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#equality-weld)
+官方开盖画面可见收窄的瓶颈。默认模型据此加入估计半径 27 mm、高 14 mm 的空心瓶颈。帽壁内半径与瓶颈多边形最大外接半径之间留有约 3.2 mm 净空。直接加入瓶颈后，原铰链惯量太低，在沿螺纹正向施加 0.007 N·m 的固定瓶身试验中，帽体与螺杆支架的最大角度差接近 180°，未完成退丝。生产代码补入等效铰链惯量和 0.00016 N·m 的估计干摩擦。两组同动作对照中，生产焊接设置的最大角度差约 0.086°，按直径缩放焊接权重并提高阻抗的候选约 1.29°。两组均退丝，生产设置的轴向导程最大误差约 0.00030 mm。生产设置在停施力矩 4 s 后回退约 0.00021 圈，施加反向力矩仍可回拧。证据见 `runs/tea-thread-production-weld-ab.json` 和 `runs/tea-thread-neck-production-entry.json`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4) [MuJoCo 焊接约束](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#equality-weld)
 
 
 在生产场景的独立固定瓶身试验中，右臂和 LEAP 仅用正常执行器第一次将瓶盖推进约 0.61 圈。张手后轴向退 70 mm，复位右腕期间瓶盖无手部接触，仅回退约 0.00219 圈。再次接触时在首次形成相向力后停下闭合，并执行下一段转腕，瓶盖峰值达到约 0.841 圈和 1.681 mm 轴向行程。第二段转动的后期失去非拇指接触，盖子仍在螺纹上。另用默认自由瓶身验证左手接近，两个指垫从完全分离的姿态开始，在实测瓶身位置反馈下建立接触，0.8–1.3 s 的五个采样点均存在相向受力。尝试抬升时这对接触最终滑脱，瓶子始终由托盘承托。证据见 `runs/tea-live-cap-{mechanism,regrasp-opposedstop}-probe.json` 和 `runs/tea-thread-neck-free-bottle-radial-close.json`。
+
+
+根据官方视频侧视图的三条模压环带，正式瓶身采用 2 mm 壁厚、连接瓶颈的肩部及三条可接触环肋。环带高度按画面比例估计，塑料密度和壁厚暂无实物测量。计算出的空瓶身质量约 65.5 g，早期厚壁模型约 96.2 g。夹具将瓶身以 150° 倾角放在壶口上方，合盖时 8 粒全部留在瓶或盖内，初始开盖时 8 粒经瓶口进入壶内，无侧壁漏出。此前按球半径缩小壶内判定区域会遗漏壶底实际支撑的两粒。现在按颗粒中心是否在壶内、实际壶接触和速度判定，凸多边形边角的颗粒也能计入。默认双臂入口输出点云且无物理警告。标准几何记录见 `runs/tea-bottle-production-ribbed-transfer.json` 与 `runs/tea-bottle-ribbed-production-entry.json`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
+
+在新版瓶身的固定瓶体夹具上复跑右手换握动作，实际帽体峰值约 0.907 圈，轴向约 1.814 mm，结束时约 0.904 圈。自由瓶身的初步合拢试验曾出现瞬时离托盘，未形成相向夹持，不算抬瓶。记录见 `runs/tea-live-cap-regrasp-ribbed-probe.json` 和 `runs/tea-bottle-material-ribbed-physical-close.json`。
 
 
 ## 六个场景的渲染与接入验证

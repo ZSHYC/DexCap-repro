@@ -25,7 +25,9 @@ TRAY_ROTATION = np.array([
 ])
 TRAY_FLOOR_HALF = 0.012
 TRAY_TOP = TABLE_HEIGHT + 2 * TRAY_FLOOR_HALF
-BOTTLE_RADIUS, BOTTLE_INNER_RADIUS, BOTTLE_HEIGHT = 0.030, 0.024, 0.105
+BOTTLE_RADIUS, BOTTLE_INNER_RADIUS, BOTTLE_HEIGHT = 0.029, 0.024, 0.105
+BOTTLE_WALL_THICKNESS = 0.002
+BOTTLE_DENSITY = 1250
 BOTTLE_NECK_RADIUS, BOTTLE_NECK_HEIGHT = 0.027, 0.014
 CAP_RADIUS, CAP_HALF_HEIGHT = 0.035, 0.014
 THREAD_PITCH, THREAD_TURNS = 0.002, 2.0
@@ -91,22 +93,35 @@ def _add_bottle_cap_and_tea(spec, xy):
     bottle_z = TRAY_TOP + .003
     bottle = spec.worldbody.add_body(name="tea_bottle", pos=[*xy, bottle_z])
     bottle.add_freejoint(name="tea_bottle_free")
+    wall_inner_radius = BOTTLE_RADIUS - BOTTLE_WALL_THICKNESS
     bottle.add_geom(
         name="tea_bottle_floor", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-        size=[BOTTLE_INNER_RADIUS, .003, 0], rgba=[.10, .15, .14, 1],
-        density=900, friction=[.8, .01, .001],
+        pos=[0, 0, -.001], size=[wall_inner_radius, .002, 0],
+        rgba=[.10, .15, .14, 1], density=BOTTLE_DENSITY, friction=[.8, .01, .001],
     )
     bottle_color = [.10, .22, .19, 1]
     shoulder_height = BOTTLE_HEIGHT - BOTTLE_NECK_HEIGHT
+    shoulder_thickness = .003
     _ring(
-        bottle, "tea_bottle_wall", (BOTTLE_RADIUS + BOTTLE_INNER_RADIUS) / 2,
-        shoulder_height, BOTTLE_RADIUS - BOTTLE_INNER_RADIUS, bottle_color, 850,
+        bottle, "tea_bottle_wall", (BOTTLE_RADIUS + wall_inner_radius) / 2,
+        shoulder_height - shoulder_thickness, BOTTLE_WALL_THICKNESS,
+        bottle_color, BOTTLE_DENSITY,
     )
     _ring(
         bottle, "tea_bottle_neck", (BOTTLE_NECK_RADIUS + BOTTLE_INNER_RADIUS) / 2,
-        BOTTLE_NECK_HEIGHT, BOTTLE_NECK_RADIUS - BOTTLE_INNER_RADIUS, bottle_color, 850,
-        z_center=shoulder_height + BOTTLE_NECK_HEIGHT / 2,
+        BOTTLE_NECK_HEIGHT, BOTTLE_NECK_RADIUS - BOTTLE_INNER_RADIUS,
+        bottle_color, BOTTLE_DENSITY, z_center=shoulder_height + BOTTLE_NECK_HEIGHT / 2,
     )
+    _ring(
+        bottle, "tea_bottle_shoulder", (BOTTLE_RADIUS + BOTTLE_INNER_RADIUS) / 2,
+        shoulder_thickness, BOTTLE_RADIUS - BOTTLE_INNER_RADIUS,
+        bottle_color, BOTTLE_DENSITY, z_center=shoulder_height - shoulder_thickness / 2,
+    )
+    for index, height in enumerate((.024, .047, .070)):
+        _ring(
+            bottle, f"tea_bottle_rib_{index}", BOTTLE_RADIUS + .00035,
+            .0025, .0015, bottle_color, BOTTLE_DENSITY, z_center=height,
+        )
 
     carriage = bottle.add_body(
         name="tea_thread_carriage", pos=[0, 0, BOTTLE_HEIGHT + .010]
@@ -352,7 +367,7 @@ class TeaPreparingMetrics:
         for geom, body, joint in zip(self.tea_geoms, self.tea_bodies, self.tea_joints):
             local = rotation.T @ (data.xpos[body] - data.xpos[self.pot_body])
             inside = (
-                np.linalg.norm(local[:2]) <= POT_INNER_RADIUS - TEA_RADIUS
+                np.linalg.norm(local[:2]) <= POT_INNER_RADIUS
                 and TEA_RADIUS - .003 <= local[2] <= POT_HEIGHT - TEA_RADIUS
             )
             dof = self.model.jnt_dofadr[joint]
