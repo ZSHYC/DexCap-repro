@@ -20,23 +20,22 @@ import numpy as np
 
 TABLE_HEIGHT = -0.030
 # Free-body pose measured after settling on the rim and divider.
-SCISSOR_DEFAULT_POSITION = np.array([0.4100756993, 0.1716605636, 0.0321397695])
+SCISSOR_DEFAULT_POSITION = np.array([0.4121830696, 0.1716311354, 0.0318467208])
 SCISSOR_DEFAULT_QUATERNION = np.array([
-    -0.6716229422, -0.2087652965, -0.1620445729, 0.6921569409,
+    -0.6580609833, -0.1966494774, -0.1727617294, 0.7060014945,
 ])
 TRAY_CENTER = np.array([0.50, 0.0])
 TRAY_HALF_XY = (0.18, 0.20)
 TRAY_WALL_HEIGHT = 0.075
 TRAY_THICKNESS = 0.003
-SCISSOR_OPEN_ANGLE = 0.2909087274
-# LEAP mesh AABBs measured from the released collision assets are
-# 34.7 x 36.3 mm for the thumb and 21.6 x 34.6 mm per fingertip.
-THUMB_OPENING_XY = np.array([0.040, 0.042])
-TWO_FINGER_OPENING_XY = np.array([0.050, 0.040])
+SCISSOR_OPEN_ANGLE = 0.3316140037
+# Oval opening dimensions and lever lengths are estimated from the video.
+THUMB_OPENING_XY = np.array([0.040, 0.037])
+TWO_FINGER_OPENING_XY = np.array([0.080, 0.040])
 HANDLE_BAR_HALF_WIDTH = 0.004
 HANDLE_HALF_HEIGHT = 0.001
-FIXED_HANDLE_CENTER = np.array([-0.105, 0.035])
-MOVING_HANDLE_CENTER = np.array([-0.100, -0.035])
+FIXED_HANDLE_CENTER = np.array([-0.082, 0.032])
+MOVING_HANDLE_CENTER = np.array([-0.075, -0.032])
 PAPER_HALF_LENGTH = 0.030
 PAPER_HALF_THICKNESS = 0.0004
 PAPER_LEAN = np.deg2rad(8)
@@ -85,22 +84,23 @@ def _add_tray(spec):
         _box(tray, f"cutting_tray_{name}", size, pos, color)
 
 
-def _add_handle(body, prefix, z, center, opening):
+def _add_handle(body, prefix, z, center, opening, segments):
     color = [0.02, 0.60, 0.62, 1]
-    x, y = center
-    half_x, half_y = opening / 2
-    bar = HANDLE_BAR_HALF_WIDTH
-    for suffix, size, pos in (
-        ("top", [half_x + bar, bar, HANDLE_HALF_HEIGHT],
-         [x, y + half_y + bar, z]),
-        ("bottom", [half_x + bar, bar, HANDLE_HALF_HEIGHT],
-         [x, y - half_y - bar, z]),
-        ("left", [bar, half_y + bar, HANDLE_HALF_HEIGHT],
-         [x - half_x - bar, y, z]),
-        ("right", [bar, half_y + bar, HANDLE_HALF_HEIGHT],
-         [x + half_x + bar, y, z]),
-    ):
-        _box(body, f"{prefix}_{suffix}", size, pos, color, density=720)
+    axes = opening / 2 + HANDLE_BAR_HALF_WIDTH
+    angles = np.linspace(0, 2 * np.pi, segments + 1) - np.pi / segments
+    points = center + np.column_stack((np.cos(angles), np.sin(angles))) * axes
+    sides = {0: "right", segments // 4: "top",
+             segments // 2: "left", 3 * segments // 4: "bottom"}
+    for index, (first, second) in enumerate(zip(points[:-1], points[1:])):
+        delta = second - first
+        angle = np.arctan2(delta[1], delta[0])
+        suffix = sides.get(index, f"segment_{index:02d}")
+        _box(
+            body, f"{prefix}_{suffix}",
+            [np.linalg.norm(delta) / 2 + 0.0007, HANDLE_BAR_HALF_WIDTH, 0.002],
+            [*((first + second) / 2), z], color, density=720,
+            quat=[np.cos(angle / 2), 0, 0, np.sin(angle / 2)],
+        )
 
 
 def _add_shank(body, name, z, center, opening):
@@ -127,8 +127,8 @@ def _add_scissors(spec, xy):
     teal = [0.02, 0.60, 0.62, 1]
     _box(base, "scissor_fixed_blade", [0.060, 0.0025, 0.0008],
          [0.060, 0, -0.0006], teal, density=7800)
-    _add_handle(base, "scissor_fixed_handle", -0.0015,
-                FIXED_HANDLE_CENTER, TWO_FINGER_OPENING_XY)
+    _add_handle(base, "scissor_fixed_handle", -0.0021,
+                FIXED_HANDLE_CENTER, TWO_FINGER_OPENING_XY, 24)
     _add_shank(base, "scissor_fixed_shank", -0.0015,
                FIXED_HANDLE_CENTER, TWO_FINGER_OPENING_XY)
     base.add_geom(
@@ -144,12 +144,12 @@ def _add_scissors(spec, xy):
     moving.add_joint(
         name="scissor_hinge", type=mujoco.mjtJoint.mjJNT_HINGE,
         axis=[0, 0, 1], limited=True, range=[0.02, 0.55],
-        ref=SCISSOR_OPEN_ANGLE, damping=0.002, armature=0.0001,
+        ref=SCISSOR_OPEN_ANGLE, damping=0.002, frictionloss=0.002, armature=0.0001,
     )
     _box(moving, "scissor_moving_blade", [0.060, 0.0025, 0.0008],
          [0.060, 0, 0.0006], teal, density=7800)
-    _add_handle(moving, "scissor_moving_handle", 0.0015,
-                MOVING_HANDLE_CENTER, THUMB_OPENING_XY)
+    _add_handle(moving, "scissor_moving_handle", 0.0021,
+                MOVING_HANDLE_CENTER, THUMB_OPENING_XY, 20)
     _add_shank(moving, "scissor_moving_shank", 0.0015,
                MOVING_HANDLE_CENTER, THUMB_OPENING_XY)
 
@@ -227,7 +227,7 @@ def _mesh_section_fits_opening(vertices, faces, half_opening):
     fraction = first[:, 2] / (first[:, 2] - second[:, 2])
     section = first[:, :2] + fraction[:, None] * (second[:, :2] - first[:, :2])
     section = np.concatenate((section, vertices[height == 0, :2]))
-    return bool(len(section) and np.all(np.abs(section) <= half_opening))
+    return bool(len(section) and np.all(np.sum((section / half_opening) ** 2, axis=1) <= 1))
 
 
 class ScissorCuttingMetrics:
@@ -303,7 +303,8 @@ class ScissorCuttingMetrics:
     def _finger_in_opening(self, data, links, opening):
         top, bottom, half_opening = opening
         center = (data.geom_xpos[top] + data.geom_xpos[bottom]) / 2
-        handle_rotation = data.geom_xmat[top].reshape(3, 3)
+        handle_body = self.model.geom_bodyid[top]
+        handle_rotation = data.xmat[handle_body].reshape(3, 3)
         for geom in links:
             mesh = self.model.geom_dataid[geom]
             vertex_start = self.model.mesh_vertadr[mesh]

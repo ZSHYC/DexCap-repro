@@ -116,7 +116,7 @@ class MujocoScissorCuttingTest(unittest.TestCase):
             ]
             center = data.geom_xpos[rim_bars].mean(axis=0)
             self.assertGreater(center[1] - rim_outside, 0.015)
-            self.assertGreater(center[2] - rim_top, 0.020)
+            self.assertGreater(center[2] - rim_top, 0.015)
         self.assertGreater(outer_wall_face - blade_min_y, 0.04)
         self.assertLess(
             np.linalg.norm(data.xpos[model.body("scissor_base").id] - initial_position),
@@ -152,6 +152,9 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         ])
         half_opening = np.array([.025, .020])
         self.assertTrue(_mesh_section_fits_opening(vertices, faces, half_opening))
+        self.assertFalse(_mesh_section_fits_opening(
+            vertices + [.018, .014, 0], faces, half_opening,
+        ))
         self.assertFalse(_mesh_section_fits_opening(
             vertices + [.040, 0, 0], faces, half_opening,
         ))
@@ -208,14 +211,14 @@ class MujocoScissorCuttingTest(unittest.TestCase):
                 )
                 np.testing.assert_allclose(first_anchor, second_anchor, atol=1e-12)
 
-        # Four bars leave measured free apertures, and each loop connects to its pivot link.
-        for prefix, opening in (
-            ("scissor_fixed_handle_", TWO_FINGER_OPENING_XY),
-            ("scissor_moving_handle_", THUMB_OPENING_XY),
+        # Opposite tangent segments give the two oval spans.
+        for prefix, opening, segments in (
+            ("scissor_fixed_handle_", TWO_FINGER_OPENING_XY, 24),
+            ("scissor_moving_handle_", THUMB_OPENING_XY, 20),
         ):
             self.assertEqual(
                 sum(model.geom(index).name.startswith(prefix) for index in range(model.ngeom)),
-                4,
+                segments,
             )
             left = model.geom(f"{prefix}left").id
             right = model.geom(f"{prefix}right").id
@@ -227,7 +230,7 @@ class MujocoScissorCuttingTest(unittest.TestCase):
                 model.geom_pos[top, 1] - model.geom_pos[bottom, 1]
                 - 2 * HANDLE_BAR_HALF_WIDTH,
             ])
-            np.testing.assert_allclose(measured, opening, atol=1e-12)
+            np.testing.assert_allclose(measured, opening, atol=0.001)
         self.assertGreaterEqual(model.geom("scissor_fixed_shank").id, 0)
         self.assertGreaterEqual(model.geom("scissor_moving_shank").id, 0)
 
@@ -250,17 +253,13 @@ class MujocoScissorCuttingTest(unittest.TestCase):
             hinge.range[0], places=6,
         )
 
-        fixed_handles = [model.geom(f"scissor_fixed_handle_{part}").id
-                         for part in ("top", "bottom", "left", "right")]
-        moving_handles = [model.geom(f"scissor_moving_handle_{part}").id
-                          for part in ("top", "bottom", "left", "right")]
         fromto = np.zeros(6)
         for angle in (hinge.range[0], hinge.qpos0[0], hinge.range[1]):
             data.qpos[hinge.qposadr[0]] = angle
             mujoco.mj_forward(model, data)
             clearance = min(
                 mujoco.mj_geomDistance(model, data, fixed_geom, moving_geom, 0.2, fromto)
-                for fixed_geom in fixed_handles for moving_geom in moving_handles
+                for fixed_geom in metrics.fixed_handle for moving_geom in metrics.moving_handle
             )
             self.assertGreater(clearance, 0.005)
 
