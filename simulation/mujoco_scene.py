@@ -64,8 +64,7 @@ class MujocoScene:
         self.control.initialize(initial)
 
     def step(self, targets):
-        for _ in range(MAX_CONTROL_CYCLES):
-            wrist_position_error, wrist_angle_error = self.control.step(targets)
+        for wrist_position_error, wrist_angle_error in self.control.track(targets, MAX_CONTROL_CYCLES):
             geometries = self.data.contact.geom[:self.data.ncon]
             rigid_contacts = geometries[geometries >= 0]
             self.arm_contact_steps += int(self.arm_geoms[rigid_contacts].any())

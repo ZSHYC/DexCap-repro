@@ -22,11 +22,12 @@ class RigCalibrationTest(unittest.TestCase):
         scene.arm_geoms = np.zeros(1, dtype=bool)
         scene.arm_contact_steps = 0
         pose = np.zeros(2)
-        scene.control.step.return_value = pose, pose
+        scene.control.track.return_value = iter([(pose, pose)] * 10)
         scene.step("reachable")
-        scene.control.step.assert_called_once_with("reachable")
+        scene.control.track.assert_called_once_with("reachable", 10)
+        scene.metrics.update.assert_called_once_with(scene.data)
 
-        scene.control.step.reset_mock()
-        scene.control.step.return_value = np.full(2, 0.10), pose
+        scene.metrics.update.reset_mock()
+        scene.control.track.return_value = iter([(np.full(2, 0.10), pose)] * 10)
         scene.step("obstructed")
-        self.assertEqual(scene.control.step.call_count, 10)
+        self.assertEqual(scene.metrics.update.call_count, 10)

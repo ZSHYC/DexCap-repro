@@ -12,11 +12,19 @@ from simulation.hand_joints import decode_leap_joints, encode_leap_joints
 
 ARM_HOME = np.array([0, -0.55, 0, -2.35, 0, 2.0, 0.785])
 CONTROL_INTERVAL = 0.05
+WRIST_RAMP_FRACTION = 0.3
 
 
 def wrist_error(position, rotation, target_position, target_rotation):
     angular = Rotation.from_matrix(target_rotation @ rotation.T).as_rotvec()
     return np.concatenate((target_position - position, angular))
+
+
+def wrist_ramp(position, rotation, target_position, target_rotation, fractions):
+    positions = position + fractions[:, None] * (target_position - position)
+    delta = Rotation.from_matrix(target_rotation @ rotation.T).as_rotvec()
+    rotations = Rotation.from_rotvec(fractions[:, None] * delta) * Rotation.from_matrix(rotation)
+    return list(zip(positions, rotations.as_matrix()))
 
 
 class Arm:
@@ -75,15 +83,25 @@ class DualArmController:
         self.data.qvel[:] = 0
         mujoco.mj_forward(self.model, self.data)
 
-    def step(self, action):
+    def track(self, action, cycles):
+        """Interpolate wrists during the first cycle, then hold the absolute targets."""
         targets = tuple(self._targets(action))
-        for arm, (_, _, fingers) in zip(self.arms, targets):
+        fractions = np.minimum(1, np.arange(1, self.substeps + 1) / (WRIST_RAMP_FRACTION * self.substeps))
+        ramps = []
+        for arm, (position, rotation, fingers) in zip(self.arms, targets):
             self.data.ctrl[arm.hand_actuators] = fingers
+            ramps.append(wrist_ramp(
+                self.data.site_xpos[arm.site], self.data.site_xmat[arm.site].reshape(3, 3),
+                position, rotation, fractions,
+            ))
+        commands = list(zip(*ramps))
+        hold = [(position, rotation) for position, rotation, _ in targets]
 
-        for _ in range(self.substeps):
+        for substep in range(cycles * self.substeps):
             mujoco.mj_step1(self.model, self.data)
             mujoco.mj_fullM(self.model, self.mass, self.data.qM)
-            for arm, (position, rotation, _) in zip(self.arms, targets):
+            poses = commands[substep] if substep < self.substeps else hold
+            for arm, (position, rotation) in zip(self.arms, poses):
                 mujoco.mj_jacSite(self.model, self.data, self.jacobian[:3], self.jacobian[3:], arm.site)
                 jacobian = self.jacobian[:, arm.dofs]
                 mass = self.mass[np.ix_(arm.dofs, arm.dofs)]
@@ -97,9 +115,9 @@ class DualArmController:
                 torque = task_torque + null_torque + self.data.qfrc_bias[arm.dofs]
                 self.data.ctrl[arm.arm_actuators] = np.clip(torque, *arm.torque_limits)
             mujoco.mj_step2(self.model, self.data)
-
-        mujoco.mj_forward(self.model, self.data)
-        return self.tracking_error(action)
+            if (substep + 1) % self.substeps == 0:
+                mujoco.mj_forward(self.model, self.data)
+                yield self.tracking_error(action)
 
     def tracking_error(self, action):
         errors = np.array([arm.error(self.data, position, rotation)
