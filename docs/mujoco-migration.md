@@ -933,3 +933,34 @@ python -m simulation.rollout data/derived/packaging-red-carton-bimanual-closure-
 ### 擦盘回程的第三支点
 
 擦盘的独立回程试验中，右无名指接入后承担第三支点，右食指和拇指继续夹住离桌的盘。无名指入接时峰值约 83.45 N，接触收敛后后段约 4.0–4.7 N。第三支点的连续观测段为 0.65 s。该起点海绵与盘心相距约 293.8 mm，每腕每个 50 ms 周期移动 2 mm。相向推进时左中指逐渐卸载，海绵脱夹前未重新接触盘面。第二笔尚未建立。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/left-return-right-ring-bilateral-approach.json`。
+
+### 剪纸的标准提纸回放
+
+从默认托盘、剪刀及纸带摆放开始，右拇指越过纸带顶边，食指和拇指闭合，随后将完整纸带抬离支撑。223 个标准 46 维目标以 50 ms 周期从同一初始摆放回放，纸带最低段增加约 54.32 mm。实际两指相向夹持且整条纸带没有托盘或桌面支撑的最长连续区间约为 2.25 s。右食指和拇指的峰值载荷约 0.07175 和 0.07149 N，未触发机械臂碰撞、双手碰撞或物理警告。
+
+在此真实右手持纸末态开始左臂接近，242 个静态路径点对右臂、纸带、托盘及桌面均无穿透。增加 102 个标准动作后纸带一直离盘，左拇指曾严格进入活动环，食指和中指尚未进入固定环。继续加载时活动环对拇指约 7.5–11.5 N，固定柄外侧约 2.2–3.3 N，左腕跟踪误差回升至约 17.5 mm，尚未开始切割。力、几何和动作记录位于 `runs/scissor_paper_default_pickup_c4d447c/` 的 `scissor-paper-default-pickup-standard-contact-audit-left-reach.json` 与 `scissor-paper-default-pickup-standard-left-reach-actions.npz`。
+
+```bash
+python -m simulation.rollout \
+  runs/scissor_paper_default_pickup_c4d447c/scissor-paper-default-pickup-standard.hdf5 \
+  --task scissor-cutting --output runs/scissor-paper-default-pickup-rollout.json
+```
+
+备茶的独立三指提瓶续段按手指原网格的接触间距调整食指和中指。在满载瓶约上移 23.1 mm 时，左三指实际载荷约为 1.07、0.70、0.47 N，托盘和右手载荷均为零。稳定提瓶阶段分别保存约 15、20、23 mm 的积分状态。续段把右腕单独退开时，左食指一度卸载，说明提瓶与倾倒之间仍需连续维持夹持。记录在数据盘 `benchmarks/tea-bottle-native/` 的 `tea-three-pad-current-bottle-lift.json` 和 `tea-three-pad-current-held-*mm.npz`。提瓶起步与右腕退让合并，再补偿实际瓶口位置和两指载荷差。由受限关节动力学实测，夹持下倾角达到约 80.19° 时，拇指和食指约为 0.47、1.74 N，中指约 0.16 N，瓶口距壶中心平面约 12 mm。此时拇指末轴在 −1.34 rad 止挡附近，拇指触点已从瓶侧滑到瓶口上缘。再倾倒失去夹持，未有茶粒沉降在壶内。保存的 `tea-pour-balanced-held-80deg.npz` 有三个指垫的实际受力，完整记录为 `tea-balanced-bottle-pour-three-pad-balanced-wrist.json`。
+
+### 捡球的随机摆放回放
+
+用同一条 265 步参考动作测试论文定义的球与线篮初始摆放范围。种子 1–20 的位置来自正式场景采样器。接近和抬球段按初始球位平移，放球段按初始篮位平移，搬运段在两个位移之间插值。动作使用原 HDF5 的世界坐标，按正式腕位控制跟踪。20 个种子都实际抬球，19 个把球释放至篮中并由篮底承托。种子 16 在转运末端出现双手碰撞，右腕目标误差约 151 mm。该回放已知初始物体位置，作为场景和控制验证。逐回合记录和动作生成脚本在数据盘 `benchmarks/ball-seeded-reference/world/`。
+
+种子 16 的原抬球阶段里，无名指和中指间的实际最大网格穿透约 4.66 mm。保持实际夹球的三指不动，另调整闲置无名指，并降低搬运高度、渐进俯腕、在篮口中心上方稳定后松手。365 个目标通过同一标准入口，球实际释放并由篮底承托。回放没有机械臂碰撞、双手碰撞或物理警告，点云为 `10000 × 6`。该回放使用单个 `--first-seed` 从正式采样器恢复初始状态。
+
+```bash
+ball=/data/dexcap-repro/benchmarks/ball-seeded-reference/world
+python -m simulation.rollout "$ball/seed-16-standard-reference.hdf5" \
+  --task ball-collecting --first-seed 16 --output "$ball/seed-16-standard-rollout.json"
+```
+
+
+### 擦盘第一笔末端的三指支撑
+
+从 3,266 步参考在第 3,238 步后接续，使右无名指于第 3,254 步入接并在第 3,259 步完成第一笔计分。末态盘和海绵仍离桌，右食指、拇指和无名指分别约 10.31、7.45、9.24 N，左中指和拇指分别约 3.11、3.68 N，累计有效擦拭距离约 83.52 mm。从这次已接触内盘的末态执行回程，右手三点支撑保持，海绵约移动 25.5 mm 后因受压滑脱。该回程的盘面接触峰值约 26.74 N，计分仍为一笔。接续动作和积分态见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-first-pass-ring-delayed*.{json,npz}`。

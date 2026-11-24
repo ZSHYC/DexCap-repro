@@ -215,7 +215,7 @@ def main():
     parser.add_argument("--checkpoint", help="Use a policy checkpoint instead of recorded actions")
     parser.add_argument("--steps", type=int)
     parser.add_argument("--trials", type=int, default=1, help="Sample placements for policy evaluation")
-    parser.add_argument("--first-seed", type=int, help="Start seeded placements at this seed")
+    parser.add_argument("--first-seed", type=int, help="Start policy trials or replay one recorded layout at this seed")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if args.steps is not None and args.steps < 1:
@@ -224,8 +224,8 @@ def main():
         parser.error("--trials must be positive")
     if args.first_seed is not None and args.first_seed < 1:
         parser.error("--first-seed must be positive")
-    if (args.trials > 1 or args.first_seed is not None) and args.checkpoint is None:
-        parser.error("Seeded trials require a policy checkpoint")
+    if args.trials > 1 and args.checkpoint is None:
+        parser.error("Multiple trials require a policy checkpoint")
     if args.object is not None and args.task != "packaging":
         parser.error("--object applies to Packaging")
     if args.object in mujoco_packaging.PACKAGING_UNSEEN_OBJECTS and args.checkpoint is None:
