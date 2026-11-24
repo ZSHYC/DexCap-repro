@@ -579,6 +579,8 @@ DexCap 的重定向 URDF 比 LEAP V1 官方物理模型多四个 `realtip` 固�
 
 右腕按实测位置调整目标后，另一姿态仍出现同一区域的假接触。原始掌部三角面距触点约 4.69 mm，旧凸块报告约 0.082 mm 穿透和 6.06 N 法向力。把第 13 块里保留的原始裁切三角面沿其原局部 z 范围中点分在两个凸包内。两组实测姿态在左右手分别获得约 1.51 和 0.91 mm 净空，两个完整场景的对应状态均无该接触。源三角面的覆盖和其余 63 块碰撞体保留。52 项 MuJoCo 测试通过，标准入口再次验证海绵抬升约 310.5 mm，球释放后进入篮内。生成和复核记录在 `/data/dexcap-repro/benchmarks/leap-palm-part13-z2-final/`。
 
+后续动力学续段共测到四组掌部凸包假接触。最后一处报告约 6.80 N，触点距原始掌部三角面约 2.28 mm。将原第 13 块覆盖的裁切三角面沿局部 x 划分为十个凸包，保留所有对应三角面及其余 63 块。左右手在四组实测姿态的最小净空为 2.78、2.48、1.97 和 1.37 mm，四个完整场景状态均消除了该接触。52 项 MuJoCo 测试通过，Sponge Picking 与 Ball Collecting 的标准参考仍成功。生成和测量见 `/data/dexcap-repro/benchmarks/leap-palm-part13-x10-v4/`。
+
 更新后六个任务均能用标准入口加载、控制和输出点云，37 项 MuJoCo 测试通过。原动作在新模型上的实测结果为 Sponge Picking 仍完成，红银包装仍入盒但没有合盖，Ball Collecting 未抬球，Wiping 未满足两笔擦拭。剪刀参考仍抬高约 145 mm，备茶本次只跑了 3 步入口验证。具体结果在 `runs/leap-palm-*-rollout.json`。重新执行隔离提纸时，最低纸段在双侧受力时抬高约 51 mm。两垫各超过 8 mN 且全条无支撑的最长连续区间为 0.37 s。仍存在指垫之间的接触，需要继续校准。见 `runs/scissor_paper_pose_follow_palm-roll.json`。
 
 首次校正 LEAP 之后，两条参考动作按当时的放置与控制参数回放。该版本 Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
@@ -745,6 +747,8 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 再次按实测腕位调整，双块掌部模型的擦盘右手续段从第 2598 步推进到第 2707 步。终点食指和拇指法向力为 5.76 和 3.50 N，桌面与左手仍接触盘子。此时第 13 块与拇指近节在第三组实测姿态产生约 6.32 N 接触，触点距掌部原始三角面约 3.55 mm，距拇指三角面约 0.034 mm。记录见 `/data/dexcap-repro/benchmarks/wiping-c6-palm13-z2-rebased-wrist-trace.json` 和同目录的 `wiping-c6-palm13-z2-source-contact.json`。
 
 在 `af96b28` 的另一条执行器回放中，绕右食指内侧预期接触点与拇指外侧接触点的连线滚转 −4°，可在加大预载时保留更靠内的平底支点。第 2264 步食指在半径约 69.36 mm 的平底承受 2.01 N，半径 90 mm 的盘沿坡段承受约 0.39 N。未滚转的旧路线在高载阶段 3.87 N 均落在半径约 90 mm 处。这个回放已确认食指支点的改变，余下的拇指加载和双手交接需继续验证。数据见 `/data/dexcap-repro/benchmarks/wiping-large-lever-index-roll-load-extension-trace.json`。
+
+加入拇指近节的距离反馈和基于实测盘姿的右腕补偿后，从默认摆放保存 3,001 个执行器目标。标准入口在十块掌部模型上重放并返回 `plate_grasped=true`，没有物理警告、机械臂碰撞或双手碰撞。以 2 ms 物理子步检查支点，右手食指和拇指相向承载，最长连续 969 个样本没有桌面或左手载荷。首末样本相隔 1.936 s，盘下净空约 4.95–15.24 mm。本段验证右手抬盘并持有，海绵留在桌面，擦拭笔画为 0。轨迹见 `data/derived/wiping-plate-c6-right-attitude-reference.hdf5`，逐子步记录见 `/data/dexcap-repro/benchmarks/palm-x10-merge-validation/wiping-attitude-2ms.json`。
 
 单独重放 Wiping 的左手海绵拾取时，海绵由左中指和拇指相向夹持，从默认桌面抬升 39.64 mm。抬升超过 30 mm、对夹且无桌面接触的连续观测跨度为 3.5 s。标准入口重放前 162 步时 `sponge_grasped=true`，无碰撞或警告。右臂停在远处，盘位移约 0.007 mm。这段证据覆盖海绵拾取。数据见 `data/derived/wiping-left-sponge-isolated-current-reference.hdf5`，结果见 `runs/wiping-left-sponge-isolated-current-rollout.json`。
 
