@@ -43,29 +43,38 @@ class MujocoRobotAssetsTest(unittest.TestCase):
                     if expected is not None:
                         self.assertIn({body[i] for i in expected}, body_pairs)
 
-    def test_palm_shell_clears_the_measured_thumb_shank_pose(self):
+    def test_palm_shell_clears_measured_thumb_shank_poses(self):
         from simulation.mujoco_assets import _load_hand
 
-        angles = (
-            .66044707, -.19274138, .59105834, .57361082,
-            -.15164648, -.07933945, -.29952167, 0.0,
-            -.29212783, .00052131, -.24949975, 0.0,
-            .95121824, .56628131, .35120388, 1.28769834,
+        positions = (
+            (
+                .66044707, -.19274138, .59105834, .57361082,
+                -.15164648, -.07933945, -.29952167, 0.0,
+                -.29212783, .00052131, -.24949975, 0.0,
+                .95121824, .56628131, .35120388, 1.28769834,
+            ),
+            (
+                .68470671, -.14276708, .58989570, .55965313,
+                -.15162836, -.07933377, -.29951979, 0.0,
+                -.29211119, .00052725, -.24949797, 0.0,
+                .95104111, .60381306, .35007304, 1.29001912,
+            ),
         )
         for side in ("right", "left"):
-            with self.subTest(side=side):
-                model = _load_hand(side).compile()
-                data = mujoco.MjData(model)
-                for index, angle in enumerate(angles):
-                    data.qpos[model.joint(f"hand_{index}").qposadr[0]] = angle
-                mujoco.mj_forward(model, data)
-                palm_body = model.geom("hand_collision_0").bodyid[0]
-                thumb_geom = model.geom("hand_collision_14").id
-                self.assertFalse(any(
-                    thumb_geom in contact.geom and contact.dist < 0
-                    and palm_body in model.geom_bodyid[contact.geom]
-                    for contact in data.contact
-                ))
+            model = _load_hand(side).compile()
+            data = mujoco.MjData(model)
+            joints = [model.joint(f"hand_{i}").qposadr[0] for i in range(16)]
+            palm_body = model.geom("hand_collision_0").bodyid[0]
+            thumb_geom = model.geom("hand_collision_14").id
+            for pose, angles in enumerate(positions):
+                with self.subTest(side=side, pose=pose):
+                    data.qpos[joints] = angles
+                    mujoco.mj_forward(model, data)
+                    self.assertFalse(any(
+                        thumb_geom in contact.geom and contact.dist < 0
+                        and palm_body in model.geom_bodyid[contact.geom]
+                        for contact in data.contact
+                    ))
 
     def test_distal_joint_stop_resists_a_servo_strength_external_load(self):
         from simulation.mujoco_assets import _load_hand

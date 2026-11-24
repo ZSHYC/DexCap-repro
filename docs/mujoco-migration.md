@@ -577,6 +577,8 @@ DexCap 的重定向 URDF 比 LEAP V1 官方物理模型多四个 `realtip` 固�
 
 擦盘接盘时又定位到掌部第 13 个凸块与拇指近节的假接触。触点距原始掌部三角面约 5.16 mm、距拇指三角面约 0.04 mm，但旧凸块报告 0.086 mm 穿透和 6.30 N 法向力。将原始掌部三角面裁切到此凸块的原界面，再用保留的表面重建该凸包。双手在同一实测关节姿态下均剩约 0.37 mm 净空，其他 63 块几何及掌部惯量没有调整。52 项 MuJoCo 测试通过，标准入口的 Sponge Picking 仍抬升约 310.5 mm，Ball Collecting 仍完成落篮。擦盘相同接触位置反馈路线越过该假接触，后续受腕部跟踪误差限制，盘仍受支撑。证据见 `/data/dexcap-repro/benchmarks/wiping-c6-thumb-palm-source-contact.json`、`leap-palm-part13-refinement/` 和 `palm-thumb-wiping-merge-validation/`。 [MuJoCo 凸碰撞与网格](https://mujoco.readthedocs.io/en/stable/computation/index.html#convex-collisions)
 
+右腕按实测位置调整目标后，另一姿态仍出现同一区域的假接触。原始掌部三角面距触点约 4.69 mm，旧凸块报告约 0.082 mm 穿透和 6.06 N 法向力。把第 13 块里保留的原始裁切三角面沿其原局部 z 范围中点分在两个凸包内。两组实测姿态在左右手分别获得约 1.51 和 0.91 mm 净空，两个完整场景的对应状态均无该接触。源三角面的覆盖和其余 63 块碰撞体保留。52 项 MuJoCo 测试通过，标准入口再次验证海绵抬升约 310.5 mm，球释放后进入篮内。生成和复核记录在 `/data/dexcap-repro/benchmarks/leap-palm-part13-z2-final/`。
+
 更新后六个任务均能用标准入口加载、控制和输出点云，37 项 MuJoCo 测试通过。原动作在新模型上的实测结果为 Sponge Picking 仍完成，红银包装仍入盒但没有合盖，Ball Collecting 未抬球，Wiping 未满足两笔擦拭。剪刀参考仍抬高约 145 mm，备茶本次只跑了 3 步入口验证。具体结果在 `runs/leap-palm-*-rollout.json`。重新执行隔离提纸时，最低纸段在双侧受力时抬高约 51 mm。两垫各超过 8 mN 且全条无支撑的最长连续区间为 0.37 s。仍存在指垫之间的接触，需要继续校准。见 `runs/scissor_paper_pose_follow_palm-roll.json`。
 
 首次校正 LEAP 之后，两条参考动作按当时的放置与控制参数回放。该版本 Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
