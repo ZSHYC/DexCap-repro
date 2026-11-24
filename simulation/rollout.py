@@ -100,6 +100,8 @@ def rollout(args):
             max_position_error = initial_error.copy()
             max_angle_error = initial_angle.copy()
             position_errors = []
+            physics_warnings = {}
+            simulation_time = float(scene.data.time)
             if policy is not None:
                 torch.manual_seed(seed)
                 policy.start_episode()
@@ -118,6 +120,15 @@ def rollout(args):
                 position_errors.append(position_error)
                 max_position_error = np.maximum(max_position_error, position_error)
                 max_angle_error = np.maximum(max_angle_error, angle_error)
+                if scene.data.warning.number.any():
+                    physics_warnings = {
+                        mujoco.mjtWarning(index).name: int(count)
+                        for index, count in enumerate(scene.data.warning.number)
+                        if count
+                    }
+                    info["sim_success"] = False
+                    break
+                simulation_time = float(scene.data.time)
                 if policy is not None and i + 1 < steps:
                     history.append(observe(scene, frames, rng))
             return {
@@ -127,7 +138,9 @@ def rollout(args):
                 "max_wrist_error_m": max_position_error.tolist(),
                 "max_wrist_error_rad": max_angle_error.tolist(),
                 "arm_contact_steps": scene.arm_contact_steps,
-                "simulation_time_s": float(scene.data.time),
+                "executed_steps": len(position_errors),
+                "physics_warnings": physics_warnings,
+                "simulation_time_s": simulation_time,
                 **info,
             }
         finally:
@@ -177,7 +190,7 @@ def rollout(args):
         placements = dict(zip(position_keys, reference_xy.tolist()))
         return {**result, **placements, **results[0]}
     if packaging:
-        placements = sum(trial["object_in_box"] for trial in results)
+        placements = sum(trial["object_in_box"] and not trial["physics_warnings"] for trial in results)
         result["placement_count"] = placements
         result["placement_rate"] = placements / args.trials
     successes = sum(trial["sim_success"] for trial in results)

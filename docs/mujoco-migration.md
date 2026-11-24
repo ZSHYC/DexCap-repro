@@ -78,6 +78,11 @@ python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
 历史 PyBullet 仿真代码和入口保存在基线提交。当前分支的 `simulation.rollout`、示范图和策略动作诊断均运行 MuJoCo。官方数据重建仍沿用作者的 PyBullet 指尖 IK。 [基线提交](https://github.com/ZSHYC/DexCap-repro/tree/0ee5418)
 
 
+在复合掌心模型上以发布的 Wiping HDF5 与已有的第 3000 轮权重重跑配对闭环。两种编码器各取相同的种子 1–20，每回合上限 400 个策略动作。PointNet 有 3 个回合抓起盘、2 个抓起海绵、1 个回合两物均曾抓起。SetXF 的对应计数为 2、4、0。两种编码器各有 2 个有效回合接触内盘，均未完成完整擦拭，成功数均为 0/20。完整轨迹可在固定摆放下通过标准回放，随机闭环表统计已有权重的实际输出。数据与启动命令位于 `runs/wiping-compound-palm-benchmark/`。
+
+SetXF 的种子 9 触发了 MuJoCo `mjWARN_BADQACC`，原始日志记录于模拟时间 23.02 s。分析时按物理异常回合计为失败。现在标准入口遇到 MuJoCo 警告会终止该回合，并记录 `executed_steps` 和 `physics_warnings`。异常回合计入总尝试次数，其任务指标在汇总中不记为通过。
+
+
 ## 115 回合闭环结果
 
 | 权重及任务 | 回合 | 抓取或入盒 | 内盘面接触或合盖 | 完整成功 |
@@ -325,6 +330,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 
 在这个支撑姿态，左食指和拇指到各自柄孔边界的静态净空约 2.55 和 4.59 mm。用碰撞网格包络计算，左手最低点仍离桌约 8.27 mm。顺序执行时右手在左腕抵达前已失去柄部支撑，左手尚未接触柄。把左手预抓提前到右手支撑采样的起点后，整机起始姿态的两臂碰撞网格重叠约 81.1 mm，因此该同步方案未执行。净空及物理接触证据见 `runs/scissor_left_baseline_aabb_diag.json` 和 `runs/scissor_bimanual_contact_sync.json`。
+
+
+右手经真实接触将剪刀放在倾斜的托盘支撑姿态，再完全撤回。自由静置 1 s 后剪刀由三处托盘接触承托，固定环平面倾斜约 17.67°。随后仅左手前进，食指与拇指在仿真中同时通过固定环与活动环，连续保持约 0.55 s。食指接触固定环后，剪刀转动使拇指脱出，两个环还未形成同时受力，且尚未验证中指入环。见 `runs/scissor_right_setdown_home.{py,json}` 与 `runs/scissor_left_after_setdown.{py,json}`。
 
 
 ## Tea Preparing

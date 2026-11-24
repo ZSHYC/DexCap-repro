@@ -25,7 +25,7 @@ def pairing(report, first, second):
 def tally(trials, metrics):
     result = {"trial_count": len(trials)}
     for name, flag in metrics.items():
-        count = sum(trial[flag] for trial in trials)
+        count = sum(trial[flag] and not trial.get("physics_warnings") for trial in trials)
         result[f"{name}_count"] = count
         result[f"{name}_rate"] = count / len(trials)
     return result

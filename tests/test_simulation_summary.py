@@ -4,10 +4,19 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from simulation.packaging_objects import PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJECTS
-from simulation.summarize_results import summarize
+from simulation.summarize_results import summarize, tally
 
 
 class SimulationSummaryTest(unittest.TestCase):
+    def test_solver_warning_excludes_apparent_task_metrics(self):
+        trials = [
+            {"object_in_box": True},
+            {"object_in_box": True, "physics_warnings": {"mjWARN_BADQACC": 1}},
+        ]
+        self.assertEqual(tally(trials, {"placement": "object_in_box"}), {
+            "trial_count": 2, "placement_count": 1, "placement_rate": 0.5,
+        })
+
     def test_counts_complete_reports_and_rejects_unpaired_placements(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)

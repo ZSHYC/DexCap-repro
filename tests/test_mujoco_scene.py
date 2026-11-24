@@ -17,7 +17,11 @@ class RigCalibrationTest(unittest.TestCase):
     def test_a_wrist_target_advances_after_reaching_pose_or_ten_cycles(self):
         scene = MujocoScene.__new__(MujocoScene)
         scene.control = Mock()
-        scene.data = SimpleNamespace(contact=SimpleNamespace(geom=np.empty((0, 2), dtype=int)), ncon=0)
+        scene.data = SimpleNamespace(
+            contact=SimpleNamespace(geom=np.empty((0, 2), dtype=int)),
+            ncon=0,
+            warning=SimpleNamespace(number=np.zeros(1, dtype=int)),
+        )
         scene.metrics = Mock()
         scene.physics_step = scene.metrics.physics_step
         scene.arm_geoms = np.zeros(1, dtype=bool)
@@ -39,3 +43,9 @@ class RigCalibrationTest(unittest.TestCase):
         scene.step("recorded", control_cycles=2)
         scene.control.track.assert_called_once_with("recorded", 2, physics_step=scene.metrics.physics_step)
         self.assertEqual(scene.metrics.update.call_count, 2)
+
+        scene.metrics.update.reset_mock()
+        scene.data.warning.number[0] = 1
+        scene.control.track.return_value = iter([(pose, pose)] * 2)
+        scene.step("unstable", control_cycles=2)
+        scene.metrics.update.assert_called_once_with(scene.data)

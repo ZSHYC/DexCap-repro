@@ -108,9 +108,11 @@ class MujocoScene:
             rigid_contacts = geometries[geometries >= 0]
             self.arm_contact_steps += int(self.arm_geoms[rigid_contacts].any())
             metrics = self.metrics.update(self.data)
-            if (control_cycles is None
-                    and np.max(wrist_position_error) <= WRIST_POSITION_TOLERANCE_M
-                    and np.max(wrist_angle_error) <= WRIST_ANGLE_TOLERANCE_RAD):
+            if self.data.warning.number.any() or (
+                control_cycles is None
+                and np.max(wrist_position_error) <= WRIST_POSITION_TOLERANCE_M
+                and np.max(wrist_angle_error) <= WRIST_ANGLE_TOLERANCE_RAD
+            ):
                 break
         return metrics, wrist_position_error, wrist_angle_error
 
