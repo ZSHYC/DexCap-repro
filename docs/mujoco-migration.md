@@ -714,5 +714,9 @@ LEAP V1 食指、中指和无名指共用的 MCP 与 DIP 碰撞网格现各由�
 
 Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑增加 12 mm 上移目标后，标准入口回放实测抬升 310.5 mm，通过 300 mm 任务判据，且无物理警告或双臂碰撞。轨迹见 `data/derived/sponge-picking-finger-parts-lift-12mm.hdf5`，结果见 `runs/leap-finger-parts-sponge-lift-12mm-rollout.json`。
 
+新版分块的接盘重放在慢速屈指、高位转移、稳定支撑和逐步下降中均无手内接触。高位稳定区的 200 个采样中，盘下净空为 39.83–42.13 mm，右手未碰盘或碰桌。从实际到达的腕位重新建立下降起点后，沿世界竖直方向逐指令下降 0.25 mm。第 55 个下降采样首次由中指指尖碰盘外沿，实测法向力 0.120 N，接触法向的盘面局部 z 分量朝下。此时盘下净空 41.83 mm，右手最低网格至桌面 32.34 mm，食指尚未从盘底承重。记录见 `/data/dexcap-repro/benchmarks/wiping-neutral-ring-parts-descent-b-trace.json`。
+
+用现有 SetXF 第 3000 轮权重在 GPU 6 和 7 重跑 Wiping 种子 9 和 15。两回合均执行 400 动作，无物理警告，均未抓起盘或海绵，擦拭笔画为 0。此次结果只覆盖这两个摆放。记录见 `runs/leap-finger-parts-wiping-setxf-seed-{9,15}.json`。
+
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
