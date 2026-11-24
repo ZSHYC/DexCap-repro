@@ -66,10 +66,15 @@ def rollout(args):
         control_cycles = attributes.get("control_cycles_per_action") if args.checkpoint is None else None
     if robot_frame not in ("dexcap", "mujoco_world"):
         raise ValueError(f"Unknown robot frame: {robot_frame}")
-    if control_cycles is not None and (
-        not isinstance(control_cycles, (int, np.integer)) or not 1 <= control_cycles <= MAX_CONTROL_CYCLES
-    ):
-        raise ValueError(f"control_cycles_per_action must be an integer from 1 to {MAX_CONTROL_CYCLES}")
+    if control_cycles is not None:
+        control_cycles = np.asarray(control_cycles)
+        if (control_cycles.shape not in ((), (len(actions),))
+                or not np.issubdtype(control_cycles.dtype, np.integer)
+                or np.any((control_cycles < 1) | (control_cycles > MAX_CONTROL_CYCLES))):
+            raise ValueError(
+                f"control_cycles_per_action must give integers from 1 to {MAX_CONTROL_CYCLES}, "
+                "either one shared value or one value per recorded action"
+            )
 
     policy = None
     if args.checkpoint is not None:
@@ -106,7 +111,10 @@ def rollout(args):
                     batch = {key: np.stack([frame[key] for frame in history]) for key in observation}
                     with torch.inference_mode():
                         targets = frames.to_world(policy(batch))
-                info, position_error, angle_error = scene.step(targets, control_cycles=control_cycles)
+                cycles = None
+                if control_cycles is not None:
+                    cycles = int(control_cycles[i] if control_cycles.ndim else control_cycles)
+                info, position_error, angle_error = scene.step(targets, control_cycles=cycles)
                 position_errors.append(position_error)
                 max_position_error = np.maximum(max_position_error, position_error)
                 max_angle_error = np.maximum(max_angle_error, angle_error)
@@ -159,7 +167,7 @@ def rollout(args):
     if native_recording:
         result["robot_frame"] = robot_frame
     if control_cycles is not None:
-        result["control_cycles_per_action"] = int(control_cycles)
+        result["control_cycles_per_action"] = control_cycles.tolist()
     if packaging:
         seen = object_name in mujoco_packaging.PACKAGING_OBJECTS
         result.update(object=object_name, object_group="trained" if seen else "unseen")

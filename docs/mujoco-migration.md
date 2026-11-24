@@ -187,6 +187,14 @@ python -m simulation.rollout data/derived/packaging-red-carton-table-clear-refer
 
 分块掌心模型上，红银包装仍落入盒底。旧收尾的 115 个左手接触周期把盖子沿开盖方向拨动，最低到约 −4.2°。重选实际折舌接触位置后，左手可通过接触把自由盖子带到约 64.2°，峰值约 71.5°，期间包装始终在盒内。这条动作依赖施加目标时的控制周期数，撤手时盖子重新打开。用标准回放时序重放也没有保持折舌接触。记录见 `runs/leap-palm-packaging-lid-hook-continuation.json` 和 `runs/leap-palm-packaging-lid-arc-finish.json`。
 
+复合掌心下重新完成了红银包装的入盒和闭盖。左手拇指通过真实接触勾住纸盒折舌，把盖子带到约 64.6°，随后沿盖子边缘越过，撤手后盖子稳定在约 180.3°。586 个动作的标准回放确认包装仍在盒内、已释放、盒盖闭合，最终 `sim_success=true`。整段无机械臂碰撞，纸盒平移约 0.67 mm。这次验证覆盖红银包装的固定参考摆放。轨迹将每个动作实际执行的 50 ms 控制周期数保存在 `control_cycles_per_action` 中，前段保留原自适应时序得到的执行长度，闭盖尾段使用实际的 5 或 7 个周期。动作生成器和实测记录见 `runs/packaging-red-carton-live-unbroken.{py,json}`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-live-timed-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-red-carton-live-timed-rollout.json
+```
+
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
@@ -296,6 +304,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 腕部根据纸带上段的实测位姿做有限幅跟随，提拉阶段仍由 Franka 和 LEAP 的执行器完成。最低纸段在真实相向受力且无外部支撑时升高约 56 mm。两垫各超过 8 mN 的连续区间约 0.25 s，各超过 0.05 N 的连续区间约 46 ms。继而向中央转运，在保持相向接触的样本里，上部纸段沿 Y 方向最多移动约 37 mm。该隔离动作仍有指节自碰撞，尚未和左手持剪刀动作合并。见 `runs/scissor_paper_pose_follow_mid-roll.json` 和 `runs/scissor_paper_pose_carry_roll70.json`。
 
+复合掌心下，以固定柄孔实际截面拟合中指先入的姿态。联合调整 Panda 腕姿、LEAP 关节与被动铰链角后，中指截面进入固定柄孔，手距桌面约 30 mm。活动柄仍与左手指节重叠约 3.37 mm，因此没有物理执行该接近动作。扩大开度会把干涉位置沿活动柄转移到掌侧。候选与间隙记录见 `runs/scissor_left_middle_first_coupled_seeded.{py,json}`。
+
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -330,6 +341,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 另从闭合瓶盖和自由瓶身重复了双手反扭矩试验。瓶体倾斜后由左手和原托盘边保持支撑。右手只有单侧指腹接触盖子，前三个切向动作的轴向扭矩向回拧方向，螺纹回退约 0.0043 圈。随后出现的小段正向旋转发生在右手已失去接触之后。记录见 `runs/tea-leap-bimanual-tangent-baseline-result.json`。
 
 新掌心下，对自由直立瓶身重新拟合左手两侧夹持。一个腕姿的对侧法向点积约 −0.74，Panda 关节余量约 0.92 rad，但该姿态要求拇指穿入瓶身约 21 mm，而且折叠的闲置指节会撞桌。绕世界竖直轴转腕 90° 后仍撞桌。未执行这些闭合轨迹，也未执行右手开盖。记录见 `runs/tea-leap-upright-two-pad-grip-result.json`。
+
+先用左手横推瓶身，再让瓶底与托盘边沿真实接触。经过翻转和撤手，瓶子由托盘底板与边沿共同承托，连续 0.90 s 没有机器人手接触，最终瓶身相对竖直方向倾斜约 89.45°。瓶盖仍贴近桌面。试验脚本和接触记录见 `runs/tea-leap-midtilt-stowed-support-probe.{py,json}`。
+
 
 ## 六个场景的渲染与接入验证
 
@@ -412,5 +426,13 @@ python -m simulation.rollout data/derived/wiping-two-stroke-reference.hdf5 \
 python -m simulation.rollout data/derived/wiping-palm-extended-dual-hold-reference.hdf5 \
   --task wiping --output runs/wiping-palm-extended-dual-hold-rollout.json
 ```
+
+在复合掌心模型下，同步抬升和靠近把离桌双持延长到 9.25 s。左手沿盘面法向抬起海绵，越过盘沿后下压，并用真实接触力调整擦拭轨迹。817 动作标准回放得到 144 个内盘面接触周期，其中有 114 个采样同时满足双手相向抓持、两物离桌及内盘面法向接触力超过 0.08 N。两物连续离桌双持约 10.35 s。有效擦拭累计约 55.08 mm，尚未达到完整笔画判据，结束前左手食指失去海绵接触。机械臂碰撞计数为 0。逐动作记录见 `runs/wiping-palm-over-rim-f.json`，左手接触失效诊断见 `/data/dexcap-repro/benchmarks/wiping-left-sponge-slip-diagnostic.json`。
+
+```bash
+python -m simulation.rollout data/derived/wiping-palm-over-rim-f.hdf5 \
+  --task wiping --output runs/wiping-palm-over-rim-f-rollout.json
+```
+
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
