@@ -12,7 +12,7 @@ except ImportError:  # The migration environment installs MuJoCo separately.
 class MujocoScissorCuttingTest(unittest.TestCase):
     def make_scene(self, paper_xy=(0.06, 0.0)):
         from simulation.mujoco_scissor_cutting import (
-            ScissorCuttingMetrics, add_scissor_cutting_scene,
+            TABLE_HEIGHT, ScissorCuttingMetrics, add_scissor_cutting_scene,
         )
 
         spec = mujoco.MjSpec()
@@ -26,8 +26,74 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         add_scissor_cutting_scene(spec, np.array([[0.0, 0.0], paper_xy]))
         model = spec.compile()
         data = mujoco.MjData(model)
+        # The mechanism tests use a level blade/paper fixture independent of
+        # the source-layout default, which rests across the tray end wall.
+        free = model.joint("scissor_free").qposadr[0]
+        data.qpos[free:free + 7] = [0, 0, TABLE_HEIGHT + 0.001, 1, 0, 0, 0]
+        data.qvel[:] = 0
         mujoco.mj_forward(model, data)
         return model, data, ScissorCuttingMetrics(model)
+
+    def test_production_layout_has_wall_support_and_overhanging_rings(self):
+        from simulation.mujoco_scissor_cutting import (
+            DEMO_OBJECT_XY, TRAY_CENTER, TRAY_HALF_XY, add_scissor_cutting_scene,
+        )
+
+        spec = mujoco.MjSpec()
+        spec.option.timestep = 0.002
+        spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
+        spec.option.iterations = 80
+        spec.worldbody.add_geom(
+            name="table", type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=[0.4, 0, -0.055], size=[0.75, 0.60, 0.025],
+        )
+        add_scissor_cutting_scene(spec, DEMO_OBJECT_XY)
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        free = model.joint("scissor_free").qposadr[0]
+        front_divider = model.geom("cutting_tray_front_divider").id
+        self.assertLess(data.geom_xpos[front_divider, 0], TRAY_CENTER[0])
+
+        scissor_geoms = {
+            geom for geom in range(model.ngeom)
+            if model.geom(geom).name.startswith("scissor_")
+        }
+        tray_geoms = {
+            geom for geom in range(model.ngeom)
+            if model.geom(geom).name.startswith("cutting_tray_")
+        }
+        initial_position = data.qpos[free:free + 3].copy()
+        supported_substeps = 0
+        for step in range(1000):
+            mujoco.mj_step(model, data)
+            if step >= 500 and any(
+                bool({contact.geom1, contact.geom2} & scissor_geoms)
+                and bool({contact.geom1, contact.geom2} & tray_geoms)
+                for contact in data.contact[:data.ncon]
+            ):
+                supported_substeps += 1
+
+        handles = [
+            geom for geom in scissor_geoms
+            if "handle" in model.geom(geom).name
+        ]
+        blades = [
+            geom for geom in scissor_geoms
+            if "blade" in model.geom(geom).name
+        ]
+        handle_max_y = max(data.geom_xpos[geom, 1] for geom in handles)
+        blade_min_y = min(data.geom_xpos[geom, 1] for geom in blades)
+        outer_wall_face = TRAY_CENTER[1] + TRAY_HALF_XY[1]
+        self.assertGreaterEqual(supported_substeps, 450)
+        self.assertGreater(handle_max_y - outer_wall_face, 0.08)
+        self.assertGreater(outer_wall_face - blade_min_y, 0.04)
+        self.assertLess(
+            np.linalg.norm(data.xpos[model.body("scissor_base").id] - initial_position),
+            0.01,
+        )
+        self.assertTrue(np.isfinite(data.qpos).all())
+        self.assertTrue(np.isfinite(data.qvel).all())
 
     def test_scene_has_divided_tray_passive_scissors_and_cohesive_paper(self):
         from simulation.mujoco_scissor_cutting import (

@@ -1,9 +1,11 @@
 """Physical MuJoCo approximation of DexCap Scissor Cutting.
 
 Appendix A-F establishes the divided container, separate-handle scissor grasp,
-pink paper tape, two-hand lift, and a successful cut longer than 3 mm.  The
-release provides no CAD, dimensions, masses, material law, or trajectory.  The
-dimensions below are therefore visual assumptions.  MuJoCo has no native
+pink paper tape, two-hand lift, and a successful cut longer than 3 mm. Figure
+5(e) further shows the scissor rings beyond a short tray end, with the pivot on
+the wall and the blades inside. The release provides no CAD, exact dimensions,
+masses, material law, or trajectory. The dimensions and calibrated resting pose
+below are therefore visual and physical-fit estimates. MuJoCo has no native
 arbitrary tearing, so the tape has an explicit cohesive seam whose local bonds
 release only under opposing blade contact during physical hinge closure.
 """
@@ -15,9 +17,16 @@ import numpy as np
 
 
 TABLE_HEIGHT = -0.030
-DEMO_OBJECT_XY = np.array([[0.50, 0.12], [0.50, -0.12]])
+SCISSOR_DEFAULT_POSITION = np.array([
+    0.4099535585178729, 0.18993592402601608, 0.005504892349298587,
+])
+SCISSOR_DEFAULT_QUATERNION = np.array([
+    0.6993540402338588, 0.10171915241320749,
+    0.10170667927428328, -0.7001520490807083,
+])
+DEMO_OBJECT_XY = np.array([SCISSOR_DEFAULT_POSITION[:2], [0.50, -0.12]])
 TRAY_CENTER = np.array([0.50, 0.0])
-TRAY_HALF_XY = (0.20, 0.18)
+TRAY_HALF_XY = (0.18, 0.20)
 TRAY_WALL_HEIGHT = 0.035
 TRAY_THICKNESS = 0.003
 SCISSOR_OPEN_ANGLE = 0.45
@@ -58,7 +67,8 @@ def _add_tray(spec):
         ("x_pos", [t, hy, h / 2], [hx, 0, h / 2]),
         ("y_neg", [hx, t, h / 2], [0, -hy, h / 2]),
         ("y_pos", [hx, t, h / 2], [0, hy, h / 2]),
-        ("divider", [hx, t, h / 2], [0, 0, h / 2]),
+        ("divider", [t, hy, h / 2], [0, 0, h / 2]),
+        ("front_divider", [hx / 2, t, h / 2], [-hx / 2, 0.065, h / 2]),
     ):
         _box(tray, f"cutting_tray_{name}", size, pos, color)
 
@@ -97,7 +107,9 @@ def _add_shank(body, name, z, center, opening):
 
 def _add_scissors(spec, xy):
     base = spec.worldbody.add_body(
-        name="scissor_base", pos=[*xy, TABLE_HEIGHT + 0.001]
+        name="scissor_base",
+        pos=[*xy, SCISSOR_DEFAULT_POSITION[2]],
+        quat=SCISSOR_DEFAULT_QUATERNION,
     )
     base.add_freejoint(name="scissor_free")
     teal = [0.02, 0.60, 0.62, 1]
