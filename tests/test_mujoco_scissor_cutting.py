@@ -12,6 +12,7 @@ except ImportError:  # The migration environment installs MuJoCo separately.
 class MujocoScissorCuttingTest(unittest.TestCase):
     def make_scene(self, paper_xy=(0.06, 0.0)):
         from simulation.mujoco_scissor_cutting import (
+            BOND_COUNT, BOND_PITCH, PAPER_HALF_LENGTH, PAPER_HALF_THICKNESS,
             TABLE_HEIGHT, ScissorCuttingMetrics, add_scissor_cutting_scene,
         )
 
@@ -24,17 +25,23 @@ class MujocoScissorCuttingTest(unittest.TestCase):
             friction=[1, 0.01, 0.001],
         )
         add_scissor_cutting_scene(spec, np.array([[0.0, 0.0], paper_xy]))
+        # A level blade/paper fixture puts the seam between the two blades.
+        for index in range(BOND_COUNT):
+            y = paper_xy[1] + (index - (BOND_COUNT - 1) / 2) * BOND_PITCH
+            for side, sign in (("left", -1), ("right", 1)):
+                body = spec.body(f"cutting_paper_{side}_{index}")
+                body.pos = [paper_xy[0] + sign * PAPER_HALF_LENGTH, y,
+                            TABLE_HEIGHT + PAPER_HALF_THICKNESS]
+                body.quat = [1, 0, 0, 0]
         model = spec.compile()
         data = mujoco.MjData(model)
-        # The mechanism tests use a level blade/paper fixture independent of
-        # the source-layout default, which rests across the tray end wall.
         free = model.joint("scissor_free").qposadr[0]
         data.qpos[free:free + 7] = [0, 0, TABLE_HEIGHT + 0.001, 1, 0, 0, 0]
         data.qvel[:] = 0
         mujoco.mj_forward(model, data)
         return model, data, ScissorCuttingMetrics(model)
 
-    def test_production_layout_has_wall_support_and_overhanging_rings(self):
+    def test_production_layout_supports_upright_paper_and_overhanging_scissors(self):
         from simulation.mujoco_scissor_cutting import (
             DEMO_OBJECT_XY, TRAY_CENTER, TRAY_HALF_XY, add_scissor_cutting_scene,
         )
@@ -78,9 +85,12 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         }
         initial_position = data.qpos[free:free + 3].copy()
         supported_substeps = 0
-        for step in range(1000):
+        for step in range(12500):
             mujoco.mj_step(model, data)
-            if step >= 500 and any(
+            if step % 500 == 499:
+                highest_paper_segment = max(data.geom_xpos[geom, 2] for geom in paper_geoms)
+                self.assertGreater(highest_paper_segment, 0.05)
+            if 500 <= step < 1000 and any(
                 bool({contact.geom1, contact.geom2} & scissor_geoms)
                 and bool({contact.geom1, contact.geom2} & tray_geoms)
                 for contact in data.contact[:data.ncon]
@@ -105,6 +115,18 @@ class MujocoScissorCuttingTest(unittest.TestCase):
             np.linalg.norm(data.xpos[model.body("scissor_base").id] - initial_position),
             0.01,
         )
+        paper = set(paper_geoms)
+        paper_support = {
+            model.geom(geom).name
+            for contact in data.contact[:data.ncon]
+            if (pair := {contact.geom1, contact.geom2}) & paper
+            for geom in pair & tray_geoms
+        }
+        self.assertIn("cutting_tray_floor", paper_support)
+        self.assertIn("cutting_tray_y_neg", paper_support)
+        self.assertGreater(max(data.geom_xpos[geom, 2] for geom in paper), 0.05)
+        self.assertEqual(np.count_nonzero(data.eq_active), model.neq)
+        self.assertFalse(np.any(data.warning.number))
         self.assertTrue(np.isfinite(data.qpos).all())
         self.assertTrue(np.isfinite(data.qvel).all())
 
@@ -126,17 +148,17 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         for index, equality in enumerate(metrics.bond_equalities):
             np.testing.assert_allclose(
                 model.eq_data[equality, :6],
-                [PAPER_HALF_LENGTH, 0, 0, -PAPER_HALF_LENGTH, 0, 0],
+                [-PAPER_HALF_LENGTH, 0, 0, PAPER_HALF_LENGTH, 0, 0],
                 atol=1e-12,
             )
             first, second = model.eq_obj1id[equality], model.eq_obj2id[equality]
             first_anchor = (
                 data.xpos[first]
-                + data.xmat[first].reshape(3, 3) @ model.eq_data[equality, :3]
+                + data.xmat[first].reshape(3, 3) @ model.eq_data[equality, 3:6]
             )
             second_anchor = (
                 data.xpos[second]
-                + data.xmat[second].reshape(3, 3) @ model.eq_data[equality, 3:6]
+                + data.xmat[second].reshape(3, 3) @ model.eq_data[equality, :3]
             )
             np.testing.assert_allclose(first_anchor, second_anchor, atol=1e-12)
             self.assertAlmostEqual(first_anchor[0], 0.06)
@@ -146,11 +168,11 @@ class MujocoScissorCuttingTest(unittest.TestCase):
                 first, second = model.eq_obj1id[equality], model.eq_obj2id[equality]
                 first_anchor = (
                     data.xpos[first]
-                    + data.xmat[first].reshape(3, 3) @ model.eq_data[equality, :3]
+                    + data.xmat[first].reshape(3, 3) @ model.eq_data[equality, 3:6]
                 )
                 second_anchor = (
                     data.xpos[second]
-                    + data.xmat[second].reshape(3, 3) @ model.eq_data[equality, 3:6]
+                    + data.xmat[second].reshape(3, 3) @ model.eq_data[equality, :3]
                 )
                 np.testing.assert_allclose(first_anchor, second_anchor, atol=1e-12)
 

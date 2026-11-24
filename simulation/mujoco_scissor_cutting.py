@@ -3,7 +3,8 @@
 Appendix A-F establishes the divided container, separate-handle scissor grasp,
 pink paper tape, two-hand lift, and a successful cut longer than 3 mm. Figure
 5(e) further shows the scissor rings beyond a short tray end, with the pivot on
-the wall and the blades inside. The release provides no CAD, exact dimensions,
+the wall and the blades inside. The tape leans against the other short wall.
+The release provides no CAD, exact dimensions,
 masses, material law, or trajectory. The dimensions and calibrated resting pose
 below are therefore visual and physical-fit estimates. MuJoCo has no native
 arbitrary tearing, so the tape has an explicit cohesive seam whose local bonds
@@ -24,7 +25,6 @@ SCISSOR_DEFAULT_QUATERNION = np.array([
     0.6993540402338588, 0.10171915241320749,
     0.10170667927428328, -0.7001520490807083,
 ])
-DEMO_OBJECT_XY = np.array([SCISSOR_DEFAULT_POSITION[:2], [0.41, -0.12]])
 TRAY_CENTER = np.array([0.50, 0.0])
 TRAY_HALF_XY = (0.18, 0.20)
 TRAY_WALL_HEIGHT = 0.035
@@ -40,6 +40,18 @@ FIXED_HANDLE_CENTER = np.array([-0.105, 0.035])
 MOVING_HANDLE_CENTER = np.array([-0.100, -0.035])
 PAPER_HALF_LENGTH = 0.030
 PAPER_HALF_THICKNESS = 0.0004
+PAPER_LEAN = np.deg2rad(8)
+PAPER_STIFFNESS = 1.0e5
+PAPER_SOLREF = [-PAPER_STIFFNESS, -2 * np.sqrt(PAPER_STIFFNESS)]
+PAPER_SOLIMP = [0.998, 0.9999, 0.0001, 0.5, 2]
+# The tape's lower edge meets the tray floor and its face meets the inner rim.
+PAPER_SEAM_Y = (
+    TRAY_CENTER[1] - TRAY_HALF_XY[1] + TRAY_THICKNESS
+    + TRAY_WALL_HEIGHT * np.tan(PAPER_LEAN)
+    + PAPER_HALF_THICKNESS / np.cos(PAPER_LEAN)
+    - 2 * PAPER_HALF_LENGTH * np.sin(PAPER_LEAN)
+)
+DEMO_OBJECT_XY = np.array([SCISSOR_DEFAULT_POSITION[:2], [0.41, PAPER_SEAM_Y]])
 BOND_COUNT = 5
 BOND_PITCH = 0.004
 BOND_BREAK_FORCE_N = 0.05
@@ -146,41 +158,49 @@ def _add_scissors(spec, xy):
 def _add_paper(spec, xy):
     pink = [0.98, 0.25, 0.55, 1]
     segment_half_width = BOND_PITCH * 0.45
-    z = TABLE_HEIGHT + PAPER_HALF_THICKNESS
+    along = np.array([0.0, -np.sin(PAPER_LEAN), np.cos(PAPER_LEAN)])
+    across = np.array([1.0, 0.0, 0.0])
+    rotation = np.column_stack([along, across, np.cross(along, across)])
+    quat = np.empty(4)
+    mujoco.mju_mat2Quat(quat, rotation.ravel())
+    foot_z = TABLE_HEIGHT + PAPER_HALF_THICKNESS * np.sin(PAPER_LEAN) + 0.00005
+    seam_z = foot_z + 2 * PAPER_HALF_LENGTH * along[2]
     bodies = {"left": [], "right": []}
     for index in range(BOND_COUNT):
-        y = xy[1] + (index - (BOND_COUNT - 1) / 2) * BOND_PITCH
+        seam = np.array([*xy, seam_z]) + across * (index - (BOND_COUNT - 1) / 2) * BOND_PITCH
         names = []
         for side, direction in (("left", -1), ("right", 1)):
             name = f"cutting_paper_{side}_{index}"
             body = spec.worldbody.add_body(
                 name=name,
-                pos=[xy[0] + direction * PAPER_HALF_LENGTH, y, z],
+                pos=seam + direction * PAPER_HALF_LENGTH * along, quat=quat,
             )
             body.add_freejoint(name=f"{name}_free")
-            _box(
+            paper = _box(
                 body, f"{name}_geom",
                 [PAPER_HALF_LENGTH, segment_half_width, PAPER_HALF_THICKNESS],
                 [0, 0, 0], pink, density=180,
             )
+            # Firm paper contacts avoid slow slip while the tape rests on the rim.
+            paper.solmix = 12
+            paper.solimp = [0.985, 0.998, 0.00005, 0.5, 2]
             names.append(name)
             bodies[side].append(name)
         spec.add_equality(
-            name=f"paper_bond_{index}", type=mujoco.mjtEq.mjEQ_CONNECT,
+            name=f"paper_bond_{index}", type=mujoco.mjtEq.mjEQ_WELD,
             objtype=mujoco.mjtObj.mjOBJ_BODY, name1=names[0], name2=names[1],
-            data=[PAPER_HALF_LENGTH, 0, 0, -PAPER_HALF_LENGTH, 0, 0,
-                  0, 0, 0, 0, 0], solref=[0.004, 1],
+            data=[-PAPER_HALF_LENGTH, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.04],
+            solref=PAPER_SOLREF, solimp=PAPER_SOLIMP,
         )
     for side, names in bodies.items():
         for index, (first, second) in enumerate(zip(names, names[1:])):
             spec.add_equality(
                 name=f"paper_{side}_link_{index}",
-                type=mujoco.mjtEq.mjEQ_CONNECT,
+                type=mujoco.mjtEq.mjEQ_WELD,
                 objtype=mujoco.mjtObj.mjOBJ_BODY,
                 name1=first, name2=second,
-                data=[0, BOND_PITCH / 2, 0, 0, -BOND_PITCH / 2, 0,
-                      0, 0, 0, 0, 0],
-                solref=[0.015, 1],
+                data=[0, -BOND_PITCH / 2, 0, 0, 1, 0, 0, 0, 0, 0, 0.024],
+                solref=PAPER_SOLREF, solimp=PAPER_SOLIMP,
             )
 
 
