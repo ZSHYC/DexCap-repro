@@ -964,3 +964,13 @@ python -m simulation.rollout "$ball/seed-16-standard-reference.hdf5" \
 ### 擦盘第一笔末端的三指支撑
 
 从 3,266 步参考在第 3,238 步后接续，使右无名指于第 3,254 步入接并在第 3,259 步完成第一笔计分。末态盘和海绵仍离桌，右食指、拇指和无名指分别约 10.31、7.45、9.24 N，左中指和拇指分别约 3.11、3.68 N，累计有效擦拭距离约 83.52 mm。从这次已接触内盘的末态执行回程，右手三点支撑保持，海绵约移动 25.5 mm 后因受压滑脱。该回程的盘面接触峰值约 26.74 N，计分仍为一笔。接续动作和积分态见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-first-pass-ring-delayed*.{json,npz}`。
+
+### 捡球参考中的同手接触
+
+标准回放的 `same_hand_max_penetration_m` 和 `same_hand_max_penetration_pair` 记录每个控制周期采样到的同手最大穿透和接触对。原捡球参考回放测到右中指与右无名指约 4.66 mm 穿透、20.81 N 法向力。触点到 LEAP 原始表面约 0.41 和 0.61 mm。重设闲置右无名指后，默认摆放和种子 16 保持落篮。查看新输出时还定位到闲置左食、中指之间约 8.99 mm 的穿透。将左手改为自然张开，265 步默认摆放的 EGL 回放仍完成抓起、释放和落篮，测到同手及双手间穿透均为 0。对照轨迹和实测 JSON 在数据盘 `benchmarks/ball-seeded-reference/world/stowed/`。避开右中指与无名指接触后，原来仅平移腕位的随机搬运容易滑脱。20 个种子均能提球，其中 4 个用平移路线落篮，另外 8 个用实测球位和新搬运路线落篮。其余种子的移动与释放仍需调试。
+
+```bash
+ball=/data/dexcap-repro/benchmarks/ball-seeded-reference/world/stowed
+python -m simulation.rollout "$ball/ball-collecting-open-rest-reference.hdf5" \
+  --task ball-collecting --output "$ball/open-rest-rollout.json"
+```

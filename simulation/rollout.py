@@ -142,6 +142,8 @@ def rollout(args):
                 "arm_contact_steps": scene.arm_contact_steps,
                 "hand_collision_steps": scene.hand_collision_steps,
                 "hand_max_penetration_m": scene.hand_max_penetration_m,
+                "same_hand_max_penetration_m": scene.same_hand_max_penetration_m,
+                "same_hand_max_penetration_pair": scene.same_hand_max_penetration_pair,
                 "max_hand_limit_excess_rad": scene.max_hand_limit_excess_rad,
                 "invalid_hand_motion": scene.invalid_hand_motion,
                 "executed_steps": len(position_errors),

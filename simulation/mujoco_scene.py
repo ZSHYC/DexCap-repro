@@ -106,6 +106,8 @@ class MujocoScene:
         self.arm_contact_steps = 0
         self.hand_collision_steps = 0
         self.hand_max_penetration_m = 0.0
+        self.same_hand_max_penetration_m = 0.0
+        self.same_hand_max_penetration_pair = None
 
     def reset(self, initial):
         self.control.initialize(initial)
@@ -130,13 +132,20 @@ class MujocoScene:
             rigid_contacts = geometries[geometries >= 0]
             self.arm_contact_steps += int(self.arm_geoms[rigid_contacts].any())
             if self.data.ncon:
-                rigid_pairs = np.all(geometries >= 0, axis=1)
-                sides = self.hand_sides[geometries[rigid_pairs]]
-                opposite_hands = sides[:, 0] * sides[:, 1] < 0
-                distances = self.data.contact.dist[:self.data.ncon][rigid_pairs]
-                penetration = float(np.max(-distances[opposite_hands], initial=0))
+                valid_pairs = np.all(geometries >= 0, axis=1)
+                rigid_pairs = geometries[valid_pairs]
+                sides = self.hand_sides[rigid_pairs]
+                side_pairs = sides[:, 0] * sides[:, 1]
+                distances = self.data.contact.dist[:self.data.ncon][valid_pairs]
+                penetration = float(np.max(-distances[side_pairs < 0], initial=0))
                 self.hand_collision_steps += int(penetration > 0)
                 self.hand_max_penetration_m = max(self.hand_max_penetration_m, penetration)
+                same_hand = np.where(side_pairs > 0, -distances, 0.0)
+                peak = float(np.max(same_hand, initial=0))
+                if peak > self.same_hand_max_penetration_m:
+                    self.same_hand_max_penetration_m = peak
+                    pair = rigid_pairs[same_hand.argmax()]
+                    self.same_hand_max_penetration_pair = tuple(self.model.geom(g).name for g in pair)
             metrics = self.metrics.update(self.data)
             if self.invalid_hand_motion:
                 metrics["sim_success"] = False
