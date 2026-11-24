@@ -1,0 +1,342 @@
+"""Physical Tea Preparing scene for DexCap.
+
+The paper gives the action order but no Tea CAD, dimensions, masses, or material
+calibration. SI dimensions here are Fig. 5(f) estimates: 60 mm bottle, 90 mm
+teapot, 110 mm tweezers and 360 x 280 mm tray. Rigid plastic/ceramic contacts
+are assumed. The cap uses MuJoCo's hinge/slide equality as a 2 mm-pitch thread.
+"""
+
+from __future__ import annotations
+
+import math
+
+import mujoco
+import numpy as np
+
+
+TABLE_HEIGHT = -0.030
+TRAY_YAW = np.deg2rad(-8)
+TRAY_HALF_XY = (0.180, 0.140)
+TRAY_FLOOR_HALF = 0.004
+TRAY_TOP = TABLE_HEIGHT + 2 * TRAY_FLOOR_HALF
+BOTTLE_RADIUS, BOTTLE_INNER_RADIUS, BOTTLE_HEIGHT = 0.030, 0.024, 0.105
+CAP_RADIUS, CAP_HALF_HEIGHT = 0.035, 0.014
+THREAD_PITCH, THREAD_TURNS = 0.002, 2.0
+THREAD_LIMIT = 2 * np.pi * THREAD_TURNS
+POT_INNER_RADIUS, POT_HEIGHT = 0.037, 0.060
+TEA_RADIUS, TEA_PARTICLES = 0.004, 8
+
+# Fixed tray, free bottle, free teapot, free spring tweezers.
+DEMO_OBJECT_XY = np.array([
+    [0.52, 0.00], [0.47, 0.015], [0.60, -0.065], [0.57, 0.095],
+])
+SUMMARY_KEYS = (
+    "cap_turns", "cap_unthreaded", "cap_on_tray", "tea_deposited_count",
+    "tea_deposited", "bottle_used", "bottle_returned", "tweezers_used",
+    "tweezers_returned", "left_hand_released", "sim_success",
+)
+
+
+def _yaw(angle):
+    return [math.cos(angle / 2), 0, 0, math.sin(angle / 2)]
+
+
+def _ring(body, prefix, radius, height, thickness, color, density, *, z_center=None):
+    z_center = height / 2 if z_center is None else z_center
+    for index in range(12):
+        angle = 2 * np.pi * index / 12
+        body.add_geom(
+            name=f"{prefix}_{index}", type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=[radius * np.cos(angle), radius * np.sin(angle), z_center],
+            quat=_yaw(angle),
+            size=[thickness / 2, radius * np.tan(np.pi / 12), height / 2],
+            rgba=color, density=density, friction=[0.8, 0.01, 0.001], condim=4,
+        )
+
+
+def _add_tray(spec, xy):
+    tray = spec.worldbody.add_body(
+        name="tea_tray", pos=[*xy, TABLE_HEIGHT + TRAY_FLOOR_HALF], quat=_yaw(TRAY_YAW)
+    )
+    hx, hy = TRAY_HALF_XY
+    tray.add_geom(
+        name="tea_tray_floor", type=mujoco.mjtGeom.mjGEOM_BOX,
+        size=[hx, hy, TRAY_FLOOR_HALF], rgba=[0.035, 0.040, 0.045, 1],
+        friction=[1, 0.01, 0.001],
+    )
+    for name, pos, size in (
+        ("x_neg", [-hx, 0, .012], [.004, hy, .012]),
+        ("x_pos", [hx, 0, .012], [.004, hy, .012]),
+        ("y_neg", [0, -hy, .012], [hx, .004, .012]),
+        ("y_pos", [0, hy, .012], [hx, .004, .012]),
+    ):
+        tray.add_geom(
+            name=f"tea_tray_rim_{name}", type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=pos, size=size, rgba=[.025, .030, .035, 1],
+            friction=[1, .01, .001],
+        )
+
+
+def _add_bottle_cap_and_tea(spec, xy):
+    bottle_z = TRAY_TOP + .003
+    bottle = spec.worldbody.add_body(name="tea_bottle", pos=[*xy, bottle_z])
+    bottle.add_freejoint(name="tea_bottle_free")
+    bottle.add_geom(
+        name="tea_bottle_floor", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
+        size=[BOTTLE_INNER_RADIUS, .003, 0], rgba=[.10, .15, .14, 1],
+        density=900, friction=[.8, .01, .001],
+    )
+    _ring(
+        bottle, "tea_bottle_wall", (BOTTLE_RADIUS + BOTTLE_INNER_RADIUS) / 2,
+        BOTTLE_HEIGHT, BOTTLE_RADIUS - BOTTLE_INNER_RADIUS, [.10, .22, .19, 1], 850,
+    )
+
+    carriage = bottle.add_body(
+        name="tea_thread_carriage", pos=[0, 0, BOTTLE_HEIGHT + .010]
+    )
+    carriage.add_joint(
+        name="tea_thread_slide", type=mujoco.mjtJoint.mjJNT_SLIDE,
+        axis=[0, 0, 1], limited=True, range=[0, THREAD_PITCH * THREAD_TURNS],
+        damping=.002, solref_limit=[.004, 1],
+        solimp_limit=[.95, .99, .001, .5, 2],
+    )
+    carriage.add_joint(
+        name="tea_thread_hinge", type=mujoco.mjtJoint.mjJNT_HINGE,
+        axis=[0, 0, 1], limited=True, range=[0, THREAD_LIMIT], damping=.003,
+    )
+    carriage.add_geom(
+        name="tea_thread_carriage_inertial", type=mujoco.mjtGeom.mjGEOM_SPHERE,
+        size=[.001, 0, 0], mass=.002, rgba=[0, 0, 0, 0], contype=0, conaffinity=0,
+    )
+
+    cap_z = bottle_z + BOTTLE_HEIGHT + .010
+    cap = spec.worldbody.add_body(name="tea_cap", pos=[*xy, cap_z])
+    cap.add_freejoint(name="tea_cap_free")
+    cap.add_geom(
+        name="tea_cap_top", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
+        pos=[0, 0, CAP_HALF_HEIGHT - .002], size=[CAP_RADIUS, .002, 0],
+        rgba=[.35, .78, .20, 1], density=650, friction=[1, .01, .001],
+    )
+    _ring(
+        cap, "tea_cap_wall", CAP_RADIUS - .002, 2 * CAP_HALF_HEIGHT, .004,
+        [.35, .78, .20, 1], 650, z_center=0,
+    )
+    coupling = [0, 2 * np.pi / THREAD_PITCH, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    spec.add_equality(
+        name="tea_thread_coupling", type=mujoco.mjtEq.mjEQ_JOINT,
+        objtype=mujoco.mjtObj.mjOBJ_JOINT, name1="tea_thread_hinge",
+        name2="tea_thread_slide", data=coupling, solref=[.004, 1],
+        solimp=[.95, .99, .001, .5, 2],
+    )
+    spec.add_equality(
+        name="tea_cap_threaded_weld", type=mujoco.mjtEq.mjEQ_WELD,
+        objtype=mujoco.mjtObj.mjOBJ_BODY, name1="tea_thread_carriage",
+        name2="tea_cap", data=[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+        solref=[.004, 1],
+        solimp=[.95, .99, .001, .5, 2],
+    )
+
+    offsets = (
+        (-.010, -.009, .012), (.010, -.009, .012),
+        (-.010, .009, .012), (.010, .009, .012),
+        (-.010, -.009, .025), (.010, -.009, .025),
+        (-.010, .009, .025), (.010, .009, .025),
+    )
+    for index, offset in enumerate(offsets):
+        tea = spec.worldbody.add_body(
+            name=f"tea_particle_{index}", pos=np.r_[xy, bottle_z] + offset
+        )
+        tea.add_freejoint(name=f"tea_particle_free_{index}")
+        tea.add_geom(
+            name=f"tea_particle_geom_{index}", type=mujoco.mjtGeom.mjGEOM_SPHERE,
+            size=[TEA_RADIUS, 0, 0], mass=.0015,
+            solref=[.004, 1], solimp=[.95, .99, .001, .5, 2],
+            priority=1,
+            rgba=[.18, .09, .025, 1], friction=[.7, .01, .001],
+        )
+
+
+def _add_teapot(spec, xy):
+    pot = spec.worldbody.add_body(name="tea_teapot", pos=[*xy, TRAY_TOP + .003])
+    pot.add_freejoint(name="tea_teapot_free")
+    pot.add_geom(
+        name="tea_teapot_floor", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
+        pos=[0, 0, .003], size=[POT_INNER_RADIUS, .006, 0], rgba=[.20, .62, .58, 1],
+        solref=[.004, 1], solimp=[.95, .99, .001, .5, 2],
+        density=1100, friction=[.85, .01, .001],
+    )
+    _ring(
+        pot, "tea_teapot_wall", POT_INNER_RADIUS + .003, POT_HEIGHT, .006,
+        [.20, .62, .58, 1], 1100,
+    )
+    for name, fromto, radius in (
+        ("handle", [-.043, 0, .018, -.070, 0, .050], .005),
+        ("spout", [.040, 0, .035, .075, 0, .065], .009),
+    ):
+        pot.add_geom(
+            name=f"tea_teapot_{name}", type=mujoco.mjtGeom.mjGEOM_CAPSULE,
+            fromto=fromto, size=[radius, 0, 0], rgba=[.20, .62, .58, 1], density=800,
+        )
+
+
+def _add_tweezers(spec, xy):
+    root = spec.worldbody.add_body(
+        name="tea_tweezers", pos=[*xy, TRAY_TOP + .010], quat=_yaw(np.deg2rad(105))
+    )
+    root.add_freejoint(name="tea_tweezers_free")
+    root.add_geom(
+        name="tea_tweezers_bridge", type=mujoco.mjtGeom.mjGEOM_BOX,
+        size=[.009, .012, .003], rgba=[.60, .63, .64, 1], density=1500,
+        friction=[.8, .01, .001],
+    )
+    for side, y, angle in (("upper", .009, -.075), ("lower", -.009, .075)):
+        arm = root.add_body(
+            name=f"tea_tweezers_{side}_arm", pos=[.008, y, 0], quat=_yaw(angle)
+        )
+        arm.add_joint(
+            name=f"tea_tweezers_{side}_spring", type=mujoco.mjtJoint.mjJNT_HINGE,
+            axis=[0, 0, 1], limited=True, range=[-.22, .22],
+            springref=0, stiffness=.08, damping=.003,
+        )
+        arm.add_geom(
+            name=f"tea_tweezers_{side}_geom", type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=[.052, 0, 0], size=[.052, .002, .002],
+            rgba=[.68, .71, .72, 1], density=1600,
+            friction=[.9, .01, .001], condim=4,
+        )
+
+
+def add_tea_preparing_scene(spec: mujoco.MjSpec, object_xy=DEMO_OBJECT_XY):
+    """Add fixed tray and freely manipulable Tea Preparing objects."""
+    positions = np.asarray(object_xy, dtype=float)
+    if positions.shape != (4, 2) or not np.isfinite(positions).all():
+        raise ValueError("object_xy must contain finite tray, bottle, teapot, tweezers XY")
+    spec.compiler.degree = False
+    _add_tray(spec, positions[0])
+    _add_bottle_cap_and_tea(spec, positions[1])
+    _add_teapot(spec, positions[2])
+    _add_tweezers(spec, positions[3])
+
+
+class TeaPreparingMetrics:
+    """Report physical task state; call physics_step after each integration step."""
+
+    def __init__(self, model: mujoco.MjModel):
+        self.model = model
+        for key, name in (
+            ("bottle_body", "tea_bottle"), ("cap_body", "tea_cap"),
+            ("pot_body", "tea_teapot"), ("tweezers_body", "tea_tweezers"),
+        ):
+            setattr(self, key, model.body(name).id)
+        self.thread_slide = model.joint("tea_thread_slide").id
+        for key, name in (
+            ("bottle_joint", "tea_bottle_free"), ("cap_joint", "tea_cap_free"),
+            ("tweezers_joint", "tea_tweezers_free"), ("thread_hinge", "tea_thread_hinge"),
+        ):
+            setattr(self, key, model.joint(name).id)
+        self.thread_weld = model.equality("tea_cap_threaded_weld").id
+        self.tray_body = model.body("tea_tray").id
+        geoms = range(model.ngeom)
+        self.tray_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_tray_")}
+        self.bottle_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_bottle_")}
+        self.cap_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_cap_")}
+        self.pot_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_teapot_")}
+        self.tweezers_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_tweezers_")}
+        self.left_hand_geoms = {g for g in geoms if model.geom(g).name.startswith("left_hand_")}
+        self.tea_geoms = [model.geom(f"tea_particle_geom_{i}").id for i in range(TEA_PARTICLES)]
+        self.tea_bodies = [model.body(f"tea_particle_{i}").id for i in range(TEA_PARTICLES)]
+        self.tea_joints = [model.joint(f"tea_particle_free_{i}").id for i in range(TEA_PARTICLES)]
+        self.initial_bottle_pos = model.qpos0[model.jnt_qposadr[self.bottle_joint]:][:3].copy()
+        self.initial_tweezers_pos = model.qpos0[model.jnt_qposadr[self.tweezers_joint]:][:3].copy()
+        self.bottle_used = False
+        self.tweezers_used = False
+
+    def _contact(self, data, first, second):
+        for index in range(data.ncon):
+            pair = {data.contact[index].geom1, data.contact[index].geom2}
+            if pair & first and pair & second:
+                return True
+        return False
+
+    def _settled(self, data, joint):
+        dof = self.model.jnt_dofadr[joint]
+        return np.linalg.norm(data.qvel[dof:dof + 6]) < .12
+
+    def _turns(self, data):
+        return max(0.0, float(data.qpos[self.model.jnt_qposadr[self.thread_hinge]] / (2 * np.pi)))
+
+    def physics_step(self, data: mujoco.MjData):
+        """Release only the weld; the cap keeps its integrated free pose and velocity."""
+        slide = data.qpos[self.model.jnt_qposadr[self.thread_slide]]
+        if (
+            data.eq_active[self.thread_weld]
+            and self._turns(data) >= THREAD_TURNS - .005
+            and slide >= .95 * THREAD_PITCH * THREAD_TURNS
+        ):
+            data.eq_active[self.thread_weld] = 0
+
+    def _tea_deposited_count(self, data):
+        rotation = data.xmat[self.pot_body].reshape(3, 3)
+        count = 0
+        for geom, body, joint in zip(self.tea_geoms, self.tea_bodies, self.tea_joints):
+            local = rotation.T @ (data.xpos[body] - data.xpos[self.pot_body])
+            inside = (
+                np.linalg.norm(local[:2]) <= POT_INNER_RADIUS - TEA_RADIUS
+                and TEA_RADIUS - .003 <= local[2] <= POT_HEIGHT - TEA_RADIUS
+            )
+            dof = self.model.jnt_dofadr[joint]
+            linear_settled = np.linalg.norm(data.qvel[dof:dof + 3]) < .12
+            if inside and self._contact(data, {geom}, self.pot_geoms) and linear_settled:
+                count += 1
+        return count
+
+    def update(self, data: mujoco.MjData) -> dict:
+        cap_turns = self._turns(data)
+        cap_unthreaded = not bool(data.eq_active[self.thread_weld])
+        bottle_tilted = data.xmat[self.bottle_body].reshape(3, 3)[2, 2] < np.cos(np.deg2rad(35))
+        bottle_moved = np.linalg.norm(data.xpos[self.bottle_body] - self.initial_bottle_pos) > .035
+        self.bottle_used |= bool(bottle_tilted or bottle_moved)
+        tweezers_moved = np.linalg.norm(data.xpos[self.tweezers_body] - self.initial_tweezers_pos) > .035
+        self.tweezers_used |= bool(tweezers_moved)
+        bottle_returned = bool(
+            self.bottle_used
+            and np.linalg.norm(data.xpos[self.bottle_body, :2] - self.initial_bottle_pos[:2]) < .035
+            and self._contact(data, self.bottle_geoms, self.tray_geoms)
+            and self._settled(data, self.bottle_joint)
+        )
+        tweezers_returned = bool(
+            self.tweezers_used
+            and np.linalg.norm(data.xpos[self.tweezers_body, :2] - self.initial_tweezers_pos[:2]) < .035
+            and self._contact(data, self.tweezers_geoms, self.tray_geoms)
+            and self._settled(data, self.tweezers_joint)
+        )
+        left_released = bool(
+            self.bottle_used and not self._contact(data, self.left_hand_geoms, self.bottle_geoms)
+        )
+        tray_rotation = data.xmat[self.tray_body].reshape(3, 3)
+        cap_in_tray = tray_rotation.T @ (
+            data.xpos[self.cap_body] - data.xpos[self.tray_body]
+        )
+        cap_on_tray = bool(
+            cap_unthreaded and self._contact(data, self.cap_geoms, self.tray_geoms)
+            and self._settled(data, self.cap_joint)
+            and abs(cap_in_tray[0]) < TRAY_HALF_XY[0] and cap_in_tray[1] < -.02
+        )
+        deposited = self._tea_deposited_count(data)
+        tea_deposited = deposited >= 1
+        return {
+            "cap_turns": cap_turns,
+            "cap_unthreaded": cap_unthreaded,
+            "cap_on_tray": cap_on_tray,
+            "tea_deposited_count": deposited,
+            "tea_deposited": bool(tea_deposited),
+            "bottle_used": bool(self.bottle_used),
+            "bottle_returned": bottle_returned,
+            "tweezers_used": bool(self.tweezers_used),
+            "tweezers_returned": tweezers_returned,
+            "left_hand_released": left_released,
+            "sim_success": bool(
+                cap_unthreaded and cap_on_tray and tea_deposited
+                and bottle_returned and tweezers_returned and left_released
+            ),
+        }

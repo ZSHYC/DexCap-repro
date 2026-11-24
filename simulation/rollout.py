@@ -14,6 +14,7 @@ from simulation import (
     mujoco_packaging,
     mujoco_scissor_cutting,
     mujoco_sponge_picking,
+    mujoco_tea_preparing,
     mujoco_wiping,
 )
 from simulation.mujoco_control import CONTROL_INTERVAL
@@ -28,6 +29,7 @@ TASKS = {
     "sponge-picking": (mujoco_sponge_picking, ("sponge_xy",)),
     "ball-collecting": (mujoco_ball_collecting, ("basket_xy", "ball_xy")),
     "scissor-cutting": (mujoco_scissor_cutting, ("scissors_xy", "paper_xy")),
+    "tea-preparing": (mujoco_tea_preparing, ("tray_xy", "bottle_xy", "teapot_xy", "tweezers_xy")),
 }
 
 
@@ -118,7 +120,7 @@ def rollout(args):
         if not randomized:
             results.append(episode(seed, reference_xy))
         else:
-            if args.task == "scissor-cutting":
+            if args.task in ("scissor-cutting", "tea-preparing"):
                 positions = reference_xy
             else:
                 positions = task.sample_object_xy(np.random.default_rng(seed))

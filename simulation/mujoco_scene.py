@@ -30,7 +30,7 @@ class MujocoScene:
         spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
         spec.option.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
         spec.option.iterations = 80
-        color = [0.12, 0.12, 0.12, 1] if task == "wiping" else [0.64, 0.59, 0.49, 1]
+        color = [0.12, 0.12, 0.12, 1] if task != "packaging" else [0.64, 0.59, 0.49, 1]
         spec.worldbody.add_geom(name="table", type=mujoco.mjtGeom.mjGEOM_BOX,
                                 pos=[0.40, 0, TABLE_HEIGHT - 0.025], size=[0.75, 0.60, 0.025],
                                 rgba=color, friction=[0.8, 0.008, 0.0005])
@@ -61,6 +61,11 @@ class MujocoScene:
 
             add_scissor_cutting_scene(spec, object_xy)
             metrics_type = ScissorCuttingMetrics
+        elif task == "tea-preparing":
+            from simulation.mujoco_tea_preparing import TeaPreparingMetrics, add_tea_preparing_scene
+
+            add_tea_preparing_scene(spec, object_xy)
+            metrics_type = TeaPreparingMetrics
         else:
             from simulation.mujoco_packaging import PackagingMetrics, add_packaging_scene
 
