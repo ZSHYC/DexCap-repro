@@ -11,6 +11,7 @@ from simulation.mujoco_sponge import SPONGE_FRICTION_IMPEDANCE
 TABLE_HEIGHT = -0.030
 PHYSICS_STEP = 0.002
 MAX_CONTROL_CYCLES = 10
+HAND_STOP_TOLERANCE_RAD = 0.05
 WRIST_POSITION_TOLERANCE_M = 0.005
 WRIST_ANGLE_TOLERANCE_RAD = np.deg2rad(5)
 
@@ -89,7 +90,12 @@ class MujocoScene:
         self.data = mujoco.MjData(self.model)
         self.control = DualArmController(self.model, self.data)
         self.metrics = metrics_type(self.model, *metrics_args)
-        self.physics_step = getattr(self.metrics, "physics_step", None)
+        self.task_physics_step = getattr(self.metrics, "physics_step", None)
+        hand_actuators = np.concatenate([arm.hand_actuators for arm in self.control.arms])
+        hand_joints = self.model.actuator_trnid[hand_actuators, 0]
+        self.hand_qpos = self.model.jnt_qposadr[hand_joints]
+        self.hand_lower, self.hand_upper = self.model.jnt_range[hand_joints].T
+        self.max_hand_limit_excess_rad = 0.0
         self.camera = DexCapCamera(self.model, camera)
         names = [self.model.geom(index).name or "" for index in range(self.model.ngeom)]
         self.arm_geoms = np.array([name.startswith(("right_arm_", "left_arm_")) for name in names])
@@ -103,6 +109,17 @@ class MujocoScene:
 
     def reset(self, initial):
         self.control.initialize(initial)
+
+    @property
+    def invalid_hand_motion(self):
+        return self.max_hand_limit_excess_rad > HAND_STOP_TOLERANCE_RAD
+
+    def physics_step(self, data):
+        angles = data.qpos[self.hand_qpos]
+        excess = np.maximum(self.hand_lower - angles, angles - self.hand_upper)
+        self.max_hand_limit_excess_rad = max(self.max_hand_limit_excess_rad, float(excess.max()))
+        if self.task_physics_step is not None and not self.invalid_hand_motion:
+            self.task_physics_step(data)
 
     def step(self, targets, *, control_cycles=None):
         count = MAX_CONTROL_CYCLES if control_cycles is None else control_cycles
@@ -120,6 +137,9 @@ class MujocoScene:
                 self.hand_collision_steps += int(penetration > 0)
                 self.hand_max_penetration_m = max(self.hand_max_penetration_m, penetration)
             metrics = self.metrics.update(self.data)
+            if self.invalid_hand_motion:
+                metrics["sim_success"] = False
+                break
             if self.data.warning.number.any() or (
                 control_cycles is None
                 and np.max(wrist_position_error) <= WRIST_POSITION_TOLERANCE_M

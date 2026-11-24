@@ -128,6 +128,8 @@ def rollout(args):
                     }
                     info["sim_success"] = False
                     break
+                if scene.invalid_hand_motion:
+                    break
                 simulation_time = float(scene.data.time)
                 if policy is not None and i + 1 < steps:
                     history.append(observe(scene, frames, rng))
@@ -140,6 +142,8 @@ def rollout(args):
                 "arm_contact_steps": scene.arm_contact_steps,
                 "hand_collision_steps": scene.hand_collision_steps,
                 "hand_max_penetration_m": scene.hand_max_penetration_m,
+                "max_hand_limit_excess_rad": scene.max_hand_limit_excess_rad,
+                "invalid_hand_motion": scene.invalid_hand_motion,
                 "executed_steps": len(position_errors),
                 "physics_warnings": physics_warnings,
                 "simulation_time_s": simulation_time,
@@ -192,7 +196,10 @@ def rollout(args):
         placements = dict(zip(position_keys, reference_xy.tolist()))
         return {**result, **placements, **results[0]}
     if packaging:
-        placements = sum(trial["object_in_box"] and not trial["physics_warnings"] for trial in results)
+        placements = sum(
+            trial["object_in_box"] and not (trial["physics_warnings"] or trial["invalid_hand_motion"])
+            for trial in results
+        )
         result["placement_count"] = placements
         result["placement_rate"] = placements / args.trials
     successes = sum(trial["sim_success"] for trial in results)

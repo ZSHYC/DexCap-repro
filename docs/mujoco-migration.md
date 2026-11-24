@@ -13,6 +13,8 @@
 
 改动后通过标准入口重放四份完整参考。305 步 Sponge Picking 抬升约 303.46 mm，265 步 Ball Collecting 完成落篮。586 步红银包装参考在第 119 至 420 动作保持物体，随后按原动作张手时物体仍在盒外。这份参考能合盖。另复核 463 步转运参考，物体由右手实际搬运、释放并留在盒内，纸盒位移约 0.97 mm。这份参考尚需接上闭盖。946 步 Wiping 参考抓起海绵，盘子未形成对向夹持。第 154 动作只有右食指接触盘边，拇指仍差约 27.5 mm。单独补偿拇指没有建立对夹。Scissor Cutting 和 Tea Preparing 分别跑了 8 步及 1 步的入口复测。六次回放都输出 `10000 × 6` 点云，逐物理子步测得最大的手指越限约 0.00492 rad，出现在 Wiping。六次均无求解器警告。旧模型下的其它参考成功记录仍需按现行资产复核。数据见 `runs/tea-leap-limit-load-*.json` 和 `runs/leap-stop-physical-*.json`。红银转运和抓盘诊断分别见 `runs/leap-stop-physical-red-scripted-placement-audited-762a293.json` 和 `/data/dexcap-repro/benchmarks/wiping-leap-stop-right-grip-diagnostic.json`。
 
+标准回放每个 2 ms 子步采样双手的实际角度。任一关节偏出模型止挡超过 0.05 rad 时，在当前控制周期后结束该回合，`invalid_hand_motion=true`，该回合在所有结果统计中计作失败。0.05 rad 是容纳软止挡微小越限的仿真容差，本批校准参考回放的实测最大值约为其十分之一。在一次实际入口测试中，仅第 5 个子步注入 0.16 rad 的瞬时越限，动作采样前已恢复，回放仍在第一动作结束并判定失败。正常 535 步包装轨迹完成，峰值仅 0.00141 rad。见 `runs/packaging-stop-transient-injection.json` 与 `runs/packaging-red-combined-standard-gated.json`。
+
 ## 迁移顺序
 
 机器人模型、两项任务的物体及判据、RGB-D 点云可以独立实现。每部分先验证具体失败，包括关节或资产无法装配、控制步直接改写物体状态、对接触面或盒内几何的误判，以及渲染深度与相机标定不一致。统一入口随后加载官方 HDF5 和现有权重，保留原有输出指标与摆放种子，记录引擎和模型配置。
@@ -248,6 +250,8 @@ python -m simulation.rollout data/derived/ball-collecting-compound-palm-referenc
 
 球掉下桌面后由估计在桌面下 0.75 m 的地面承托。
 
+
+在现行 LEAP 参数下，保留 463 步实际入盒前缀，再抬高和调整左手指形，从实测纸盒位姿重新接近折舌，得到 535 动作的完整回放。红银包装留在盒内，盒盖闭合，`sim_success=true`。峰值盖角 181.22°，左手与盖接触 137 次，机械臂环境碰撞为零，双手之间有 69 个穿透采样，最深约 4.55 mm。数据在 `data/derived/packaging-red-carton-scripted-lid-retarget-6dd459f.hdf5` 及 `runs/packaging-red-combined-standard-gated.json`。
 
 ## Scissor Cutting
 

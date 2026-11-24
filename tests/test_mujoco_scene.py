@@ -29,6 +29,7 @@ class RigCalibrationTest(unittest.TestCase):
         scene.arm_contact_steps = 0
         scene.hand_collision_steps = 0
         scene.hand_max_penetration_m = 0.0
+        scene.max_hand_limit_excess_rad = 0.0
         pose = np.zeros(2)
         scene.control.track.return_value = iter([(pose, pose)] * 10)
         scene.step("reachable")
@@ -67,3 +68,40 @@ class RigCalibrationTest(unittest.TestCase):
         scene.control.track.return_value = iter([(pose, pose)] * 2)
         scene.step("unstable", control_cycles=2)
         scene.metrics.update.assert_called_once_with(scene.data)
+
+    def test_substep_hand_excursion_ends_cycle_and_invalidates_success(self):
+        scene = MujocoScene.__new__(MujocoScene)
+        scene.control = Mock()
+        scene.data = SimpleNamespace(
+            qpos=np.zeros(1),
+            contact=SimpleNamespace(geom=np.empty((0, 2), dtype=int)),
+            ncon=0,
+            warning=SimpleNamespace(number=np.zeros(1, dtype=int)),
+        )
+        scene.metrics = Mock()
+        scene.metrics.update.return_value = {"sim_success": True}
+        scene.task_physics_step = Mock()
+        scene.arm_geoms = np.zeros(0, dtype=bool)
+        scene.arm_contact_steps = 0
+        scene.hand_qpos = np.array([0])
+        scene.hand_lower = np.array([-1.0])
+        scene.hand_upper = np.array([1.0])
+        scene.max_hand_limit_excess_rad = 0.0
+        pose = np.zeros(2)
+
+        def track(action, count, *, physics_step):
+            for _ in range(count):
+                scene.data.qpos[0] = 1.16
+                physics_step(scene.data)
+                scene.data.qpos[0] = 1.0
+                physics_step(scene.data)
+                yield pose, pose
+
+        scene.control.track.side_effect = track
+        metrics, _, _ = scene.step("transient overload", control_cycles=2)
+
+        self.assertAlmostEqual(scene.max_hand_limit_excess_rad, .16)
+        self.assertTrue(scene.invalid_hand_motion)
+        self.assertFalse(metrics["sim_success"])
+        scene.metrics.update.assert_called_once_with(scene.data)
+        scene.task_physics_step.assert_not_called()
