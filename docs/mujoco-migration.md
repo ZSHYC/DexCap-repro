@@ -253,6 +253,12 @@ python -m simulation.rollout data/derived/ball-collecting-compound-palm-referenc
 
 在现行 LEAP 参数下，保留 463 步实际入盒前缀，再抬高和调整左手指形，从实测纸盒位姿重新接近折舌，得到 535 动作的完整回放。红银包装留在盒内，盒盖闭合，`sim_success=true`。峰值盖角 181.22°，左手与盖接触 137 次，机械臂环境碰撞为零，双手之间有 69 个穿透采样，最深约 4.55 mm。数据在 `data/derived/packaging-red-carton-scripted-lid-retarget-6dd459f.hdf5` 及 `runs/packaging-red-combined-standard-gated.json`。
 
+碰撞回放将上述 69 个采样定位到入盒后的关盖弧线。右手先真实上抬 90 mm 并撤至安全位，左手再接触折舌和关盖。610 步回放确认物体留在盒内、盒盖闭合、`sim_success=true`，双手碰撞和机械臂环境碰撞均为零，无物理警告。纸盒约移动 0.79 mm。记录见 `runs/packaging-red-scripted-lid-right-retreat-6dd459f-rollout.json`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-scripted-lid-right-retreat-6dd459f.hdf5   --task packaging --output runs/packaging-red-scripted-lid-right-retreat-6dd459f-rollout.json
+```
+
 ## Scissor Cutting
 
 `python -m simulation.rollout --task scissor-cutting` 使用固定分隔托盘、两个可碰撞的剪刀刚体、被动铰链、与铰链实际相连的镂空手柄和粉色纸带。120 × 20 mm 的纸带由 10 × 5 个可碰撞单元和 85 条具有弯曲阻力的可断裂连接构成。剪刀闭合时，两片刀刃都必须在刀锋交汇点附近压到同一条网格边才会断开该边。报告的切口按断开的边长累加，分辨率由 4 mm 和 12 mm 的网格边决定。机器人有效抓持时累计切口超过 3 mm 为论文的任务判据。初始布局参考图 5，几何和材料参数仍为估计。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [MuJoCo 焊接约束](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#equality-weld)
@@ -381,6 +387,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 加入新纸带后，从实际初始位复跑原 80 mm 抬高路线，105 个观测周期无预期外接触，分离悬停腕误差仍约 0.123 mm。另找到了食指严格通过固定环、整手无接触的静态端点。从高位下降到这个端点时，伸直中指会碰固定环，收折中指与无名指又会使无名指碰环。该接近未执行。记录见 `runs/scissor_paper_grid_high_clearance_route.json` 及 `runs/scissor_current_oval_index_center_thread{,_route}.json`。
 
+采用当前 LEAP 止挡，在渐进收指的安全前缀之后以实际力矩再推进名义 4 mm。食指接触固定环的最大实际侵入 0.166 mm，峰值 0.506 N，无其他接触。再沿运动中的环法向追踪时，相对实际推进约 1.42 mm，食指尖开始碰到活动环顶部后停止，仍未测得完整截面穿环。完整 2 ms 力和关节记录见 `runs/scissor_current_assets_force_limited_gate.json` 与 `runs/scissor_current_assets_relative_compliant_pass.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的木质托槽、空心瓶和茶壶、弹簧镊子以及可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际茶盘或木槽接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -471,6 +479,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 这两份轨迹使用旧止挡。保存状态的逐关节复核证实，退丝前个别指尖关节已偏出 URDF 范围 3.45 rad，退丝后还有关节偏出约 1.81 rad。当前模型仍需重新取得两圈退丝证据。泡茶的握持计分现在按 LEAP 的实际手指区分接触，避免把一根手指的两个连杆算作有效对握。
 
 在现行止挡模型上单独验证取盖。夹具固定满载瓶身，起始声明盖子已脱扣并停在瓶颈，左臂在停放位。右手食指和拇指实际相向夹持，使盖子完全脱离瓶颈并上升 56.3 mm，连续 0.44 s 的采样同时满足对向受力与不接触瓶身。增加合拢预载后，盖子在同样条件下横移 56.3 mm，之后滑脱，尚未放置到托盘右侧。取盖与搬运试验所记录的两个手的关节均未越出 URDF 范围。记录见 `runs/tea-detached-cap-home-fixture-pinch.json` 和 `runs/tea-detached-cap-home-fixture-place-preload.json`。
+
+保持相同的实际提盖起点，依据食指和拇指的实测法向力逐步调节合拢，连续夹持横移提高到约 100 mm，仍在到达右侧前滑脱。试验中把腕部随盖子下滑只增加了垂直偏移。绕盖中心转腕的动作在横移前松脱，增加中指的试验在中指建立受力前丢失原有夹持。数据见 `runs/tea-detached-cap-home-fixture-place-{force,force-height,roll}.json` 和 `runs/tea-detached-cap-middle-preload.json`。
 
 左臂以真实接触把默认满载自由瓶推到托盘壁，最大支撑倾角约 101.43°，壁面峰值约 9.46 N。现行手部参数下，进一步合拢只让拇指碰到瓶身，未建立相向夹持。两手每个 2 ms 物理子步的实测关节均在 URDF 范围内。试验及腕部中点再推进 10 mm 的对照见 `runs/tea-loaded-xneg-rim-ab24e72{-telemetry,-midpoint40-telemetry}.json`。
 

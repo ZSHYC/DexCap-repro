@@ -109,6 +109,7 @@ class MujocoScene:
 
     def reset(self, initial):
         self.control.initialize(initial)
+        self.max_hand_limit_excess_rad = 0.0
 
     @property
     def invalid_hand_motion(self):

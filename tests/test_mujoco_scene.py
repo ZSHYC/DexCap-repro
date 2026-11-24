@@ -105,3 +105,7 @@ class RigCalibrationTest(unittest.TestCase):
         self.assertFalse(metrics["sim_success"])
         scene.metrics.update.assert_called_once_with(scene.data)
         scene.task_physics_step.assert_not_called()
+
+        scene.reset("new episode")
+        self.assertFalse(scene.invalid_hand_motion)
+        self.assertEqual(scene.max_hand_limit_excess_rad, 0.0)
