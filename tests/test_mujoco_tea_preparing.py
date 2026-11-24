@@ -309,6 +309,13 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         cradle = model.body("tea_tool_cradle")
         cradle_geoms = set(range(cradle.geomadr[0], cradle.geomadr[0] + cradle.geomnum[0]))
         self.assertEqual(model.joint("tea_tool_cradle_free").type[0], mujoco.mjtJoint.mjJNT_FREE)
+        mujoco.mj_forward(model, data)
+        initial_contacts = [
+            contact.dist for contact in data.contact[:data.ncon]
+            if set(contact.geom) & metrics.tweezers_geoms
+            and set(contact.geom) & cradle_geoms
+        ]
+        self.assertGreaterEqual(min(initial_contacts, default=0), -1e-6)
         tool_qpos = model.jnt_qposadr[metrics.tweezers_joint]
         initial_tool_position = data.qpos[tool_qpos:tool_qpos + 3].copy()
         for step in range(15000):

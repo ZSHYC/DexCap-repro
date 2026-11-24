@@ -212,8 +212,9 @@ def _add_teapot(spec, xy):
 
 
 def _add_tweezers(spec, xy):
+    # Start the bridge above the cradle lip so gravity seats the free tool.
     root = spec.worldbody.add_body(
-        name="tea_tweezers", pos=[*xy, TRAY_TOP + .014], quat=_yaw(TOOL_YAW)
+        name="tea_tweezers", pos=[*xy, TRAY_TOP + .025], quat=_yaw(TOOL_YAW)
     )
     root.add_freejoint(name="tea_tweezers_free")
     root.add_geom(
