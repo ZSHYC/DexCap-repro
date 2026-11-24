@@ -236,6 +236,9 @@ python -m simulation.rollout data/derived/scissor-left-thumb-lift-reference.hdf5
 
 110 mm 高墙候选让右食指与拇指在提拉阶段累计有 140 个物理子步相向接触，短暂剥离时纸段平均升高约 6.3 mm，仍有纸段留在托盘上。静置后纸带折成沿底板和隔板贴合的 L 形，尝试提拉时右腕落后约 50 mm。原剪刀摆放还与候选外墙重叠约 17.5 mm。该候选留在试验目录。记录见 `runs/scissor_right_paper_tall_wall_pickup.{py,json}`。
 
+高墙候选的补充尝试在初次对夹后按实测接触收拢两指，抬升阶段有 277 个双指接触子步，但仍至少有 17 个纸带与托盘接触。沿隔间拉出再上抬、降低试验纸带摩擦及增加连接的弯曲刚度都未让纸带整个卸载。记录见 `runs/scissor_right_paper_tall_wall_adaptive_closure.{py,json}`。在另一条低力支撑试验的起点，左拇指单独托住悬空剪刀时，食指垫距固定柄约 54 mm，限幅 6 mm 的补入先失去了拇指接触。见 `runs/scissor_left_underhandle_fixed_loop_brace.{py,json}`。
+
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -253,6 +256,9 @@ python -m simulation.rollout data/derived/scissor-left-thumb-lift-reference.hdf5
 另一条轨迹用左手侧推，让起始竖直的自由瓶身绕托盘接触点倾斜。瓶身倾到约 82° 时出现了拇指和食指的真实相向接触。瓶身随后沿托盘滑约 19 mm，食指接触丢失。记录在 `runs/tea-leap-tilt-pivot-grip-probe.{py,json}`。 跟随瓶身平移时，相向接触最长只持续约 50 ms。跟踪瓶身相对姿态的试验在首个保持周期出现约 52 mm 左腕误差，未进入提瓶。
 
 在托盘内将自由瓶身初始放在 `[0.47, -0.075] m` 的边框试验中，左手经真实接触将瓶身推到边框，拇指和食指相向接触持续 0.3 s。瓶身随后在对向接触下沿边框滚回内侧，仍由托盘底承托。请求上提 24 mm 时实际瓶身只升约 1 mm。记录在 `runs/tea-leap-rim-supported-lift-probe.json` 和 `runs/tea-leap-rim-roll-exit-lift-probe.json`。
+
+在同一声明的边框摆放中，从竖直自由瓶和闭合瓶盖开始。左手倾瓶后用拇指和两根手指配合真实托盘沿支住瓶身。右手连续 18 次转腕期间，瓶身倾角保持在 78.3–79.6°，世界偏航变化约 1.8°。右手前六次与瓶盖有接触，螺纹回退约 0.04 圈后接触丢失。反向转腕和缩短夹距也未取得有接触证据的正向旋转，因此完整退丝仍待验证。见 `runs/tea-leap-tilted-rim-counterhold-right-turn-result.json`。针对该反持姿态拟合了两组右手指尖，测试的 Panda 腕姿分支到达关节限位，仍未形成两个真实指面的相向接触。见 `runs/tea-leap-cap-reachable-fit-result.json`。
+
 
 ## 六个场景的渲染与接入验证
 
@@ -298,6 +304,30 @@ python -m simulation.rollout data/derived/wiping-right-plate-lift-reference.hdf5
 ```bash
 python -m simulation.rollout data/derived/wiping-two-object-lift-reference.hdf5 \
   --task wiping --output runs/wiping-two-object-lift-reference-rollout.json
+```
+
+
+在两手取物后，让右手搬盘时绕盘沿接触点缓慢转腕，左手同时带海绵靠近。连续 23 个 50 ms 样本里两件物体均离桌且有相向接触，首末间隔 1.10 s。两物中心距离由约 281 mm 减到约 197 mm，海绵实际接触盘沿，最靠内接触半径约 128 mm。406 步参考回放有 12 个海绵与盘子的接触周期，峰值总接触力约 6.3 N，机械臂碰撞计数为 0。内盘面判据半径为 90 mm，这条参考的擦拭笔画为 0。记录见 `runs/wiping-rim-rendezvous-reference-trace.json`。
+
+```bash
+python -m simulation.rollout data/derived/wiping-rim-rendezvous-reference.hdf5 \
+  --task wiping --output runs/wiping-rim-rendezvous-reference-rollout.json
+```
+
+
+将盘子横移提前到提盘阶段，右臂在 5 s 的抬升过程中同时逐渐向海绵移动。逐步完成法向抬离盘沿、向盘内移动和下压后，470 步参考首次在双持离桌时接触内盘面。稳定横移试验连续双持了 3.45 s，延伸到入盘的试验在首次盘内接触前累计有一段 3.25 s 的连续双持。首次内盘面接触位于半径约 60.6 mm 处，海绵与盘面的合计法向接触力约 0.77 N。标准入口记录到 1 个内盘面接触周期、0 个完整笔画和 0 个机械臂碰撞周期。
+
+```bash
+python -m simulation.rollout data/derived/wiping-interior-contact-reference.hdf5 \
+  --task wiping --output runs/wiping-interior-contact-reference-rollout.json
+```
+
+
+完整的 Wiping 脚本参考从默认物体摆放开始。双手分别抓起自由盘子和弹性海绵。左手越过盘沿后转腕，让海绵的一侧宽面压向盘内。沿盘内的竖直投影方向擦拭，在第一笔被记录后反向，用实测海绵与盘的接触力调整法向目标。第 31.95 s 和 34.30 s 分别记录向上、向下的有效笔画。686 步标准回放判定 `sim_success=true`，两条笔画满足现有 60 mm 阈值，累计有效接触移动约 195 mm，机械臂碰撞计数为 0。此结果来自脚本动作。逐周期记录位于 `runs/wiping-two-stroke-reference-trace.json`，轨迹生成脚本位于同名 `.py`。
+
+```bash
+python -m simulation.rollout data/derived/wiping-two-stroke-reference.hdf5 \
+  --task wiping --output runs/wiping-two-stroke-reference-rollout.json
 ```
 
 
