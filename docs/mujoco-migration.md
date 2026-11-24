@@ -33,17 +33,40 @@ MUJOCO_GL=egl python -m simulation.rollout data/derived/packaging-demo-0-playbac
   --task packaging --output runs/packaging-replay.json
 ```
 
-## 首轮实测
+## 官方动作回放和策略接入
 
-两段官方 `demo_0` 分别执行完 111 和 131 个目标动作，每个目标由 OSC 跟踪，至双腕进入 5 mm、5° 容差或达到论文规定的 10 次控制上限。50 ms 控制周期参考上游机器人环境，容差是本项目选值。经修正的法兰朝向来自 LEAP 掌座几何，实际安装滚转角和垫高仍需确认。 [论文控制方案](https://arxiv.org/html/2403.07788v2#A1.SS4) · [LEAP 安装件](https://v1.leaphand.com/leap_cad)
+两段官方 `demo_0` 分别执行完 111 和 131 个目标动作，每个目标由 OSC 跟踪，至双腕进入 5 mm、5° 容差或达到论文规定的 10 次控制上限。50 ms 控制周期和首个周期内的 30% 腕位插值时长参考上游 Deoxys，容差是本项目选值。经修正的法兰朝向来自 LEAP 掌座几何，实际安装滚转角和垫高仍需确认。 [论文控制方案](https://arxiv.org/html/2403.07788v2#A1.SS4) · [Deoxys 插值配置](https://github.com/UT-Austin-RPL/deoxys_control/blob/main/deoxys/config/osc-pose-controller.yml) · [LEAP 安装件](https://v1.leaphand.com/leap_cad)
 
 | 回放 | 右腕误差中位数 | 左腕误差中位数 | 实际结果 |
 | --- | ---: | ---: | --- |
-| Wiping | 4.7 mm | 9.0 mm | 抓到盘子。海绵未稳定抓起，未达到内盘面擦拭。 |
-| Packaging | 5.6 mm | 14.5 mm | 手指夹碰后物体翻倒在桌面。终点未入盒、未合盖。 |
+| Wiping | 4.5 mm | 14.9 mm | 盘子和海绵都触发抓取指标。371 个控制周期接触盘体，内盘面擦拭为 0。 |
+| Packaging | 5.4 mm | 14.7 mm | 14.0 × 5.6 × 8.8 cm 的红银包装按原始深度建模。短时抬起后掉落，终点未入盒和合盖。 |
 
-两段回放在采样的控制周期均未出现机械臂碰撞接触，且能生成 `10000 × 6` 点云。当前泡棉材料、手指接触系数、纸盒铰链和物体表面参数仍需要用实测或录制行为标定。正式策略评估尚待进行。
+两段回放在采样的控制周期均未出现机械臂碰撞接触，且能生成 `10000 × 6` 点云。当前泡棉材料、手指接触系数、纸盒铰链和物体表面参数仍需要用实测或录制行为标定。两段回放均未达成完整任务。
 
 在 `pro1` 的同一个 Conda 环境验证了 EGL 渲染和三份现有第 3000 轮权重。PointNet Wiping、SetXF Wiping 和 SetXF Packaging 分别在 GPU 0、1、2 完成两步策略闭环，均输出 `10000 × 6` 点云。记录位于数据盘的 `runs/*-policy-smoke.json`。
 
-`pro1` 上的 `runs/wiping-grip-trace.json` 和 `runs/packaging-grip-trace.json` 保存前 70 步的物体位置、腕部误差和手物接触。海绵在接触中沿桌面移动约 8 cm，抓持阶段质心高度基本保持在桌面上方 2 cm。包装物被相对的手指表面接触时只抬高约 4 mm，随后翻倒。指标要求包装物质心抬升至少 1 cm、存在相对手指接触且没有桌面支撑才记录抓起。
+逐步诊断位于数据盘。Wiping 的模型和录制手部表面中位距离约为 2.5–2.8 mm。抓取阶段有些目标姿态会把手指几何移入桌面约 3 cm。离桌后物体姿态也出现偏差，第 72 步盘面法向与录制估计相差约 59°。仿真海绵中心处在背面一侧约 53 mm。包装物抓取要求同时出现相向手指接触、质心抬升 1 cm 且不受桌面支撑。
+
+- 渲染关键帧位于 `runs/dexcap-mujoco-replay-keyframes.png`。
+- 回放指标位于 `runs/wiping-measured-sponge-demo0.json` 和 `runs/packaging-wrist-ramp-demo0.json`。
+- 手部几何、持盘姿态和相机条件诊断位于 `runs/wiping-geometry-alignment.json`、`runs/wiping-demo0-plate-facing.json` 和 `runs/wiping-action-diagnostics-mujoco.json`。
+
+## 复用权重评估
+
+沿用已训练的第 3000 轮权重。PointNet 使用当前分支的训练代码，SetXF 使用 `worktrees/setxf`。每次仿真最多执行 400 个策略动作。Wiping 使用相同的种子 1–20 比较两份权重。Packaging 对训练和未见物体各使用同一组种子 1–5。结果写入数据盘 `runs/formal-mujoco/`。
+
+```bash
+export MUJOCO_GL=egl MUJOCO_EGL_DEVICE_ID=0 CUDA_VISIBLE_DEVICES=0
+export PYTHONPATH="$PWD/DexCap/STEP3_train_policy"
+release=data/official/e468f07000de0f8d3234a9c60a9d8208344675e0
+dataset="$release/hand_wiping_1-14_5actiongap_10000points.hdf5"
+checkpoint=../../runs/wiping-pointnet-seed1-full-20261119T102945Z/20261119182948/models/model_epoch_3000.pth
+mkdir -p runs/formal-mujoco
+python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
+  --output runs/formal-mujoco/wiping-pointnet.json
+```
+
+用 `--first-seed` 可以把多个摆放拆给独立进程。每块按固定种子生成，按种子合并后使用与单进程评估相同的配对。用 `MUJOCO_EGL_DEVICE_ID` 设置渲染卡，用 `CUDA_VISIBLE_DEVICES` 设置策略推理卡。 `pro1` 评估分配在 GPU 0–3。
+
+历史 PyBullet 仿真代码和入口保存在基线提交。当前分支的 `simulation.rollout`、示范图和策略动作诊断均运行 MuJoCo。官方数据重建仍沿用作者的 PyBullet 指尖 IK。 [基线提交](https://github.com/ZSHYC/DexCap-repro/tree/0ee5418)

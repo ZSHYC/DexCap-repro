@@ -93,15 +93,19 @@ def rollout(args):
             scene.close()
 
     results = []
-    for seed in range(1, args.trials + 1):
-        if args.trials == 1:
+    randomized = args.trials > 1 or args.first_seed is not None
+    first_seed = args.first_seed or 1
+    for seed in range(first_seed, first_seed + args.trials):
+        if not randomized:
             results.append(episode(seed, task.DEMO_OBJECT_XY))
         else:
             positions = task.sample_object_xy(np.random.default_rng(seed))
             placements = dict(zip(position_keys, positions.tolist()))
             results.append({"seed": seed, **placements, **episode(seed, positions)})
             label = object_name if packaging else args.task
-            print(f"{label}: completed trial {seed}/{args.trials}", file=sys.stderr, flush=True)
+            completed = seed - first_seed + 1
+            print(f"{label}: completed trial {completed}/{args.trials} (seed {seed})",
+                  file=sys.stderr, flush=True)
 
     result = {
         "task": args.task,
@@ -121,7 +125,7 @@ def rollout(args):
         result.update(object=object_name, object_group="trained" if seen else "unseen")
         reference_key = "object_reference_demo" if seen else "object_reference"
         result[reference_key] = task.object_reference(object_name)
-    if args.trials == 1:
+    if not randomized:
         return {**result, **results[0]}
     if packaging:
         placements = sum(trial["object_in_box"] for trial in results)
@@ -143,14 +147,17 @@ def main():
     parser.add_argument("--checkpoint", help="Use a policy checkpoint instead of recorded actions")
     parser.add_argument("--steps", type=int)
     parser.add_argument("--trials", type=int, default=1, help="Sample placements for policy evaluation")
+    parser.add_argument("--first-seed", type=int, help="Start seeded placements at this seed")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if args.steps is not None and args.steps < 1:
         parser.error("--steps must be positive")
     if args.trials < 1:
         parser.error("--trials must be positive")
-    if args.trials > 1 and args.checkpoint is None:
-        parser.error("Multiple trials require a policy checkpoint")
+    if args.first_seed is not None and args.first_seed < 1:
+        parser.error("--first-seed must be positive")
+    if (args.trials > 1 or args.first_seed is not None) and args.checkpoint is None:
+        parser.error("Seeded trials require a policy checkpoint")
     if args.object is not None and (args.task != "packaging" or args.checkpoint is None):
         parser.error("--object requires a Packaging policy checkpoint")
     result = json.dumps(rollout(args), indent=2)
