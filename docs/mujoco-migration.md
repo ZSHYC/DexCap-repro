@@ -183,6 +183,9 @@ python -m simulation.rollout data/derived/packaging-red-carton-table-clear-refer
 
 蓝积木后来用校正后的双 LEAP 回放了官方 `demo_50`。右手与物体接触 25 个周期，积木未抬起。以红盒参考为起点调整到蓝积木的实测位置后，静态腕姿候选可产生相向法线，但从上方实际进入时仍未取得相向夹持。最高积木中心离桌约 18 mm，与它平放时的半高相符。记录见 `runs/packaging-blue-block-official-reference-rollout.json` 和 `runs/packaging-blue-block-tilted-grasp-probe.json`。
 
+复合掌心下，把蓝积木预抓腕姿倾斜约 −35°，右食指与拇指在默认摆放形成相向抓持，积木实际离桌约 18.6 mm 后滑落。减慢抬升后积木曾稳定在约 32 mm 高处，但接触点移动后已不满足相向抓持判据。两次均未完成入盒。数据见 `runs/packaging-blue-block-opposed-grasp-66b7507.json` 和 `runs/packaging-blue-block-opposed-grasp-slow-lift-66b7507.json`。
+
+
 绿罐的官方 `demo_150` 参考有 143 个右手接触周期。减少折叠预抓姿态的自碰撞后实际执行下探和抬升，仍未建立持续的相向抓持。记录见 `runs/packaging-green-can-official-contact-trace.json` 和 `runs/packaging-green-can-neutral-pregrasp-lift-probe.json`。
 
 分块掌心模型上，红银包装仍落入盒底。旧收尾的 115 个左手接触周期把盖子沿开盖方向拨动，最低到约 −4.2°。重选实际折舌接触位置后，左手可通过接触把自由盖子带到约 64.2°，峰值约 71.5°，期间包装始终在盒内。这条动作依赖施加目标时的控制周期数，撤手时盖子重新打开。用标准回放时序重放也没有保持折舌接触。记录见 `runs/leap-palm-packaging-lid-hook-continuation.json` 和 `runs/leap-palm-packaging-lid-arc-finish.json`。
@@ -432,6 +435,14 @@ python -m simulation.rollout data/derived/wiping-palm-extended-dual-hold-referen
 ```bash
 python -m simulation.rollout data/derived/wiping-palm-over-rim-f.hdf5 \
   --task wiping --output runs/wiping-palm-over-rim-f-rollout.json
+```
+
+
+调整左手抓取位置，使三指接触点靠近海绵中心后，另一条双手轨迹连续离桌持物约 13.25 s。921 步标准回放记录到 60 个内盘面接触周期，累计有效擦拭约 41.77 mm，机械臂碰撞计数 0。两笔擦拭仍待完成。轨迹生成记录见 `runs/wiping-palm-centered-wipe-d.json`。
+
+```bash
+python -m simulation.rollout data/derived/wiping-palm-centered-wipe-d.hdf5 \
+  --task wiping --output runs/wiping-palm-centered-wipe-d-rollout.json
 ```
 
 
