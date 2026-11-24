@@ -54,6 +54,19 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         free = model.joint("scissor_free").qposadr[0]
         front_divider = model.geom("cutting_tray_front_divider").id
         self.assertLess(data.geom_xpos[front_divider, 0], TRAY_CENTER[0])
+        long_divider = model.geom("cutting_tray_divider").id
+        paper_geoms = [
+            geom for geom in range(model.ngeom)
+            if model.geom(geom).name.startswith("cutting_paper_")
+        ]
+        fromto = np.zeros(6)
+        paper_divider_clearance = min(
+            mujoco.mj_geomDistance(
+                model, data, geom, long_divider, 0.2, fromto,
+            )
+            for geom in paper_geoms
+        )
+        self.assertGreater(paper_divider_clearance, 0.02)
 
         scissor_geoms = {
             geom for geom in range(model.ngeom)
