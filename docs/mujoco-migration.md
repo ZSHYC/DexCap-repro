@@ -338,6 +338,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 右手经真实接触将剪刀放在倾斜的托盘支撑姿态，再完全撤回。自由静置 1 s 后剪刀由三处托盘接触承托，固定环平面倾斜约 17.67°。随后仅左手前进，食指和拇指的中心轴延长线在约 0.55 s 内与两孔相交。使用生产判据复核，食指、中指和拇指的完整网格截面均未通过环口，两个柄也未形成同时受力。在同一腕姿下平移手部测得的网格，严格双环截面要求腕目标至少比当前再降低约 36.3 mm，超出原路线的约 8.3 mm 桌面余量。采样中也没有食指、中指和拇指同时通过的候选。证据见 `runs/scissor_right_setdown_home.{py,json}`、`runs/scissor_left_after_setdown_mesh_verification.json` 与 `runs/scissor-staged-mesh-axial-search.json`。
 
 
+默认剪纸布局按官方视频重新校准。闭合托盘墙由 35 mm 调至估计的 75 mm，剪刀初始自由位姿及开角取真实重力静置后的状态，纸带位置也随墙高重新计算。60 s 候选试验中剪刀平面约倾斜 30.65°，两柄中心平均越出短墙约 54.5 mm，高于墙沿约 34.7 mm。刀片和两侧柄臂由托盘底、隔板与短墙支撑，最后 1 s 剪刀轴位移小于 0.04 mm。纸带由另一端短墙和底板支撑，五个接缝完整。默认布局通过独立 25 s 静置测试，完整双臂入口也输出了 10000 × 6 点云。上文的 35 mm 托盘轨迹对应早期布局，新的插入和切割参考仍需在高墙布局上重做。试验见 `runs/scissor_official_rim_reset_candidate_recomputed_paper.{py,json}` 和 `runs/scissor-official-rim-entry.json`。 [官方剪纸视频](https://dex-cap.github.io/assets/normal_scissor.mp4)
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)

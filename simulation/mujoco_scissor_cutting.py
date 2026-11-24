@@ -3,10 +3,11 @@
 Appendix A-F establishes the divided container, separate-handle scissor grasp,
 pink paper tape, two-hand lift, and a successful cut longer than 3 mm. Figure
 5(e) further shows the scissor rings beyond a short tray end, with the pivot on
-the wall and the blades inside. The tape leans against the other short wall.
-The release provides no CAD, exact dimensions,
-masses, material law, or trajectory. The dimensions and calibrated resting pose
-below are therefore visual and physical-fit estimates. MuJoCo has no native
+the wall and the blades inside. The first frame of the official task video
+shows both rings above the end rim. The tape leans against the other short
+wall. The release provides no CAD, exact dimensions, masses, material law, or
+trajectory. The dimensions and resting pose are visual and physical-fit
+estimates. MuJoCo has no native
 arbitrary tearing, so the tape has an explicit cohesive seam whose local bonds
 release only under opposing blade contact during physical hinge closure.
 """
@@ -18,18 +19,16 @@ import numpy as np
 
 
 TABLE_HEIGHT = -0.030
-SCISSOR_DEFAULT_POSITION = np.array([
-    0.4099535585178729, 0.18993592402601608, 0.005504892349298587,
-])
+# Free-body pose measured after settling on the rim and divider.
+SCISSOR_DEFAULT_POSITION = np.array([0.4100756993, 0.1716605636, 0.0321397695])
 SCISSOR_DEFAULT_QUATERNION = np.array([
-    0.6993540402338588, 0.10171915241320749,
-    0.10170667927428328, -0.7001520490807083,
+    -0.6716229422, -0.2087652965, -0.1620445729, 0.6921569409,
 ])
 TRAY_CENTER = np.array([0.50, 0.0])
 TRAY_HALF_XY = (0.18, 0.20)
-TRAY_WALL_HEIGHT = 0.035
+TRAY_WALL_HEIGHT = 0.075
 TRAY_THICKNESS = 0.003
-SCISSOR_OPEN_ANGLE = 0.45
+SCISSOR_OPEN_ANGLE = 0.2909087274
 # LEAP mesh AABBs measured from the released collision assets are
 # 34.7 x 36.3 mm for the thumb and 21.6 x 34.6 mm per fingertip.
 THUMB_OPENING_XY = np.array([0.040, 0.042])

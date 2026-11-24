@@ -43,7 +43,8 @@ class MujocoScissorCuttingTest(unittest.TestCase):
 
     def test_production_layout_supports_upright_paper_and_overhanging_scissors(self):
         from simulation.mujoco_scissor_cutting import (
-            DEMO_OBJECT_XY, TRAY_CENTER, TRAY_HALF_XY, add_scissor_cutting_scene,
+            DEMO_OBJECT_XY, TABLE_HEIGHT, TRAY_CENTER, TRAY_HALF_XY,
+            add_scissor_cutting_scene,
         )
 
         spec = mujoco.MjSpec()
@@ -97,19 +98,25 @@ class MujocoScissorCuttingTest(unittest.TestCase):
             ):
                 supported_substeps += 1
 
-        handles = [
-            geom for geom in scissor_geoms
-            if "handle" in model.geom(geom).name
-        ]
         blades = [
             geom for geom in scissor_geoms
             if "blade" in model.geom(geom).name
         ]
-        handle_max_y = max(data.geom_xpos[geom, 1] for geom in handles)
         blade_min_y = min(data.geom_xpos[geom, 1] for geom in blades)
         outer_wall_face = TRAY_CENTER[1] + TRAY_HALF_XY[1]
         self.assertGreaterEqual(supported_substeps, 450)
-        self.assertGreater(handle_max_y - outer_wall_face, 0.08)
+        rim = model.geom("cutting_tray_y_pos").id
+        rim_top = data.geom_xpos[rim, 2] + model.geom_size[rim, 2]
+        self.assertGreater(rim_top - TABLE_HEIGHT, 0.06)
+        rim_outside = outer_wall_face + model.geom_size[rim, 1]
+        for handle in ("fixed", "moving"):
+            rim_bars = [
+                model.geom(f"scissor_{handle}_handle_{side}").id
+                for side in ("top", "bottom", "left", "right")
+            ]
+            center = data.geom_xpos[rim_bars].mean(axis=0)
+            self.assertGreater(center[1] - rim_outside, 0.015)
+            self.assertGreater(center[2] - rim_top, 0.020)
         self.assertGreater(outer_wall_face - blade_min_y, 0.04)
         self.assertLess(
             np.linalg.norm(data.xpos[model.body("scissor_base").id] - initial_position),
