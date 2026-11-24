@@ -9,9 +9,9 @@
 
 ### LEAP 关节止挡
 
-在满载泡茶的右手试验里，旧模型虽然读取了 URDF 的角度范围，但实际指尖关节曾越限 3.47 rad，MuJoCo 未产生警告。上轮两圈退丝的手形也已越限，因此该轨迹作为诊断记录保存。当前 32 个 LEAP 关节继续使用 URDF 原角度范围，止挡时间常数从 20 ms 调为 4 ms，并加入估计的 0.0005 kg·m² 电机反射惯量。以相当于一个伺服的 0.95 N·m 向指尖关节两端施加隔离负载，峰值越限从约 0.0433 rad 降到 0.0007 rad。相同泡茶接近、合拢及首段转腕的对照中，最大越限从 3.47 rad 降到约 0.0004 rad。未对真实舵机惯量做实物标定。 [MuJoCo 关节与反射惯量](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
+在满载泡茶的右手试验里，旧模型虽然读取了 URDF 的角度范围，但实际指尖关节曾越限 3.47 rad，MuJoCo 未产生警告。上轮两圈退丝的手形也已越限，因此该轨迹作为诊断记录保存。当前 32 个 LEAP 关节继续使用 URDF 原角度范围，止挡时间常数从 20 ms 调为 4 ms，并加入估计的 0.0005 kg·m² 电机反射惯量。以相当于一个伺服的 0.95 N·m 向指尖关节两端施加隔离负载，峰值越限从约 0.0433 rad 降到 0.0007 rad。相同泡茶接近、合拢及首段转腕的对照中，最大越限从 3.47 rad 降到约 0.0004 rad。只改止挡而不加反射惯量的对照仍越限约 2.60 rad。未对真实舵机惯量做实物标定。 [MuJoCo 关节与反射惯量](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
-改动后通过标准入口重放四份完整参考。305 步 Sponge Picking 抬升约 303.46 mm，265 步 Ball Collecting 完成落篮。586 步红银包装参考可以合盖，物体未抓取入盒。946 步 Wiping 参考抓起海绵，尚未重新抓住盘子和完成擦拭。Scissor Cutting 和 Tea Preparing 分别跑了 8 步及 1 步的入口复测。六次回放都输出 `10000 × 6` 点云，逐物理子步测得最大的手指越限约 0.00492 rad，出现在 Wiping。六次均无求解器警告。旧模型下的其它参考成功记录仍需按现行资产复核。数据见 `runs/tea-leap-limit-load-*.json` 和 `runs/leap-stop-physical-*.json`。
+改动后通过标准入口重放四份完整参考。305 步 Sponge Picking 抬升约 303.46 mm，265 步 Ball Collecting 完成落篮。586 步红银包装参考在第 119 至 420 动作保持物体，随后按原动作张手时物体仍在盒外。这份参考能合盖。另复核 463 步转运参考，物体由右手实际搬运、释放并留在盒内，纸盒位移约 0.97 mm。这份参考尚需接上闭盖。946 步 Wiping 参考抓起海绵，盘子未形成对向夹持。第 154 动作只有右食指接触盘边，拇指仍差约 27.5 mm。单独补偿拇指没有建立对夹。Scissor Cutting 和 Tea Preparing 分别跑了 8 步及 1 步的入口复测。六次回放都输出 `10000 × 6` 点云，逐物理子步测得最大的手指越限约 0.00492 rad，出现在 Wiping。六次均无求解器警告。旧模型下的其它参考成功记录仍需按现行资产复核。数据见 `runs/tea-leap-limit-load-*.json` 和 `runs/leap-stop-physical-*.json`。红银转运和抓盘诊断分别见 `runs/leap-stop-physical-red-scripted-placement-audited-762a293.json` 和 `/data/dexcap-repro/benchmarks/wiping-leap-stop-right-grip-diagnostic.json`。
 
 ## 迁移顺序
 
@@ -465,6 +465,8 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 在同一默认满载固定瓶身夹具上，最后一轮先保持指形，向外撤 20 mm 再沿瓶轴抬高 70 mm，瓶盖从 1.742 圈微退到 1.715 圈。随后张手时拇指末端再次触到盖沿，以正向转矩把盖子带过两圈，螺纹连接在子步中解除，峰值轴向行程 4.021 mm。用上一段实际积分保存的状态单独重放，得到同一退丝阶段和峰值，无物理警告。脱离后的盖子落回瓶颈附近，取走并放至茶盘右侧仍需执行。记录见 `runs/tea-live-cap-loaded-clear-then-open.json` 和 `runs/tea-live-cap-loaded-retreat-from-checkpoint.json`。
 
 这两份轨迹使用旧止挡。保存状态的逐关节复核证实，退丝前个别指尖关节已偏出 URDF 范围 3.45 rad，退丝后还有关节偏出约 1.81 rad。当前模型仍需重新取得两圈退丝证据。泡茶的握持计分现在按 LEAP 的实际手指区分接触，避免把一根手指的两个连杆算作有效对握。
+
+在现行止挡模型上单独验证取盖。夹具固定满载瓶身，起始声明盖子已脱扣并停在瓶颈，左臂在停放位。右手食指和拇指实际相向夹持，使盖子完全脱离瓶颈并上升 56.3 mm，连续 0.44 s 的采样同时满足对向受力与不接触瓶身。增加合拢预载后，盖子在同样条件下横移 56.3 mm，之后滑脱，尚未放置到托盘右侧。取盖与搬运试验所记录的两个手的关节均未越出 URDF 范围。记录见 `runs/tea-detached-cap-home-fixture-pinch.json` 和 `runs/tea-detached-cap-home-fixture-place-preload.json`。
 
 ## 六个场景的渲染与接入验证
 
