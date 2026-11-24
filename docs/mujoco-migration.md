@@ -775,6 +775,10 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 保持左食指避让后，3,049 个执行器目标的标准回放中，右手持续承载离桌的盘子，左手同时完成进场和海绵闭合。2 ms 子步记录中，连续 2,149 个样本只有右手承盘，时间跨度 4.296 s，最大盘下净空 25.62 mm。左手中指和拇指曾在同一子步出现相向接触，共 212 个子步，海绵仍由桌面支撑。标准入口验证 `plate_grasped=true` 和 `sponge_grasped=false`。动作见 `data/derived/wiping-plate-hold-left-sponge-approach-reference.hdf5`，逐子步接触见 `/data/dexcap-repro/benchmarks/wiping-sponge-approach-2ms.json`。
 
+对照两条回放的实际触点，双持接续中左手中指压在海绵顶面，法向几乎竖直向下。单手拾取在同一阶段由中指贴海绵侧面，中指外展关节实际约为 −0.44 rad。双持接续原来仍命令约 −0.85 rad，改为跟踪单手回放实际测得的中指与拇指角度，保留左食指避让。3,107 步标准回放从默认物体摆放开始，只有 46 维执行器目标。2 ms 子步记录确认双手连续 1.284 s 分别相向持有已离桌的盘和海绵。海绵最高抬升 52.1 mm，该区间盘下净空至少 70.9 mm。标准入口无物理警告、机械臂碰撞或双手碰撞。轨迹见 `data/derived/wiping-dual-object-hold-reference.hdf5`，实测触点、指形和验证记录在 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/`。
+
+双持补偿末段沿现有接触小幅让开右腕关节止挡，同时提高盘下净空。左腕保留海绵持姿接近盘面，下降时补偿中指和拇指实际夹持力。标准入口从默认摆放重放 3,240 个动作，记录 16 个内盘面接触周期，有效擦拭累计 31.79 mm，峰值海绵与盘接触力 0.837 N。计分仍为 0 笔，当前单笔投影要求 60 mm。原动力学续段再前进时，盘倾斜约 66°，右拇指卸载，桌面重新承受约 1.80 N。该时刻右腕第七轴仍有约 0.087 rad 余量。动作见 `data/derived/wiping-dual-hold-interior-contact-reference.hdf5`，标准回放与续段载荷见 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/full-interior-contact-rollout.json` 和同目录的 `plate-support-endpoints.json`。
+
 剪刀 334 步参考在紧邻分块提交前后的相同布局分别抬升 4.00 和 4.04 mm，未形成双手柄自由夹持，均无碰撞或物理警告。历史抬升 117.25 mm 的实验使用了 y 方向相差约 18.3 mm 的初始剪刀位置。现行布局需要重新规划接近开孔的手腕和指形。对照见 `runs/scissor-e941e61-matched-334.json` 和 `runs/leap-finger-parts-scissor-carry-rollout.json`。
 
 用现行剪刀位姿直接穿固定环，12 个腕部滚转方向均可把食指完整截面送入开孔。最少干涉的 330° 方案仍使无名指尖最深穿桌约 43.87 mm。以实测固定刀刃与托盘底的接触点为支点，静态转动约 21° 后开孔中心抬高约 57.05 mm，手部通过完整截面且无干涉，剪刀仍有真实几何支撑。对应的剪刀枢轴下侧需跟随上移约 32.2 mm。下一阶段需要执行器实际触碰枢轴并建立该转动。证据见 `runs/scissor_current_roll330_blade_floor_pivot_feasibility.json`。
@@ -784,6 +788,8 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 在最新托盘布局试验中，旧侧向路线先撞隔板，未到达剪刀柄。改由上方收拢手指后，右食指在固定柄上方连续施力约 0.288 s，峰值 0.701 N，过程中无其他机器人接触。固定环向托盘内侧约移动 0.205 mm，结束时离邻墙仍约 0.915 mm。此段验证了合法的顶部接触，刀柄孔仍未套入手指。记录见 `runs/scissor_1ccb0a2_overhead_shank_recovery/dynamic_top_drag.json`。
 
 在十凸块掌部模型中，剪刀柄顶部的位姿反馈路线把固定环向内移动约 0.28 mm。托盘底、隔板与邻墙仍提供三点支撑，环侧间隙仍小于 1 mm。从上方接近露出的柄侧面时，完整食指先碰椭圆环第 19 或 20 段，最早测到 0.14–0.93 mm 侵入。该侧面路线在离线阶段终止。动态顶部接触和静态侧面扫掠在 `runs/scissor_66b836c_shank_feedback_recovery/`。
+
+改从上方用左食指压固定刀片侧面，首次真实接触约 1.01 N，侵入约 0.027 mm，未出现其他机器人碰撞。加载随后由托盘底和柄侧邻墙共同承受，活动柄没有抬升，固定环仅向内约 0.096 mm。逐动力学子步见 `runs/scissor_ed8bba8_left_blade_lever_recovery/`。
 
 固定和活动椭圆柄环的碰撞体使用共享边界的 24 和 20 块凸楔体。内侧边与标称椭圆相切，保留 4 mm 厚度以及现有被动铰链。原矩形分段按每个柄 1,440 个角度测量，固定环和活动环最多向开孔内侵入约 0.57 和 0.30 mm。在标称内半径的 99% 位置，原版分别误挡 838 和 912 个采样，改后均为 0。新版的多边形顶点相对标称椭圆往外约 0–0.34 mm。标准动作回放完成 334 步，剪刀仍只抬升约 4.08 mm，无物理警告。托盘支撑、两环位置与纸带稳定性现有回归通过，51 项 MuJoCo 测试通过。证据见 `/data/dexcap-repro/benchmarks/scissor-handle-box-ray-measurement.json` 与 `scissor-continuous-oval/`。
 
@@ -799,6 +805,8 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 分别调整无名指和拇指目标后，右食指经同一受限关节路径接触红银包装挂耳，无右手自碰或盒壁接触。沿实测接触方向斜向续推约 6 mm 后，挂耳法向载荷约 0.172 N，作用在包装物上的竖直载荷峰值约 0.158 N，低于此前估计的约 0.566 N 翻滚门槛。包装物最高抬升 0.36 mm，仍受桌面支撑。见 `/data/dexcap-repro/benchmarks/runs/red-hanger-diagonal-load-6mm-trace.json`。
 
+红银包装初始底面贴桌，约 21.1 mm 的实际食指最小截面无法从下方进入。沿挂耳切向推移时，实测峰值法向力约 0.180 N，包装物仅移动约 0.10 mm。另拟合左手从上方接近主盒的路线。双手可以在同一初始动作下合法复位，实际左臂行进时，无名指末节与掌部产生约 2.24 N 的自碰载荷，因此在接触包装之前停止。记录在 `/data/dexcap-repro/benchmarks/runs/red-hanger-away-push-trace.json` 与同目录的 `left-overhead-red-bimanual-prepose-native-contact.json`。
+
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
 对现有工具另试中指与拇指夹持，在动力学回放中有 296 个 2 ms 子步出现相向接触，最佳同时法向力约 0.103 和 0.030 N，托架仍承重，随后拇指脱开。在默认镊子上从侧面尝试滚动未建立手部接触，工具仍由原托架支撑。证据见 `runs/tea-convex47-alt-digit-physical.json` 和 `runs/tea-tweezers-top-tangent-production-cradle-roll-a.json`。
@@ -807,5 +815,7 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 备茶在默认镊子和木托架上进行连续两次推移。首次右食指与镊子的接触峰值为 1.12 N，卸载后镊子沿世界 y 轴移动约 18.79 mm。由实际到位的镊子姿态重新接近后，第二次接触峰值为 0.505 N。撤手稳定后镊子相对原姿态转动约 38.40°，总水平位移约 44.7 mm，托架仍承担约 0.089 N，茶盘底未接触镊子。第二次推移无机械臂碰撞或物理警告。逐步记录见 `runs/tea-production-cradle-roll-contact.json` 和 `runs/tea-production-cradle-slide-extension.json`。
 
 用圆壁更新前的实际推移末态复核备茶木托。木托底已经与托盘外侧边接触，穿入约 0.20 mm。六组右手高端夹持候选均受整臂可达性或托盘边缘限制，左手固定木托的 18 个候选也没有找到合法路线。沿托盘中心推移的试验会使木托离开现有支点。拟合和支撑数据在 `runs/tea-production-exposed-highend-fit.json`、`runs/tea-offline-left-cradle-hold.json` 和 `runs/tea-offline-cradle-rim-arrest.json`。
+
+将原工具接触腕位变换到实测倾转约 38° 的镊子末态后，沿托盘外侧的 55 个候选腕位可达。加入原推指所需的 8 mm 下压后，中指先与木托外端和侧壁分别侵入约 1.97、1.50 mm。只重调中指可避开木托，但会触及其他指链。保留当时托盘、木托和工具的真实几何，未在该路线执行动态推送。见 `runs/tea-ed8bba8-outward-static.json` 与 `runs/tea-ed8bba8-link8-retune.json`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
