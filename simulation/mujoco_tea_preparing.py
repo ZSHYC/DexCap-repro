@@ -2,8 +2,9 @@
 
 The paper gives the action order but no Tea CAD, dimensions, masses, or material
 calibration. SI dimensions here are Fig. 5(f) estimates: 60 mm bottle, 90 mm
-teapot, 110 mm tweezers and 360 x 280 mm tray. Rigid plastic/ceramic contacts
-are assumed. The cap uses MuJoCo's hinge/slide equality as a 2 mm-pitch thread.
+teapot, 110 mm tweezers and 360 x 280 mm tray. The opening shot of the
+official rollout gives the tray, tool rest and vessel arrangement. The cap
+uses MuJoCo's hinge/slide equality as a 2 mm-pitch thread.
 """
 
 from __future__ import annotations
@@ -18,7 +19,11 @@ import numpy as np
 TABLE_HEIGHT = -0.030
 TRAY_YAW = np.deg2rad(-8)
 TRAY_HALF_XY = (0.180, 0.140)
-TRAY_FLOOR_HALF = 0.004
+TRAY_ROTATION = np.array([
+    [np.cos(TRAY_YAW), -np.sin(TRAY_YAW)],
+    [np.sin(TRAY_YAW), np.cos(TRAY_YAW)],
+])
+TRAY_FLOOR_HALF = 0.012
 TRAY_TOP = TABLE_HEIGHT + 2 * TRAY_FLOOR_HALF
 BOTTLE_RADIUS, BOTTLE_INNER_RADIUS, BOTTLE_HEIGHT = 0.030, 0.024, 0.105
 CAP_RADIUS, CAP_HALF_HEIGHT = 0.035, 0.014
@@ -27,10 +32,12 @@ THREAD_LIMIT = 2 * np.pi * THREAD_TURNS
 POT_INNER_RADIUS, POT_HEIGHT = 0.037, 0.060
 TEA_RADIUS, TEA_PARTICLES = 0.004, 8
 
-# Fixed tray, free bottle, free teapot, free spring tweezers.
-DEMO_OBJECT_XY = np.array([
-    [0.52, 0.00], [0.47, 0.015], [0.60, -0.065], [0.57, 0.095],
-])
+# Tray-plane estimates from the first view, with wall clearance for the bottle.
+TRAY_CENTER = np.array([0.52, 0.00])
+TOOL_YAW = TRAY_YAW + math.atan2(.108, -.047)
+DEMO_OBJECT_XY = TRAY_CENTER + np.array([
+    [0, 0], [-.142, .105], [-.101, -.030], [.137, -.166],
+]) @ TRAY_ROTATION.T
 SUMMARY_KEYS = (
     "cap_turns", "cap_unthreaded", "cap_on_right", "tea_deposited_count",
     "tea_deposited", "bottle_used", "bottle_returned", "tweezers_used",
@@ -57,19 +64,20 @@ def _ring(body, prefix, radius, height, thickness, color, density, *, z_center=N
 
 def _add_tray(spec, xy):
     tray = spec.worldbody.add_body(
-        name="tea_tray", pos=[*xy, TABLE_HEIGHT + TRAY_FLOOR_HALF], quat=_yaw(TRAY_YAW)
+        name="tea_tray", pos=[*xy, TABLE_HEIGHT], quat=_yaw(TRAY_YAW)
     )
     hx, hy = TRAY_HALF_XY
     tray.add_geom(
         name="tea_tray_floor", type=mujoco.mjtGeom.mjGEOM_BOX,
-        size=[hx, hy, TRAY_FLOOR_HALF], rgba=[0.035, 0.040, 0.045, 1],
+        pos=[0, 0, TRAY_FLOOR_HALF], size=[hx, hy, TRAY_FLOOR_HALF],
+        rgba=[0.035, 0.040, 0.045, 1],
         friction=[1, 0.01, 0.001],
     )
     for name, pos, size in (
-        ("x_neg", [-hx, 0, .012], [.004, hy, .012]),
-        ("x_pos", [hx, 0, .012], [.004, hy, .012]),
-        ("y_neg", [0, -hy, .012], [hx, .004, .012]),
-        ("y_pos", [0, hy, .012], [hx, .004, .012]),
+        ("x_neg", [-hx, 0, .016], [.004, hy, .012]),
+        ("x_pos", [hx, 0, .016], [.004, hy, .012]),
+        ("y_neg", [0, -hy, .016], [hx, .004, .012]),
+        ("y_pos", [0, hy, .016], [hx, .004, .012]),
     ):
         tray.add_geom(
             name=f"tea_tray_rim_{name}", type=mujoco.mjtGeom.mjGEOM_BOX,
@@ -182,12 +190,12 @@ def _add_teapot(spec, xy):
 
 def _add_tweezers(spec, xy):
     root = spec.worldbody.add_body(
-        name="tea_tweezers", pos=[*xy, TRAY_TOP + .010], quat=_yaw(np.deg2rad(105))
+        name="tea_tweezers", pos=[*xy, TRAY_TOP + .014], quat=_yaw(TOOL_YAW)
     )
     root.add_freejoint(name="tea_tweezers_free")
     root.add_geom(
         name="tea_tweezers_bridge", type=mujoco.mjtGeom.mjGEOM_BOX,
-        size=[.009, .012, .003], rgba=[.60, .63, .64, 1], density=1500,
+        size=[.009, .012, .003], rgba=[.20, .12, .07, 1], density=1500,
         friction=[.8, .01, .001],
     )
     for side, y, angle in (("upper", .009, -.075), ("lower", -.009, .075)):
@@ -202,8 +210,27 @@ def _add_tweezers(spec, xy):
         arm.add_geom(
             name=f"tea_tweezers_{side}_geom", type=mujoco.mjtGeom.mjGEOM_BOX,
             pos=[.052, 0, 0], size=[.052, .002, .002],
-            rgba=[.68, .71, .72, 1], density=1600,
+            rgba=[.66, .38, .18, 1], density=1600,
             friction=[.9, .01, .001], condim=4,
+        )
+
+
+def _add_tool_cradle(spec, tray_xy):
+    xy = tray_xy + TRAY_ROTATION @ [.087, -.094]
+    cradle = spec.worldbody.add_body(
+        name="tea_tool_cradle", pos=[*xy, TRAY_TOP + .004], quat=_yaw(TOOL_YAW),
+    )
+    cradle.add_freejoint(name="tea_tool_cradle_free")
+    for name, pos, size in (
+        ("base", [0, 0, 0], [.080, .025, .003]),
+        ("side_pos", [0, .018, .008], [.080, .006, .008]),
+        ("side_neg", [0, -.018, .008], [.080, .006, .008]),
+        ("outboard_end", [-.076, 0, .008], [.004, .025, .008]),
+    ):
+        cradle.add_geom(
+            name=f"tea_tool_cradle_{name}", type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=pos, size=size, density=650, friction=[.9, .01, .001],
+            rgba=[.72, .40, .16, 1],
         )
 
 
@@ -217,6 +244,7 @@ def add_tea_preparing_scene(spec: mujoco.MjSpec, object_xy=DEMO_OBJECT_XY):
     _add_bottle_cap_and_tea(spec, positions[1])
     _add_teapot(spec, positions[2])
     _add_tweezers(spec, positions[3])
+    _add_tool_cradle(spec, positions[0])
 
 
 class TeaPreparingMetrics:
@@ -248,7 +276,10 @@ class TeaPreparingMetrics:
         self.cap_support_geoms = self.tray_geoms | {
             g for g in geoms if model.geom(g).name == "table"
         }
-        self.support_geoms = self.cap_support_geoms | {
+        self.tweezers_support_geoms = self.tray_geoms | {
+            g for g in geoms if model.geom(g).name.startswith("tea_tool_cradle_")
+        }
+        self.support_geoms = self.cap_support_geoms | self.tweezers_support_geoms | {
             g for g in geoms if model.geom(g).name == "room_floor_surface"
         }
         self.tea_geoms = [model.geom(f"tea_particle_geom_{i}").id for i in range(TEA_PARTICLES)]
@@ -339,7 +370,7 @@ class TeaPreparingMetrics:
         tweezers_returned = bool(
             self.tweezers_used
             and np.linalg.norm(data.xpos[self.tweezers_body, :2] - self.initial_tweezers_pos[:2]) < .035
-            and self._contact(data, self.tweezers_geoms, self.tray_geoms)
+            and self._contact(data, self.tweezers_geoms, self.tweezers_support_geoms)
             and not self._contact(data, self.tweezers_geoms, self.right_hand_geoms)
             and self._settled(data, self.tweezers_joint)
         )

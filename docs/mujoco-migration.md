@@ -345,7 +345,7 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 ## Tea Preparing
 
-`python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
+`python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的木质托槽和空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际茶盘或木槽接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
 在支稳茶瓶的测试中，对帽体施加 0.007 N·m 力矩，转一圈时实际升约 2 mm 并保持连接，接近两圈和 4 mm 后成为独立刚体。正式双臂场景中，从壶口上方放开的一粒茶在约 1.75 s 后由壶底承托并计为入壶。整段双臂开盖、辅助倒茶和归位仍缺作者的动作与权重。结果见 `runs/tea-pot-production-drop.json`。
 
@@ -393,7 +393,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 改用 10 ms 周期，根据实际瓶盖接触法向调节指垫压力。该分阶段试验让右拇指保持正法向接触 1.53 s，瓶盖螺纹在滑开之前前进约 0.04549 圈（16.38°），指垫峰值约 0.527 N，盖体距桌始终至少 26.23 mm。未计入滑开后的转动。手指之间另有约 42 N 的自碰撞，且这一段瓶身由托盘支撑。对非相邻指节的碰撞显式加约束后，最佳位姿仍有约 1.4–2.9 mm 的手部自穿透，且未找到可执行的接近路线。证据见 `runs/tea-leap-topthumb-contact-normal-long.{py,json}` 和 `runs/tea-leap-topthumb-weld-clear-roll-*.json`。执行原分阶段动作时使用 Conda 默认 BLAS 线程设置，单线程执行会得到不同的接触轨迹。
 
-官方视频首帧显示，机器人右侧有单独的木质浅槽，两臂镊子由浅槽托住，合拢一端伸至右沿外。现有镊子在茶盘另一侧，浅槽尚未建模。将现有镊子在试验中移到右侧边沿可让拇指和食指的目标间隙分别达到约 0.36 和 0.30 mm，但接近时食指与茶壶相交约 21.6 mm，闭合时仍与盘底相交约 26.6 mm。精确摆放和工具尺寸尚未定标，新的摆放只保存在试验中。布局首帧和试验见 `runs/official-tea-layout/{tea-t0.jpg,tea-official-tool-layout-comparison.json}`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
+官方视频首帧显示，机器人右侧有单独的木质浅槽，两臂镊子由浅槽托住，合拢一端伸至右沿外。早期场景把镊子放在茶盘另一侧，且缺少浅槽。将现有镊子在试验中移到右侧边沿可让拇指和食指的目标间隙分别达到约 0.36 和 0.30 mm，但接近时食指与茶壶相交约 21.6 mm，闭合时仍与盘底相交约 26.6 mm。精确摆放和工具尺寸尚未定标，新的摆放只保存在试验中。布局首帧和试验见 `runs/official-tea-layout/{tea-t0.jpg,tea-official-tool-layout-comparison.json}`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
+
+默认布局现采用外缘高约 28 mm、承物面高约 24 mm 的茶盘，并加入可自由移动且由盘面支撑的木槽。瓶、壶与镊子按首帧估计的位置摆放，镊子的合拢端伸出右侧。第一组薄盘试验约 6.5 s 后镊子滚脱。更新后完整双臂场景在 30 s 真实接触静置后，镊子位移约 2.1 mm、仍由木槽承托。标准三动作入口无物理警告。离线右手下降路径未出现负间隙，闭合时食指仍与木槽底相交约 16.2 mm，本次没有执行该闭合路径。上文的开盖试验发生在早期茶盘布局。证据见 `runs/tea-official-tool-cradle-{30s,probe}.json`、`runs/tea-official-cradle-production-entry.json` 和 `runs/official-tea-layout/tea-t0-tray-plane-fit.json`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
 
 官方视频把旋下的盖子松手放在茶盘右侧的桌面。`cap_on_right` 因此接受右侧盘内或紧邻右沿的主桌面支撑，同时要求盖子已脱离螺纹、静止并且没有手部接触。盘外区域宽度为估计值。测试覆盖盘内、右沿外、左侧和远离茶盘四种静置位置。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
 

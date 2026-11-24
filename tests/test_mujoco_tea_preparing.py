@@ -80,8 +80,16 @@ class MujocoTeaPreparingTest(unittest.TestCase):
             data.xpos[metrics.cap_body, :2] - data.xpos[carriage, :2]
         )
         data.xfrc_applied[metrics.cap_body, 5] = 0
+        # Free the cap from neck contact before moving it sideways.
+        cap_weight = model.body_mass[metrics.cap_body] * -model.opt.gravity[2]
+        data.xfrc_applied[metrics.cap_body, 2] = 2 * cap_weight
         for _ in range(150):
-            data.xfrc_applied[metrics.cap_body, 0] = 0.2
+            mujoco.mj_step(model, data)
+            if data.xpos[metrics.cap_body, 2] > data.xpos[carriage, 2] + .010:
+                break
+        self.assertGreater(data.xpos[metrics.cap_body, 2], data.xpos[carriage, 2] + .010)
+        data.xfrc_applied[metrics.cap_body, :3] = [0.2, 0, cap_weight]
+        for _ in range(50):
             mujoco.mj_step(model, data)
             metrics.physics_step(data)
         separation = np.linalg.norm(
@@ -148,6 +156,44 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         info = metrics.update(data)
         self.assertFalse(info["bottle_used"])
         self.assertFalse(info["tweezers_used"])
+
+    def test_default_tweezers_remain_on_free_cradle_with_bridge_outboard(self):
+        from simulation.mujoco_tea_preparing import (
+            TABLE_HEIGHT, TRAY_HALF_XY, TeaPreparingMetrics, add_tea_preparing_scene,
+        )
+
+        spec = mujoco.MjSpec()
+        spec.option.timestep = 0.002
+        spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
+        spec.option.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
+        spec.option.iterations = 80
+        spec.worldbody.add_geom(
+            name="table", type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=[0.4, 0, TABLE_HEIGHT - 0.025], size=[0.75, 0.6, 0.025],
+            friction=[0.8, 0.008, 0.0005],
+        )
+        add_tea_preparing_scene(spec)
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        metrics = TeaPreparingMetrics(model)
+        cradle = model.body("tea_tool_cradle")
+        cradle_geoms = set(range(cradle.geomadr[0], cradle.geomadr[0] + cradle.geomnum[0]))
+        self.assertEqual(model.joint("tea_tool_cradle_free").type[0], mujoco.mjtJoint.mjJNT_FREE)
+        tool_qpos = model.jnt_qposadr[metrics.tweezers_joint]
+        initial_tool_position = data.qpos[tool_qpos:tool_qpos + 3].copy()
+        for step in range(15000):
+            mujoco.mj_step(model, data)
+            if step >= 10000 and step % 500 == 499:
+                self.assertTrue(metrics._contact(data, metrics.tweezers_geoms, cradle_geoms))
+                self.assertTrue(metrics._contact(data, cradle_geoms, metrics.tray_geoms))
+
+        tray_rotation = data.xmat[metrics.tray_body].reshape(3, 3)
+        tool_position = data.xpos[metrics.tweezers_body]
+        tool_from_tray = tray_rotation.T @ (tool_position - data.xpos[metrics.tray_body])
+        self.assertLess(tool_from_tray[1], -TRAY_HALF_XY[1] - 0.01)
+        self.assertLess(np.linalg.norm(tool_position - initial_tool_position), 0.015)
+        self.assertFalse(metrics._contact(data, metrics.bottle_geoms, metrics.pot_geoms))
+        self.assertFalse(np.any(data.warning.number))
 
     def test_scene_contains_fixed_tray_hollow_vessels_and_spring_tweezers(self):
         model, _, metrics = self.make_scene()
