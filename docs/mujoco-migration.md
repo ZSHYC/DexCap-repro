@@ -779,7 +779,7 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 双持补偿末段沿现有接触小幅让开右腕关节止挡，同时提高盘下净空。左腕保留海绵持姿接近盘面，下降时补偿中指和拇指实际夹持力。标准入口从默认摆放重放 3,240 个动作，记录 16 个内盘面接触周期，有效擦拭累计 31.79 mm，峰值海绵与盘接触力 0.837 N。计分仍为 0 笔，当前单笔投影要求 60 mm。原动力学续段再前进时，盘倾斜约 66°，右拇指卸载，桌面重新承受约 1.80 N。该时刻右腕第七轴仍有约 0.087 rad 余量。动作见 `data/derived/wiping-dual-hold-interior-contact-reference.hdf5`，标准回放与续段载荷见 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/full-interior-contact-rollout.json` 和同目录的 `plate-support-endpoints.json`。
 
-逐接触测得，原路径的海绵先压住远侧盘沿。右拇指受力点从距盘心约 125 mm 滑到约 134 mm，随后卸载。单独保持左腕时，右无名指可从盘下提供约 1.89 N 的额外向上载荷，但该分支在 1.75 s 时失去左侧海绵夹持。改为保留原右手执行器序列、保持左腕世界朝向，并先将海绵移到内盘面上方。3,266 步标准回放在默认摆放完成第一笔，记录 48 个有效内盘面接触周期，累计距离 64.66 mm，峰值接触力 0.653 N，两手在计分时仍分别相向持有离桌物体。全程无求解器警告、机械臂碰撞或双手碰撞。回程试验中右拇指沿盘沿向外滑并卸载。提高往返速度或增加辅助支撑的分支能延长右手持盘，但左手中指可能先失去海绵接触。仍未达到第二笔。回放和逐周期记录在 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/stroke-support/`。
+逐接触测得，原路径的海绵先压住远侧盘沿。右拇指受力点从距盘心约 125 mm 滑到约 134 mm，随后卸载。单独保持左腕时，右无名指可从盘下提供约 1.89 N 的额外向上载荷，但该分支在 1.75 s 时失去左侧海绵夹持。改为保留原右手执行器序列、保持左腕世界朝向，并先将海绵移到内盘面上方。3,266 步标准回放在默认摆放完成第一笔，记录 48 个有效内盘面接触周期，累计距离 64.66 mm，峰值接触力 0.653 N，两手在计分时仍分别相向持有离桌物体。全程无求解器警告、机械臂碰撞或双手碰撞。回程试验中右拇指沿盘沿向外滑并卸载。提高往返速度或增加辅助支撑的分支能延长右手持盘，但左手中指可能先失去海绵接触。仍未达到第二笔。右手保持住盘的一个分支中，左腕目标单步由约 2 mm 跳至 11.21、20.63 mm。随后海绵和盘面约 1.20 N 的接触伴随左中指卸载。海绵倾角在后三个动作从约 37° 变到 78°，拇指也卸载。保留接触力、关节和位姿实测数据于同目录的 `left-return-contact-audit.json`。回放和逐周期记录在 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/stroke-support/`。
 
 ```bash
 python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference.hdf5 \
@@ -798,7 +798,16 @@ python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference
 
 改从上方用左食指压固定刀片侧面，首次真实接触约 1.01 N，侵入约 0.027 mm，未出现其他机器人碰撞。加载随后由托盘底和柄侧邻墙共同承受，活动柄没有抬升，固定环仅向内约 0.096 mm。逐动力学子步见 `runs/scissor_ed8bba8_left_blade_lever_recovery/`。
 
-右食指接近托盘墙上方露出的活动柄下侧。调整未参与操作的指关节后，完整模型在原布局执行 3,534 个 2 ms 子步，记录到 927 个右食指托柄接触子步，峰值法向力 0.0503 N，无其他机器人接触或求解器警告。活动环净抬升约 5.00 mm，剪刀始终受托盘承托，尚未提起剪刀或剪纸。记录见 `runs/scissor_89a2f80_moving_handle_underlift/underhandle_dynamic_final.json`。 沿同一路径把抬升目标延至 15 mm 后，活动环、固定环和工具基座分别实测抬升约 15.02、3.08、4.89 mm。806 个子步记录到食指接触，峰值约 0.130 N。结束时活动刀片与托盘底和桌面仍接触，固定刀片还与前隔板接触。抬升目标增至 30 mm 时，活动环实际抬升 20.96 mm，工具基座抬升 8.14 mm，食指峰值载荷 0.156 N。三处刀片支撑仍在，未脱离托盘。两条续段见同目录的 `underhandle_dynamic_continuation15.json` 和 `underhandle_dynamic_continuation30.json`。
+右食指接近托盘墙上方露出的活动柄下侧。调整未参与操作的指关节后，使用同一双臂、手和任务几何的关节控制诊断执行 3,534 个 2 ms 子步，记录到 927 个右食指托柄接触子步，峰值法向力 0.0503 N，无其他机器人接触或求解器警告。活动环净抬升约 5.00 mm，剪刀始终受托盘承托，尚未提起剪刀或剪纸。记录见 `runs/scissor_89a2f80_moving_handle_underlift/underhandle_dynamic_final.json`。 沿同一路径把抬升目标延至 15 mm 后，活动环、固定环和工具基座分别实测抬升约 15.02、3.08、4.89 mm。806 个子步记录到食指接触，峰值约 0.130 N。结束时活动刀片与托盘底和桌面仍接触，固定刀片还与前隔板接触。抬升目标增至 30 mm 时，活动环实际抬升 20.96 mm，工具基座抬升 8.14 mm，食指峰值载荷 0.156 N。三处刀片支撑仍在，未脱离托盘。三条续段见同目录的 `underhandle_dynamic_continuation{15,30,40}.json`。继续加大抬升时，该诊断中的活动环达到 40.03 mm，工具基座抬升 17.70 mm，食指峰值约 0.181 N，刀片仍由桌面和托盘承托。
+
+上述关节控制诊断自行编译场景，采用默认摩擦锥与桌面参数，并从预先沉降的工具姿态开始。在项目正式 `MujocoScene` 中保留正式桌面摩擦、椭圆摩擦锥和默认工具位置，再通过执行器沉降并重放同一关节路径。第 1,646 个子步右手中指末节先与固定环第 17 段接触，法向力约 0.0931 N，侵入约 0.0098 mm，未到活动柄。正式场景的复验位于 `runs/scissor_89a2f80_moving_handle_underlift/scissor-move40-production-control.json`。 对这个实测姿态求中指关节对碰撞间隙的导数后，将其第二关节目标降低 0.020 rad，再次用正式场景和受限关节力矩运行。活动环净抬升 40.01 mm，固定环净抬升 19.54 mm，工具基座净抬升 18.62 mm。789 个 2 ms 子步有预期食指接触，峰值 0.200 N，无其他机器人接触或物理警告。结束时刀片仍由桌面、前隔板和托盘底承托。生产模型结果见同目录的 `production_middle_joint5_minus020.json`。
+
+每 50 ms 取一次受限关节控制的实测腕位和手形，转换为标准 46 维动作后，从默认摆放完成 214 步腕位控制回放。剪刀基座最高抬升 16.87 mm，无物理警告、机械臂或双手碰撞。剪刀仍未完全离盘，纸张未抬起，未切开纸张。逐步数据和标准结果位于同目录的 `scissor-move40-standard-source.json` 和 `scissor-move40-standard-rollout.json`。
+
+```bash
+python -m simulation.rollout data/derived/scissor-cutting-moving-handle-reference.hdf5 \
+  --task scissor-cutting --output runs/scissor-cutting-moving-handle-rollout.json
+```
 
 固定和活动椭圆柄环的碰撞体使用共享边界的 24 和 20 块凸楔体。内侧边与标称椭圆相切，保留 4 mm 厚度以及现有被动铰链。原矩形分段按每个柄 1,440 个角度测量，固定环和活动环最多向开孔内侵入约 0.57 和 0.30 mm。在标称内半径的 99% 位置，原版分别误挡 838 和 912 个采样，改后均为 0。新版的多边形顶点相对标称椭圆往外约 0–0.34 mm。标准动作回放完成 334 步，剪刀仍只抬升约 4.08 mm，无物理警告。托盘支撑、两环位置与纸带稳定性现有回归通过，51 项 MuJoCo 测试通过。证据见 `/data/dexcap-repro/benchmarks/scissor-handle-box-ray-measurement.json` 与 `scissor-continuous-oval/`。
 
@@ -818,7 +827,7 @@ python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference
 
 复核左臂的整条载荷路径后，确认旧待机姿态的右臂阻挡左臂。受力最大的双臂接触约 11.48 N，另有右臂与左掌间约 6.45 N 的接触。让右臂在默认关节姿态待机，保持已测的包装摆放，用受限关节力矩跟踪左臂，左手在第 93 个目标接触包装顶部，初始法向力约 0.881 N。随后沿远离纸盒方向续推，包装净位移约 13.87 mm，其中朝远离纸盒方向约 8.34 mm，转动约 15.58°，峰值法向力约 1.23 N，机械臂碰撞计数为 0。此为 MuJoCo 物理诊断过程，使用左臂关节目标，尚未恢复现行手模型下的完整入盒动作。原碰撞与续推数据见 `/data/dexcap-repro/benchmarks/runs/left-overhead-red-full-constraint-audit.json` 和同目录的 `left-overhead-red-carton-away-active.json`。
 
-将同一动作的实测腕位换成 46 维标准输入后，从默认包装摆放重放 159 个动作。实测包装平移约 13.04 mm、转动约 14.87°。54 个动作端点记录到左手载荷超过 0.015 N，峰值约 1.08 N。重放无物理警告、机械臂碰撞、双手碰撞或关节越限失败。该文件覆盖包装重新摆位，包装尚未被右手夹起。接触和位移数据在 `/data/dexcap-repro/benchmarks/runs/left-overhead-red-carton-cartesian-observed-trace.json`。
+将同一动作的实测腕位换成 46 维标准输入后，从默认包装摆放重放 159 个动作。实测包装平移约 13.04 mm、转动约 14.87°。54 个动作端点记录到左手载荷超过 0.015 N，峰值约 1.08 N。重放无物理警告、机械臂碰撞、双手碰撞或关节越限失败。该文件覆盖包装重新摆位，包装尚未被右手夹起。接触和位移数据在 `/data/dexcap-repro/benchmarks/runs/left-overhead-red-carton-cartesian-observed-trace.json`。 继续保持末目标 2 s 时，包装额外移动约 0.92 mm，左手仍有约 0.087 N 支撑载荷。执行向上退让时，左手瞬态接触载荷约 0.307 N，包装回退约 12.8 mm。此阶段的位姿依赖左手支撑，后续右手接近需要保留该支撑或换退出方向。对照见 `/data/dexcap-repro/benchmarks/runs/red-reposition-fit-causal-control.json`。
 
 ```bash
 python -m simulation.rollout data/derived/packaging-red-carton-left-reposition-reference.hdf5 \
