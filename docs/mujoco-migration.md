@@ -231,6 +231,8 @@ python -m simulation.rollout data/derived/packaging-blue-block-apex-grasp-native
 ```
 
 
+在当前完整碰撞模型重新执行上述 50 步，右手物体接触累计 133 个周期，终态 `object_grasped=false`。右腕最大位置误差约 54.84 mm，右中指近端与拇指末端最大采样穿透约 14.69 mm。机械臂与双手间接触步数均为零，无物理警告。当前模型采用这次复验的结果。数据见 `/data/dexcap-repro/benchmarks/runs/blue-block-demo50-apex-verify.json`。
+
 蓝积木接近纸盒时还需要最低角增加约 49 mm 净空。试验中沿当前箱缘跨入需要纸盒倾斜约 31°，所执行的左手路线未接触到箱壁。单独保持右手末动作 0.30 s 时蓝积木失去夹持，随后将左手接近与原拾取动作同步，首次碰撞出现在左臂下降阶段，右手随后失去夹持。未执行放入。记录见 `runs/packaging-blue-{box-tip,apex-brace-feasibility,sync-left-prepose}-66b7507.json`。
 
 用 `demo_100` 的参考摆放对绿梨做椭球短轴两侧接近。受力前两指垫的纵向位置仍偏高约 19 mm，实际下降时两侧没形成对向夹持。绿梨向盒壁移动，始终由桌面支撑。见 `runs/packaging-green-pear-fit-66b7507.json`。
@@ -993,7 +995,11 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
+从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
+
 擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。逐步复算确认海绵在盘坐标的法向高度仅变化约 −0.003 mm，而切向位移约 15.5 mm，盘本身同时平移和倾转。按实际斑块反向转动，法向开口约增加 1.03 mm，最深接触仍约 0.74 mm，载荷增至约 3.78 N。下一次接触调整从第一笔更早的轻载状态开始。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
+
+备茶的原尺寸木托与镊子从实际接触状态继续。右拇指顶到镊子桥的上沿时，镊子相对木托横移约 17.43 mm、抬高约 1.81 mm，木托自身只移动约 1 mm。拇指滑脱后木托仍以约 0.337 N 支撑镊子。再次下探桥端垂直侧面时，上木臂首先挡住拇指并承受约 0.310 N 向下载荷，尚未把镊子送到托盘上。记录在 `/data/dexcap-repro/benchmarks/tea-tool-source-model/scaledTrough/source-tool-cradle-to-tray-summary.md`。
 
 ### 捡球的 20 个随机摆放标准复放
 
