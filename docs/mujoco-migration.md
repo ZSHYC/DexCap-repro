@@ -114,6 +114,10 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 
 ## Wiping 盘沿观测
 
+从作者原始 ZIP 按字节范围提取了 `demo_0` 对应的四个 RGB-D 样本，文件在数据盘 `data/raw/save_wipe_1-14/save_data_wipe_1-14_01/`。校正后四帧相机矩阵与 HDF5 第 0、15、25、70 帧一致。原始深度拟合得到盘子位置桌高约 −26.3 至 −27.4 mm，海绵位置约 −34.3 至 −35.1 mm。以首帧局部桌面为基准，盘沿外侧半径 115–125 mm 范围内亮色表面的高度中位数约 22.9 mm。原始取样和拟合记录在 `runs/wiping-raw-samples.log` 和 `runs/wiping-raw-source-geometry.{py,json}`。 [作者原始数据](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/e468f07000de0f8d3234a9c60a9d8208344675e0)
+
+实验中用测得的桌面、物体初始倾角以及对准桌面法线的重力重放同一条 111 步官方轨迹。第 107 步出现约 12.8 kN 的接触力峰值和腕跟踪失稳。此后才记录到盘子离桌和内盘面接触，擦拭距离仍为 0。生产场景继续使用原水平桌面。对照见 `runs/wiping-raw-table-replay-ab.{py,json}`。
+
 将官方示范抓取前 13 帧的 13,820 个盘沿点按录制中的盘心与法向配准。用每像素约 3.9 mm 的正投影聚合蓝色区域。交替把帧分成两组后，两组同时有足够样本的像素上，蓝色分类一致率约 91.7%。配准和取样记录位于 `runs/wiping-rim-texture-{fit.json,samples.npz}`，生成脚本为 `runs/wiping-fit-rim-texture.py`。高频印刷细节和盘底外观仍缺少直接观测。
 
 公用盘沿剖面生成 MuJoCo 渲染网格。EGL 图像验证了盘沿图案的方向。原来承受物体接触的碰撞轮廓、盘子惯性和抓取判据继续使用。校正 LEAP 手模型前，111 步同动作回放抓起两件物体，内盘面接触为 0。可见图案与开环结果在 `runs/wiping-measured-rim-render.png` 和 `runs/wiping-measured-rim-replay.json`。
