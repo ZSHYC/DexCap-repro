@@ -39,7 +39,7 @@ MUJOCO_GL=egl python -m simulation.rollout data/derived/packaging-demo-0-playbac
 
 | 回放 | 右腕误差中位数 | 左腕误差中位数 | 实际结果 |
 | --- | ---: | ---: | --- |
-| Wiping | 2.3 mm | 4.6 mm | 盘子、海绵均未抓起，52 个控制周期接触盘体，内盘面擦拭为 0。 |
+| Wiping | 3.3 mm | 4.7 mm | 抓起海绵，盘子未抓起。53 个控制周期接触盘体，内盘面擦拭为 0。 |
 | Packaging | 4.8 mm | 5.6 mm | 红银包装未抓起或入盒，纸盒未合盖。 |
 
 Packaging 红银包装使用原始深度的 14.0 × 5.6 × 8.8 cm 包络。盒盖按首帧深度以约 3.35° 开始，并有实测约 70 mm 的独立折舌。主铰链在模型中按弧度编译，可实际转至 180°。纸板厚度近似 3 mm，折舌刚度与阻尼未做实物标定。黄色折叠布的 150 × 130 × 40 mm 包络来自发布点云，以三维柔性网格模拟受力、变形和入盒支撑。其有效弹性参数仍为估计。几何测量记录在 `runs/packaging-lid-tab-measurement.json`。
@@ -57,7 +57,7 @@ Packaging 红银包装使用原始深度的 14.0 × 5.6 × 8.8 cm 包络。盒�
 
 ## 复用权重评估
 
-沿用已训练的第 3000 轮权重。PointNet 使用当前分支的训练代码，SetXF 使用 `worktrees/setxf`。每次仿真最多执行 400 个策略动作。Wiping 使用相同的种子 1–20 比较两份权重。Packaging 对训练和未见物体各使用同一组种子 1–5。本轮完整结果位于数据盘 `runs/leap-physical-benchmark/`。
+沿用已训练的第 3000 轮权重。PointNet 使用当前分支的训练代码，SetXF 使用 `worktrees/setxf`。每次仿真最多执行 400 个策略动作。Wiping 使用相同的种子 1–20 比较两份权重。Packaging 对训练和未见物体各使用同一组种子 1–5。已完成的基准位于数据盘 `runs/leap-physical-benchmark/`。更新海绵接触求解后的 40 个 Wiping 回合写入 `runs/sponge-contact-benchmark/`。
 
 ```bash
 export MUJOCO_GL=egl MUJOCO_EGL_DEVICE_ID=0 CUDA_VISIBLE_DEVICES=0
@@ -84,7 +84,7 @@ python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
 | SetXF Packaging 训练物体 | 30 | 入盒 0 | 合盖 7 | 0 |
 | SetXF Packaging 未见物体 | 45 | 入盒 0 | 合盖 6 | 0 |
 
-115 个回合均使用 MuJoCo 3.6.0 和校正后的 LEAP 实体网格。逐回合核对确认数据、检查点和摆放种子与上一版一致。Wiping PointNet 有 5 个回合抓起盘子、2 个回合抓起海绵，SetXF 分别为 1 和 2。校正前的 Packaging 训练和未见物体分别合盖 21/30 和 22/45，历史汇总在数据盘的 `runs/fidelity-measurement/summary.json`。论文中的成功率来自实体机器人。 [逐物体汇总](assets/dexcap-formal-mujoco.json) · [论文评估](https://arxiv.org/html/2403.07788v2#S5.SS1)
+115 个回合均使用 MuJoCo 3.6.0 和校正后的 LEAP 实体网格。表中 Wiping 回合运行于海绵接触求解更新前。逐回合核对确认数据、检查点和摆放种子与上一版一致。Wiping PointNet 有 5 个回合抓起盘子、2 个回合抓起海绵，SetXF 分别为 1 和 2。校正前的 Packaging 训练和未见物体分别合盖 21/30 和 22/45，历史汇总在数据盘的 `runs/fidelity-measurement/summary.json`。论文中的成功率来自实体机器人。 [逐物体汇总](assets/dexcap-formal-mujoco.json) · [论文评估](https://arxiv.org/html/2403.07788v2#S5.SS1)
 
 在 `pro1` 上复算已保存的汇总。
 
@@ -128,11 +128,17 @@ python -m simulation.summarize_results "$folder/wiping-pointnet.json" \
 `python -m simulation.rollout --task sponge-picking` 接受项目使用的 46 维动作 HDF5 与兼容策略权重。作者当前公开数据文件未包含 Sponge Picking 轨迹或权重。 [发布的文件列表](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/main)
 
 
-同一条分阶段夹持脚本的接触诊断显示，基线峰值采样时手部合计法向力约 265 N，最大接触穿透约 15.7 mm。单次对照把 flex 的 `solref` 时间常数设为 20 ms，总力峰值时的手部接触力约 4.2 N，最大穿透约 2.5 mm。两组都未建立持续的抬升夹持。该参数仅用于诊断，脚本和结果在 `/data/dexcap-repro/benchmarks/sponge-picking-flex-solref-ab.{py,json}`。 [MuJoCo 接触参数](https://mujoco.readthedocs.io/en/3.6.0/modeling.html#contact-parameters)
+同一条分阶段夹持脚本的接触诊断显示，基线峰值采样时手部合计法向力约 265 N，最大接触穿透约 15.7 mm。单次对照把 flex 的 `solref` 时间常数设为 20 ms，总力峰值时的手部接触力约 4.2 N，最大穿透约 2.5 mm。两组都未建立持续的抬升夹持。该参数最初用于诊断，脚本和结果在 `/data/dexcap-repro/benchmarks/sponge-picking-flex-solref-ab.{py,json}`。 [MuJoCo 接触参数](https://mujoco.readthedocs.io/en/3.6.0/modeling.html#contact-parameters)
 
 
-用真实指尖规划接近，再按两指法向力反馈调整手指目标，可以从默认桌面形成相向夹持。使用 20 ms flex 接触诊断参数时，未改动物体状态，海绵在夹持中抬升 **74.1 mm** 后滑脱。按相向接触重新回放后，74.1 mm 的夹持抬升保持，另一次碰撞弹出的旧读数从 86.8 mm 改为 0。30 cm 的整段物理回放仍未通过。实时接触记录、物体质心及已执行动作保存于 `runs/sponge-picking-tactile-centered.{py,json}`。
+用真实指尖规划接近，再按两指法向力反馈调整手指目标，可以从默认桌面形成相向夹持。最初的夹持会在抬升约 74.1 mm 后滑脱。按相向接触重新回放后，74.1 mm 的夹持记录保持，另一次碰撞弹出的旧读数从 86.8 mm 改为 0。相关轨迹保存于 `runs/sponge-picking-tactile-centered.{py,json}`。
 
+新版 Wiping 和 Sponge Picking 共用 20 ms 海绵接触时间常数，以及 MuJoCo 的摩擦约束阻抗比 4。材料摩擦系数沿用原值。带负载的试验把海绵压缩约 9.8 mm，逐步撤去压板后恢复原厚度。标准入口回放 305 个脚本动作，将海绵从默认桌面抬升 **306.4 mm**，在 30 cm 以上用同一只手保持相向接触 12 个指令，双臂无碰撞。策略反馈轨迹及标准回放结果分布在 `runs/sponge-picking-tactile-stiffer-friction.{py,json}` 和 `runs/sponge-picking-scripted-rollout.json`。此验证覆盖一次固定摆放。 [MuJoCo 防滑说明](https://mujoco.readthedocs.io/en/3.6.0/modeling.html#preventing-slip)
+
+```bash
+python -m simulation.rollout data/derived/sponge-picking-scripted-reference.hdf5 \
+  --task sponge-picking --output runs/sponge-picking-scripted-rollout.json
+```
 
 ## Packaging 六类参考动作回放
 
@@ -168,13 +174,14 @@ python -m simulation.rollout data/derived/ball-collecting-scripted-reference.hdf
 
 ## Scissor Cutting
 
-`python -m simulation.rollout --task scissor-cutting` 使用固定分隔托盘、两个可碰撞的剪刀刚体、被动铰链、镂空手柄和粉色纸带。纸带两侧由软连接保持连续。每个 MuJoCo 子步读取刀刃压力，只有剪刀真实闭合且双侧压力到达接缝邻域时才断开局部纸带键。累计切口超过 3 mm 为论文的切割成功条件。初始布局来自图 5，尺寸和纸张断裂力仍按仿真设定。纸带只支持已建模的接缝。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
+`python -m simulation.rollout --task scissor-cutting` 使用固定分隔托盘、两个可碰撞的剪刀刚体、被动铰链、与铰链实际相连的镂空手柄和粉色纸带。纸带两侧由软连接保持连续。每个 MuJoCo 子步读取刀刃压力，只有剪刀真实闭合且双侧压力到达接缝邻域时才断开局部纸带键。累计切口超过 3 mm 为论文的切割成功条件。初始布局来自图 5，尺寸和纸张断裂力仍按仿真设定。纸带只支持已建模的接缝。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
 在包含双臂和摄像的正式 2 ms 场景中，对铰链施加力矩后实际断开一个 4 mm 接缝段。把纸带放到刀口之外时切口保持为 0。这个试验验证机构和子步回调，整段双手抓剪刀、提纸和切割仍缺官方轨迹。记录见 `runs/scissor-production-hook-probe.{py,json}`。
 
 
-在声明的接触起点，真实 LEAP 触碰手柄使剪刀从 0.450 rad 闭合到 0.199 rad，峰值手柄接触力 14.6 N。接触只维持三个物理子步，剪刀随后脱手。旧模型 44 × 22 mm 的柄孔无法可靠穿过现有拇指网格。轨迹和距离记录见 `runs/scissor_leap_aligned_fixture.{py,json}`。
+使用旧 44 × 22 mm 柄孔的接触夹具时，真实 LEAP 触碰手柄使剪刀从 0.450 rad 闭合到 0.199 rad，峰值手柄接触力 14.6 N。接触只维持三个物理子步，剪刀随后脱手。旧柄孔无法可靠穿过拇指网格，轨迹存于 `runs/scissor_leap_aligned_fixture.{py,json}`。
 
+按 LEAP 网格改为 50 × 40 mm 的双指孔及 40 × 42 mm 的拇指孔，并补齐两侧连到被动铰链的柄臂。保守包络检查得到指面与孔边的总净余量约 5.3–6.7 mm，闭合位置两环仍分离约 14.6 mm。新版机构试验仍能在实际刀刃接触下切开 4 mm 接缝。测量见 `runs/scissor_handle_fit_check.json`，新版抓取与双手切割仍需验证。
 
 ## Tea Preparing
 
@@ -187,14 +194,14 @@ python -m simulation.rollout data/derived/ball-collecting-scripted-reference.hdf
 
 ## 六个场景的渲染与接入验证
 
-六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview-physical-leap/six-mujoco-scenes.png` 和 `runs/task-scene-overview-physical-leap/smoke.json`。Scissor Cutting 和 Tea Preparing 已验证关键机构的物理响应，仍缺整段双臂任务动作。
+六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview-grasp-physics/six-mujoco-scenes.png` 和 `runs/task-scene-overview-grasp-physics/smoke.json`。Scissor Cutting 和 Tea Preparing 已验证关键机构的物理响应，仍缺整段双臂任务动作。
 
 
 ## 校正 LEAP 指尖碰撞与惯量
 
 DexCap 的重定向 URDF 比 LEAP V1 官方物理模型多四个 `realtip` 固定链接。它们各带半径 5 mm 的圆球和 0.1 kg 的惯量条目，用于表示指尖 IK 目标。现在构建 MuJoCo 手部时只加载官方物理模型对应的 17 个实体链接。原始 DexCap URDF 仍供发布数据的重建使用。编译后每只手质量由 0.909 kg 校正为 0.509 kg。 [LEAP V1 官方 URDF](https://github.com/leap-hand/LEAP_Hand_Sim/blob/master/assets/leap_hand/robot.urdf)
 
-两条参考动作使用原来的放置与控制参数重新回放。Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
+首次校正 LEAP 之后，两条参考动作按当时的放置与控制参数回放。该版本 Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
 
 另用 Wiping 和 Packaging 的 `demo_0` 分别对照 25 和 22 个录制观测。将已发布的腕姿和当前解码的手关节传给校正后的 LEAP 网格，距离手部 12 mm 内的录制黑点到网格采样点的中位距离均约 0.83 mm，逐帧的 2 mm 以内比例中位数约 98%。这验证了输入腕姿、当前手指顺序和作者预处理点云之间的对应。数据及脚本在 `runs/{wiping,packaging}-released-hand-observation-order.{py,json}`。
 

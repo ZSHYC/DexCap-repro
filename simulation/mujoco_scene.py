@@ -5,6 +5,7 @@ import numpy as np
 
 from simulation.frames import TABLE_SHIFT
 from simulation.mujoco_control import DualArmController
+from simulation.mujoco_sponge import SPONGE_FRICTION_IMPEDANCE
 
 
 TABLE_HEIGHT = -0.030
@@ -30,6 +31,9 @@ class MujocoScene:
         spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
         spec.option.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
         spec.option.iterations = 80
+        if task in ("wiping", "sponge-picking"):
+            # Harder friction constraints keep soft sponge contacts from drifting under load.
+            spec.option.impratio = SPONGE_FRICTION_IMPEDANCE
         color = [0.12, 0.12, 0.12, 1] if task != "packaging" else [0.64, 0.59, 0.49, 1]
         spec.worldbody.add_geom(name="table", type=mujoco.mjtGeom.mjGEOM_BOX,
                                 pos=[0.40, 0, TABLE_HEIGHT - 0.025], size=[0.75, 0.60, 0.025],

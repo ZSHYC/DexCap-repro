@@ -4,6 +4,7 @@ import unittest
 import mujoco
 import numpy as np
 
+from simulation.mujoco_sponge import SPONGE_FRICTION_IMPEDANCE
 from simulation.mujoco_wiping import (
     DEMO_OBJECT_XY,
     SUMMARY_KEYS,
@@ -98,6 +99,8 @@ class MujocoWipingTest(unittest.TestCase):
 
     def test_sponge_compresses_and_recovers_after_load_is_removed(self):
         spec = base_spec()
+        spec.option.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
+        spec.option.impratio = SPONGE_FRICTION_IMPEDANCE
         add_wiping_scene(spec, DEMO_OBJECT_XY)
         model = spec.compile()
         data = mujoco.MjData(model)
@@ -110,8 +113,12 @@ class MujocoWipingTest(unittest.TestCase):
         for height in np.linspace(0.08, -0.007, 1200):
             data.mocap_pos[compressor] = [*sponge_xy, height]
             mujoco.mj_step(model, data)
+        for _ in range(1000):
+            mujoco.mj_step(model, data)
         compressed = flex_thickness(model, data)
-        data.mocap_pos[compressor] = [*sponge_xy, 0.15]
+        for height in np.linspace(-0.007, 0.15, 2000):
+            data.mocap_pos[compressor] = [*sponge_xy, height]
+            mujoco.mj_step(model, data)
         for _ in range(3000):
             mujoco.mj_step(model, data)
         recovered = flex_thickness(model, data)

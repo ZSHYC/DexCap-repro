@@ -15,6 +15,8 @@ SPONGE_YAW = 0.33
 SPONGE_YOUNG_MODULUS_PA = 50_000
 SPONGE_POISSON_RATIO = 0.25
 SPONGE_DAMPING_S = 0.02
+SPONGE_CONTACT_TIME_S = 0.02
+SPONGE_FRICTION_IMPEDANCE = 4
 
 
 def sponge_flexcomp(sponge_xy):
@@ -28,7 +30,7 @@ def sponge_flexcomp(sponge_xy):
               <elasticity young="{SPONGE_YOUNG_MODULUS_PA}" poisson="{SPONGE_POISSON_RATIO}"
                           damping="{SPONGE_DAMPING_S}"/>
               <contact selfcollide="none" friction="1.2 0.01 0.001"
-                       solref="0.005 1" solimp="0.9 0.99 0.001"/>
+                       solref="{SPONGE_CONTACT_TIME_S} 1" solimp="0.9 0.99 0.001"/>
             </flexcomp>
     """
 
