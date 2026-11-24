@@ -90,6 +90,11 @@ class MujocoWipingTest(unittest.TestCase):
             self.assertTrue(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom[0]).startswith("wiping_plate_"))
             heights.append(0.1 - distance)
         self.assertAlmostEqual(heights[1] - heights[0], 0.0175, delta=0.0015)
+        rim = model.geom("wiping_plate_rim_visual")
+        self.assertEqual(tuple(rim.contype), (0,))
+        self.assertEqual(tuple(rim.conaffinity), (0,))
+        material = int(rim.matid[0])
+        self.assertGreaterEqual(model.mat_texid[material, mujoco.mjtTextureRole.mjTEXROLE_RGB], 0)
 
     def test_sponge_compresses_and_recovers_after_load_is_removed(self):
         spec = base_spec()

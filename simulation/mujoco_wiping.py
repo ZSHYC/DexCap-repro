@@ -1,6 +1,7 @@
 """MuJoCo objects and physical metrics for DexCap plate wiping."""
 
 import math
+from pathlib import Path
 
 import mujoco
 import numpy as np
@@ -11,6 +12,7 @@ TABLE_HEIGHT = -0.03
 PLATE_RADIUS = 0.125
 PLATE_INNER_RADIUS = 0.09
 PLATE_BASE_THICKNESS = 0.004
+PLATE_PROFILE = ((0.09, 0.002), (0.10, 0.007), (0.115, 0.0195), (0.125, 0.0185))
 PLATE_CONTACT_TOLERANCE = 0.001
 SPONGE_HALF_XY = (0.04, 0.065)
 SPONGE_HALF_HEIGHT = 0.017
@@ -54,7 +56,6 @@ def _quat_for_ring(yaw, slope):
 
 
 def _plate_geoms():
-    profile = ((0.09, 0.002), (0.10, 0.007), (0.115, 0.0195), (0.125, 0.0185))
     color = "0.88 0.90 0.96 1"
     geoms = [
         '<geom name="wiping_plate_base" type="cylinder" size="0.09 0.002" '
@@ -62,7 +63,7 @@ def _plate_geoms():
     ]
     segments = 32
     shell_half_thickness = PLATE_BASE_THICKNESS / 2
-    for band, ((r0, z0), (r1, z1)) in enumerate(zip(profile, profile[1:])):
+    for band, ((r0, z0), (r1, z1)) in enumerate(zip(PLATE_PROFILE, PLATE_PROFILE[1:])):
         dr, dz = r1 - r0, z1 - z0
         slope = math.atan2(dz, dr)
         radial_half = math.hypot(dr, dz) / 2
@@ -78,9 +79,39 @@ def _plate_geoms():
                 f'pos="{radius * math.cos(yaw)} {radius * math.sin(yaw)} {z}" '
                 f'quat="{quat[0]} {quat[1]} {quat[2]} {quat[3]}" '
                 f'size="{radial_half} {tangent_half} {shell_half_thickness}" '
-                f'rgba="{color}" friction="0.8 0.01 0.001" condim="4"/>'
+                f'group="3" rgba="{color}" friction="0.8 0.01 0.001" condim="4"/>'
             )
     return "\n".join(geoms)
+
+
+def _add_plate_rim_visual(spec):
+    profile = (*PLATE_PROFILE, *((r, z - PLATE_BASE_THICKNESS) for r, z in reversed(PLATE_PROFILE)))
+    radii, height = np.asarray(profile).T
+    sectors = 64
+    theta = np.arange(sectors) * (2 * np.pi / sectors)
+    vertices = np.stack((
+        radii[:, None] * np.cos(theta),
+        radii[:, None] * np.sin(theta),
+        np.broadcast_to(height[:, None], (len(profile), sectors)),
+    ), axis=-1).reshape(-1, 3)
+    rings = np.arange(len(vertices)).reshape(len(profile), sectors)
+    inner, outer = rings, np.roll(rings, -1, axis=0)
+    next_inner, next_outer = np.roll(inner, -1, axis=1), np.roll(outer, -1, axis=1)
+    faces = np.stack((inner, outer, next_outer, inner, next_outer, next_inner), axis=-1)
+    mesh = spec.add_mesh(
+        name="wiping_rim_mesh", uservert=vertices.ravel(), userface=faces.ravel(),
+        usertexcoord=(0.5 + vertices[:, :2] / (2 * PLATE_RADIUS)).ravel(),
+    )
+    texture = spec.add_texture(
+        name="wiping_rim_texture", type=mujoco.mjtTexture.mjTEXTURE_2D, vflip=True,
+        file=str(Path(__file__).with_name("assets") / "wiping_plate_rim.png"),
+    )
+    material = spec.add_material(name="wiping_rim_material", specular=0)
+    material.textures[mujoco.mjtTextureRole.mjTEXROLE_RGB] = texture.name
+    spec.body("wiping_plate").add_geom(
+        name="wiping_plate_rim_visual", type=mujoco.mjtGeom.mjGEOM_MESH,
+        meshname=mesh.name, material=material.name, contype=0, conaffinity=0, mass=0,
+    )
 
 
 def _texture_sponge(spec):
@@ -132,6 +163,7 @@ def add_wiping_scene(spec, object_xy=DEMO_OBJECT_XY):
         </mujoco>
         """
     )
+    _add_plate_rim_visual(child)
     _texture_sponge(child)
     mount = spec.worldbody.add_frame(name="wiping_scene")
     spec.attach(child, frame=mount, prefix="")
