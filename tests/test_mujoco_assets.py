@@ -16,6 +16,7 @@ ASSETS = Path(__file__).resolve().parents[1] / "data/mujoco_menagerie"
 @unittest.skipIf(mujoco is None, "mujoco is not installed")
 class MujocoRobotAssetsTest(unittest.TestCase):
     def test_adds_two_articulated_pandas_and_leap_hands(self):
+        from simulation.hand_joints import decode_leap_joints
         from simulation.mujoco_assets import (
             ARM_ACTUATORS,
             ARM_JOINTS,
@@ -81,6 +82,25 @@ class MujocoRobotAssetsTest(unittest.TestCase):
                 actuator = model.actuator(name).id
                 self.assertEqual(model.actuator_biastype[actuator], mujoco.mjtBias.mjBIAS_AFFINE)
                 np.testing.assert_array_equal(model.actuator_forcerange[actuator], [-0.95, 0.95])
+
+        data = mujoco.MjData(model)
+        for side in ("right", "left"):
+            neutral = decode_leap_joints(np.zeros(16), left=side == "left")
+            for name, angle in zip(HAND_JOINTS[side], neutral):
+                joint = model.joint(name)
+                data.qpos[joint.qposadr[0]] = np.clip(angle, *joint.range)
+        mujoco.mj_forward(model, data)
+        contacts = [set(contact.geom) for contact in data.contact[:data.ncon]]
+        for side in ("right", "left"):
+            palm = model.body(f"{side}_palm_lower")
+            palm_collision = {
+                geom for geom in np.flatnonzero(model.geom_bodyid == palm.id)
+                if model.geom_contype[geom]
+            }
+            thumb_shank = {model.geom(f"{side}_hand_collision_{index}").id for index in (14, 15)}
+            self.assertFalse(any(pair & palm_collision and pair & thumb_shank for pair in contacts))
+            self.assertGreater(len(palm_collision), 1)
+            self.assertAlmostEqual(palm.mass[0], 0.237)
 
         palm_centers = {"right": [-0.05, -0.037, 0.0113], "left": [-0.05, 0.037, 0.0113]}
         for side, center in palm_centers.items():

@@ -329,6 +329,10 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 DexCap 的重定向 URDF 比 LEAP V1 官方物理模型多四个 `realtip` 固定链接。它们各带半径 5 mm 的圆球和 0.1 kg 的惯量条目，用于表示指尖 IK 目标。现在构建 MuJoCo 手部时只加载官方物理模型对应的 17 个实体链接。原始 DexCap URDF 仍供发布数据的重建使用。编译后每只手质量由 0.909 kg 校正为 0.509 kg。 [LEAP V1 官方 URDF](https://github.com/leap-hand/LEAP_Hand_Sim/blob/master/assets/leap_hand/robot.urdf)
 
+原掌部 STL 含明显的凹槽。将整个 STL 作为单一碰撞网格时，MuJoCo 用凸包填平凹槽。中性姿态中原有两处拇指与掌部假穿透约为 12.5 mm 和 5.0 mm。对真实三角网格的测量确认这两处接触点均在释放的掌壳外。碰撞掌部现在使用从原 STL 生成的 64 个凸块。主壳体用 CoACD 1.0.14 分为 16 块，其余 48 个连通部件各保留一个凸包。双手中性姿态的原两处接触均消失，另外的真实指节碰撞仍发生，掌部质量仍为 0.237 kg。渲染使用同一原始 STL。运行只读取提交中的分块资产，CoACD 用于离线生成。分解参数和实测点对比在 `runs/coacd-palm-hulls/`，双手实测接触在 `runs/leap-palm-decomposition-ab.json`。 [MuJoCo 凸碰撞与网格](https://mujoco.readthedocs.io/en/stable/computation/index.html#convex-collisions)
+
+更新后六个任务均能用标准入口加载、控制和输出点云，37 项 MuJoCo 测试通过。原动作在新模型上的实测结果为 Sponge Picking 仍完成，红银包装仍入盒但没有合盖，Ball Collecting 未抬球，Wiping 未满足两笔擦拭。剪刀参考仍抬高约 145 mm，备茶本次只跑了 3 步入口验证。具体结果在 `runs/leap-palm-*-rollout.json`。重新执行隔离提纸时，最低纸段在双侧受力时抬高约 51 mm。两垫各超过 8 mN 且全条无支撑的最长连续区间为 0.37 s。仍存在指垫之间的接触，需要继续校准。见 `runs/scissor_paper_pose_follow_palm-roll.json`。
+
 首次校正 LEAP 之后，两条参考动作按当时的放置与控制参数回放。该版本 Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
 
 另用 Wiping 和 Packaging 的 `demo_0` 分别对照 25 和 22 个录制观测。将已发布的腕姿和当前解码的手关节传给校正后的 LEAP 网格，距离手部 12 mm 内的录制黑点到网格采样点的中位距离均约 0.83 mm，逐帧的 2 mm 以内比例中位数约 98%。这验证了输入腕姿、当前手指顺序和作者预处理点云之间的对应。数据及脚本在 `runs/{wiping,packaging}-released-hand-observation-order.{py,json}`。

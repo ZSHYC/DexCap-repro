@@ -1,5 +1,6 @@
 """Articulated Panda + DexCap LEAP assets for MuJoCo task scenes."""
 
+import json
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -17,6 +18,7 @@ WRIST_SITES = {side: f"{side}_wrist" for side in SIDES}
 _ARM_FORCE_LIMITS = (87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0)
 _LEAP_FORCE_LIMIT = 0.95
 _HAND_MESHES = Path(__file__).resolve().parents[1] / "DexCap/STEP2_build_dataset/leap_hand_mesh"
+_PALM_PARTS = Path(__file__).with_name("assets") / "leap_v1_palm_parts.json"
 # Provisional geometry registration: the released LEAP v1 Franka palm-upper
 # mates opposite flange normals; these palm mesh centers retain a 6 mm standoff.
 _PALM_MOUNT_QUATERNION = (0.0, 2**-0.5, 2**-0.5, 0.0)
@@ -62,6 +64,28 @@ def _split_hand_geometry(hand):
             contype=0,
             conaffinity=0,
         )
+
+
+def _add_palm_collision_parts(hand):
+    palm = hand.geom("hand_collision_0")
+    scale = hand.mesh(palm.meshname).scale.copy()
+    # Reuse the URDF pose and contact parameters, including the left hand's mirror.
+    contact_fields = (
+        "type", "pos", "quat", "group", "rgba", "contype", "conaffinity",
+        "condim", "friction", "solref", "solimp", "solmix", "margin", "gap", "priority",
+    )
+    geometry = {name: getattr(palm, name) for name in contact_fields}
+    for index, part in enumerate(json.loads(_PALM_PARTS.read_text())):
+        mesh = hand.add_mesh(
+            name=f"palm_part_{index}", scale=scale,
+            uservert=part["vertices"], userface=part["faces"],
+        )
+        if index == 0:
+            palm.meshname = mesh.name
+        else:
+            palm.parent.add_geom(
+                name=f"hand_palm_collision_{index}", meshname=mesh.name, **geometry,
+            )
 
 
 def _physical_hand_spec(source, side):
@@ -118,6 +142,7 @@ def _load_hand(side):
         actuator.set_to_position(kp=20.0, kv=1.0)
 
     _split_hand_geometry(hand)
+    _add_palm_collision_parts(hand)
     hand.body("palm_lower").add_site(name="wrist", size=(0.006,))
     return hand
 

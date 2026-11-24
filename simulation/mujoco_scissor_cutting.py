@@ -290,6 +290,7 @@ class ScissorCuttingMetrics:
             geom: int(model.geom(geom).name.rsplit("_", 1)[1]) >= 13
             for geom in self._geoms("right_hand_collision_")
         }
+        self.right_pads.update(dict.fromkeys(self._geoms("right_hand_palm_collision_"), False))
         self.held_bonds = 0
         self.initial_scissor_z = float(model.body_pos[self.scissor_body, 2])
         self.initial_paper_z = float(np.mean(model.body_pos[self.paper_bodies, 2]))
