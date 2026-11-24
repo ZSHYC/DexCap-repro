@@ -746,6 +746,8 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 右食指接近枢轴下侧时，刀片和刀柄挡在前面。改用托盘外的固定环第 10 段，指腹刚触及该段时，食指近端与第 13、14 段相交约 1.64 和 2.71 mm。该方案的腕部逆运动学可达，完整手部仍需换入手方向。证据见 `runs/scissor_current_right_outer_handle_lift_search_tangent.json`。
 
+固定和活动椭圆柄环的碰撞体使用共享边界的 24 和 20 块凸楔体。内侧边与标称椭圆相切，保留 4 mm 厚度以及现有被动铰链。原矩形分段按每个柄 1,440 个角度测量，固定环和活动环最多向开孔内侵入约 0.57 和 0.30 mm。在标称内半径的 99% 位置，原版分别误挡 838 和 912 个采样，改后均为 0。新版的多边形顶点相对标称椭圆往外约 0–0.34 mm。标准动作回放完成 334 步，剪刀仍只抬升约 4.08 mm，无物理警告。托盘支撑、两环位置与纸带稳定性现有回归通过，51 项 MuJoCo 测试通过。证据见 `/data/dexcap-repro/benchmarks/scissor-handle-box-ray-measurement.json` 与 `scissor-continuous-oval/`。
+
 红银包装的旧接触模型在第 125 步左右靠食指和拇指的相向法向夹住包装物。现行模型同一阶段仅食指接触，物体随后被推开。拇指微闭合和腕部补偿两种尝试都未恢复抓取或入盒。另一条旧参考在前 463 步使用同一动作，差分发生在撤手关盖阶段。对照及补偿回放在 `/data/dexcap-repro/benchmarks/runs/red-610-*-grasp-trace.json` 和同目录的 `red-610-triangle-*-retune-*-rollout.json`。
 
 另用 60 mm 高位路径到达新的打开手形，接近阶段包装仅移动约 0.108 mm。首次触碰时食指尖离包装还有约 18.22 mm。把固定腕姿倾转约 23.6° 可在静态把两指配到相向，但食指近端和中指网格会侵入包装约 3.9–6.4 mm。这种姿态未执行动态回放。实际高位接近与倾角几何记录见 `/data/dexcap-repro/benchmarks/runs/red-live-4-16-high-approach-trace.json` 和 `red-tilted-4-16-pregrasp-fit.json`。

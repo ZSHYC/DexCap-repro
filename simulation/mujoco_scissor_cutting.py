@@ -86,22 +86,33 @@ def _add_tray(spec):
         _box(tray, f"cutting_tray_{name}", size, pos, color)
 
 
-def _add_handle(body, prefix, z, center, opening, segments):
-    color = [0.02, 0.60, 0.62, 1]
-    axes = opening / 2 + HANDLE_BAR_HALF_WIDTH
-    angles = np.linspace(0, 2 * np.pi, segments + 1) - np.pi / segments
-    points = center + np.column_stack((np.cos(angles), np.sin(angles))) * axes
+def _add_handle(spec, body, prefix, z, center, opening, segments):
+    angles = (np.arange(segments) - 0.5) * (2 * np.pi / segments)
+    directions = np.column_stack((np.cos(angles), np.sin(angles)))
+    radii = opening / 2
+    # Tangent chords preserve the specified clear ellipse inside the segmented ring.
+    inner = center + directions * (radii / np.cos(np.pi / segments))
+    outer = center + directions * (radii + 2 * HANDLE_BAR_HALF_WIDTH)
     sides = {0: "right", segments // 4: "top",
              segments // 2: "left", 3 * segments // 4: "bottom"}
-    for index, (first, second) in enumerate(zip(points[:-1], points[1:])):
-        delta = second - first
-        angle = np.arctan2(delta[1], delta[0])
-        suffix = sides.get(index, f"segment_{index:02d}")
-        _box(
-            body, f"{prefix}_{suffix}",
-            [np.linalg.norm(delta) / 2 + 0.0007, HANDLE_BAR_HALF_WIDTH, 0.002],
-            [*((first + second) / 2), z], color, density=720,
-            quat=[np.cos(angle / 2), 0, 0, np.sin(angle / 2)],
+    faces = np.array([
+        (0, 1, 2), (0, 2, 3), (4, 6, 5), (4, 7, 6),
+        (0, 4, 5), (0, 5, 1), (1, 5, 6), (1, 6, 2),
+        (2, 6, 7), (2, 7, 3), (3, 7, 4), (3, 4, 0),
+    ]).ravel()
+    for index in range(segments):
+        next_index = (index + 1) % segments
+        xy = np.array([inner[index], outer[index], outer[next_index], inner[next_index]])
+        top = np.column_stack((xy, np.full(4, z + 0.002)))
+        bottom = top - [0.0, 0.0, 0.004]
+        name = f"{prefix}_{sides.get(index, f'segment_{index:02d}')}"
+        mesh = spec.add_mesh(
+            name=name, uservert=np.concatenate((top, bottom)).ravel(), userface=faces,
+        )
+        body.add_geom(
+            name=name, type=mujoco.mjtGeom.mjGEOM_MESH, meshname=mesh.name,
+            rgba=(0.02, 0.60, 0.62, 1), density=720, friction=(0.8, 0.01, 0.001),
+            solref=(0.004, 1), solimp=(0.9, 0.98, 0.001, 0.5, 2),
         )
 
 
@@ -129,7 +140,7 @@ def _add_scissors(spec, xy):
     teal = [0.02, 0.60, 0.62, 1]
     _box(base, "scissor_fixed_blade", [0.060, 0.0025, 0.0008],
          [0.060, 0, -0.0006], teal, density=7800)
-    _add_handle(base, "scissor_fixed_handle", -0.0021,
+    _add_handle(spec, base, "scissor_fixed_handle", -0.0021,
                 FIXED_HANDLE_CENTER, TWO_FINGER_OPENING_XY, 24)
     _add_shank(base, "scissor_fixed_shank", -0.0015,
                FIXED_HANDLE_CENTER, TWO_FINGER_OPENING_XY)
@@ -150,7 +161,7 @@ def _add_scissors(spec, xy):
     )
     _box(moving, "scissor_moving_blade", [0.060, 0.0025, 0.0008],
          [0.060, 0, 0.0006], teal, density=7800)
-    _add_handle(moving, "scissor_moving_handle", 0.0021,
+    _add_handle(spec, moving, "scissor_moving_handle", 0.0021,
                 MOVING_HANDLE_CENTER, THUMB_OPENING_XY, 20)
     _add_shank(moving, "scissor_moving_shank", 0.0015,
                MOVING_HANDLE_CENTER, THUMB_OPENING_XY)

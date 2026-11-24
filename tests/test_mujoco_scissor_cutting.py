@@ -137,6 +137,30 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         self.assertTrue(np.isfinite(data.qpos).all())
         self.assertTrue(np.isfinite(data.qvel).all())
 
+    def test_handle_collision_preserves_the_intended_oval_opening(self):
+        from simulation.mujoco_scissor_cutting import (
+            THUMB_OPENING_XY, TWO_FINGER_OPENING_XY, _add_handle,
+        )
+
+        for opening, segments in ((TWO_FINGER_OPENING_XY, 24), (THUMB_OPENING_XY, 20)):
+            spec = mujoco.MjSpec()
+            body = spec.worldbody.add_body(name="handle")
+            _add_handle(spec, body, "handle", 0.0, np.zeros(2), opening, segments)
+            model = spec.compile()
+            data = mujoco.MjData(model)
+            mujoco.mj_forward(model, data)
+            geom = np.empty(1, dtype=np.int32)
+            direction = np.array([0.0, 0.0, -1.0])
+            for theta in np.linspace(0, 2 * np.pi, 36, endpoint=False) + 0.012:
+                rim = (opening / 2) * np.array([np.cos(theta), np.sin(theta)])
+                with self.subTest(segments=segments, theta=theta):
+                    inside = np.r_[0.995 * rim, 0.01]
+                    outside = np.r_[1.016 * rim, 0.01]
+                    self.assertLess(mujoco.mj_ray(model, data, inside, direction, None, 1, -1, geom), 0)
+                    self.assertAlmostEqual(
+                        mujoco.mj_ray(model, data, outside, direction, None, 1, -1, geom), 0.008,
+                    )
+
     def test_finger_section_must_pass_inside_the_handle_opening(self):
         from simulation.mujoco_scissor_cutting import _mesh_section_fits_opening
 
@@ -167,8 +191,7 @@ class MujocoScissorCuttingTest(unittest.TestCase):
 
     def test_scene_has_divided_tray_passive_scissors_and_cohesive_paper(self):
         from simulation.mujoco_scissor_cutting import (
-            HANDLE_BAR_HALF_WIDTH, PAPER_COLUMNS, PAPER_ROWS,
-            THUMB_OPENING_XY, TWO_FINGER_OPENING_XY,
+            PAPER_COLUMNS, PAPER_ROWS,
         )
 
         model, data, metrics = self.make_scene()
@@ -193,26 +216,14 @@ class MujocoScissorCuttingTest(unittest.TestCase):
             )
             np.testing.assert_allclose(first_anchor, second_anchor, atol=1e-12)
 
-        # Opposite tangent segments give the two oval spans.
-        for prefix, opening, segments in (
-            ("scissor_fixed_handle_", TWO_FINGER_OPENING_XY, 24),
-            ("scissor_moving_handle_", THUMB_OPENING_XY, 20),
+        for prefix, segments in (
+            ("scissor_fixed_handle_", 24),
+            ("scissor_moving_handle_", 20),
         ):
             self.assertEqual(
                 sum(model.geom(index).name.startswith(prefix) for index in range(model.ngeom)),
                 segments,
             )
-            left = model.geom(f"{prefix}left").id
-            right = model.geom(f"{prefix}right").id
-            top = model.geom(f"{prefix}top").id
-            bottom = model.geom(f"{prefix}bottom").id
-            measured = np.array([
-                model.geom_pos[right, 0] - model.geom_pos[left, 0]
-                - 2 * HANDLE_BAR_HALF_WIDTH,
-                model.geom_pos[top, 1] - model.geom_pos[bottom, 1]
-                - 2 * HANDLE_BAR_HALF_WIDTH,
-            ])
-            np.testing.assert_allclose(measured, opening, atol=0.001)
         self.assertGreaterEqual(model.geom("scissor_fixed_shank").id, 0)
         self.assertGreaterEqual(model.geom("scissor_moving_shank").id, 0)
 
