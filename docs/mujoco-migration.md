@@ -332,7 +332,7 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 在这个支撑姿态，左食指和拇指到各自柄孔边界的静态净空约 2.55 和 4.59 mm。用碰撞网格包络计算，左手最低点仍离桌约 8.27 mm。顺序执行时右手在左腕抵达前已失去柄部支撑，左手尚未接触柄。把左手预抓提前到右手支撑采样的起点后，整机起始姿态的两臂碰撞网格重叠约 81.1 mm，因此该同步方案未执行。净空及物理接触证据见 `runs/scissor_left_baseline_aabb_diag.json` 和 `runs/scissor_bimanual_contact_sync.json`。
 
 
-右手经真实接触将剪刀放在倾斜的托盘支撑姿态，再完全撤回。自由静置 1 s 后剪刀由三处托盘接触承托，固定环平面倾斜约 17.67°。随后仅左手前进，食指与拇指在仿真中同时通过固定环与活动环，连续保持约 0.55 s。食指接触固定环后，剪刀转动使拇指脱出，两个环还未形成同时受力，且尚未验证中指入环。见 `runs/scissor_right_setdown_home.{py,json}` 与 `runs/scissor_left_after_setdown.{py,json}`。
+右手经真实接触将剪刀放在倾斜的托盘支撑姿态，再完全撤回。自由静置 1 s 后剪刀由三处托盘接触承托，固定环平面倾斜约 17.67°。随后仅左手前进，食指和拇指的中心轴延长线在约 0.55 s 内与两孔相交。使用生产判据复核，食指、中指和拇指的完整网格截面均未通过环口，两个柄也未形成同时受力。在同一腕姿下平移手部测得的网格，严格双环截面要求腕目标至少比当前再降低约 36.3 mm，超出原路线的约 8.3 mm 桌面余量。采样中也没有食指、中指和拇指同时通过的候选。证据见 `runs/scissor_right_setdown_home.{py,json}`、`runs/scissor_left_after_setdown_mesh_verification.json` 与 `runs/scissor-staged-mesh-axial-search.json`。
 
 
 ## Tea Preparing
