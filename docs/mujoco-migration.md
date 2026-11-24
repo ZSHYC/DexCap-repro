@@ -429,7 +429,7 @@ python -m simulation.rollout data/derived/wiping-interior-contact-reference.hdf5
 ```
 
 
-完整的 Wiping 脚本参考从默认物体摆放开始。双手分别抓起自由盘子和弹性海绵。左手越过盘沿后转腕，让海绵的一侧宽面压向盘内。沿盘内的竖直投影方向擦拭，在第一笔被记录后反向，用实测海绵与盘的接触力调整法向目标。第 31.95 s 和 34.30 s 分别记录向上、向下的有效笔画。686 步标准回放判定 `sim_success=true`，两条笔画满足现有 60 mm 阈值，累计有效接触移动约 195 mm，机械臂碰撞计数为 0。此结果来自脚本动作。逐周期记录位于 `runs/wiping-two-stroke-reference-trace.json`，轨迹生成脚本位于同名 `.py`。
+掌心分块前的 Wiping 脚本参考从默认物体摆放开始。双手分别抓起自由盘子和弹性海绵。左手越过盘沿后转腕，让海绵的一侧宽面压向盘内。沿盘内的竖直投影方向擦拭，在第一笔被记录后反向，用实测海绵与盘的接触力调整法向目标。第 31.95 s 和 34.30 s 分别记录向上、向下的有效笔画。686 步标准回放判定 `sim_success=true`，两条笔画满足现有 60 mm 阈值，累计有效接触移动约 195 mm，机械臂碰撞计数为 0。此结果来自脚本动作。逐周期记录位于 `runs/wiping-two-stroke-reference-trace.json`，轨迹生成脚本位于同名 `.py`。
 
 ```bash
 python -m simulation.rollout data/derived/wiping-two-stroke-reference.hdf5 \
@@ -470,11 +470,19 @@ python -m simulation.rollout data/derived/wiping-palm-sustained-preload-e.hdf5 \
 ```
 
 
-保留原擦拭的切向目标，只在内盘面即将失去接触时小幅补偿左腕法向位移。标准回放在第 895 个动作完成向上的第一笔，触发时连续投影约 61.73 mm。接触连续保持到第 897 个动作，投影达到约 68.13 mm。双手在触发时分别相向夹住已离桌的盘子和海绵，机械臂碰撞计数为 0。反向回程仍未达到 60 mm 的连续阈值。逐动作计分和接触证据见 `/data/dexcap-repro/benchmarks/wiping-first-pass-reversal-diagnostic.json`。
+保留原擦拭的切向目标，只在内盘面即将失去接触时小幅补偿左腕法向位移。标准回放在第 895 个动作完成向上的第一笔，触发时连续投影约 61.73 mm。接触连续保持到第 897 个动作，投影达到约 68.13 mm。双手在触发时分别相向夹住已离桌的盘子和海绵，机械臂碰撞计数为 0。这条轨迹的反向回程未达到 60 mm 的连续阈值。逐动作计分和接触证据见 `/data/dexcap-repro/benchmarks/wiping-first-pass-reversal-diagnostic.json`。
 
 ```bash
 python -m simulation.rollout data/derived/wiping-palm-gap-correction-f.hdf5 \
   --task wiping --steps 897 --output runs/wiping-palm-first-stroke-rollout.json
+```
+
+
+在复合掌心模型中完成了默认摆放下的两笔擦盘。原回程中，左食指直接压到盘底，随后盘子重新碰桌。同期左中指和拇指仍有相向夹持。回程调整让食指退开，由左中指与拇指继续持海绵，同时微调双腕的回程位置和姿态。两份候选轨迹均从初始场景通过标准入口，方向依次为向上、向下。保留 946 动作的轨迹作回放参考，第 895 和 946 个动作分别记为有效笔画，累计有效行程约 136.14 mm。第二笔触发时盘底离桌约 79.2 mm，左手没有直接接触盘子，海绵与盘面接触力约 2.98 N。整段机械臂碰撞计数为 0，`sim_success=true`。轨迹只包含实际发给执行器的目标。证据位于 `/data/dexcap-repro/benchmarks/wiping-search-return-a-physical.json`。
+
+```bash
+python -m simulation.rollout data/derived/wiping-palm-search-return-a.hdf5 \
+  --task wiping --output runs/wiping-palm-search-return-a-rollout.json
 ```
 
 
