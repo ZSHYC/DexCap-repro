@@ -33,6 +33,13 @@ RED_BOX_HALF_SIZE = (0.070, 0.028, 0.044)
 CARDBOARD = (0.62, 0.42, 0.22, 1.0)
 RED_BOX_TOP_COLOR = (0.93, 0.20, 0.06, 1.0)
 WORKSPACE_CENTER = np.array([0.4, 0.0])
+CLOTH_OBJECT = "yellow-cloth"
+CLOTH_SIZE = (0.15, 0.13, 0.04)
+CLOTH_RADIUS = 0.003
+# The release measures shape but does not provide folded-textile material calibration.
+CLOTH_YOUNG_MODULUS_PA = 10_000
+CLOTH_POISSON_RATIO = 0.2
+CLOTH_DAMPING_S = 0.05
 
 
 def object_reference(name):
@@ -149,7 +156,32 @@ def _object_definition(object_name):
     return ((kind, size, (0, 0, 0), color, (0, 0, 0, 1)),), size[2]
 
 
+def _add_cloth(spec, xy):
+    color = PACKAGING_OBJECTS[CLOTH_OBJECT][2]
+    child = mujoco.MjSpec.from_string(
+        f"""
+        <mujoco model="dexcap_packaging_cloth">
+          <worldbody>
+            <flexcomp name="packaging_object" type="grid" count="6 6 3"
+                      spacing="0.03 0.026 0.02" dim="3" radius="{CLOTH_RADIUS}"
+                      pos="{xy[0]} {xy[1]} {TABLE_HEIGHT + CLOTH_SIZE[2] / 2 + CLOTH_RADIUS}"
+                      mass="0.12" dof="trilinear" rgba="{' '.join(map(str, color))}">
+              <elasticity young="{CLOTH_YOUNG_MODULUS_PA}" poisson="{CLOTH_POISSON_RATIO}"
+                          damping="{CLOTH_DAMPING_S}"/>
+              <contact selfcollide="none" friction="1.0 0.01 0.001"
+                       solref="0.005 1" solimp="0.9 0.99 0.001"/>
+            </flexcomp>
+          </worldbody>
+        </mujoco>
+        """
+    )
+    spec.attach(child, frame=spec.worldbody.add_frame(name="packaging_cloth_scene"), prefix="")
+
+
 def _add_object(spec, xy, object_name):
+    if object_name == CLOTH_OBJECT:
+        _add_cloth(spec, xy)
+        return
     definitions, support_height = _object_definition(object_name)
     body = spec.worldbody.add_body(
         name="packaging_object",
@@ -219,14 +251,31 @@ class PackagingMetrics:
         self.model = model
         self.box_body = model.body("packaging_box").id
         self.box_joint = model.joint("packaging_box_free").id
-        self.object_body = model.body("packaging_object").id
         self.lid_body = model.body("packaging_lid").id
         self.lid_joint = model.joint("packaging_lid_hinge").id
         self.floor_geom = model.geom("packaging_box_floor").id
         self.table_geom = model.geom("table").id
-        object_joint = model.body_jntadr[self.object_body]
-        self.initial_object_z = model.qpos0[model.jnt_qposadr[object_joint] + 2]
-        self.object_geoms = self._body_geoms(self.object_body, collidable_only=True)
+        self.object_flex = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_FLEX, "packaging_object")
+        if self.object_flex >= 0:
+            self.object_body = -1
+            self.object_geoms = set()
+            self.flex_start = model.flex_vertadr[self.object_flex]
+            self.flex_count = model.flex_vertnum[self.object_flex]
+            self.flex_radius = model.flex_radius[self.object_flex]
+            reference = mujoco.MjData(model)
+            mujoco.mj_forward(model, reference)
+            self.initial_object_z = float(np.mean(self._flex_vertices(reference)[:, 2]))
+            self.object_dofs = np.concatenate([
+                np.arange(model.body_dofadr[body], model.body_dofadr[body] + model.body_dofnum[body])
+                for body in range(model.nbody)
+                if model.body(body).name.startswith("packaging_object_")
+            ])
+        else:
+            self.object_body = model.body("packaging_object").id
+            object_joint = model.body_jntadr[self.object_body]
+            self.initial_object_z = model.qpos0[model.jnt_qposadr[object_joint] + 2]
+            self.object_geoms = self._body_geoms(self.object_body, collidable_only=True)
+            self.object_dofs = None
         self.box_geoms = self._body_geoms(self.box_body, collidable_only=True)
         self.lid_geoms = self._body_geoms(self.lid_body, collidable_only=True)
         self.right_geoms = self._named_geoms("right")
@@ -261,6 +310,29 @@ class PackagingMetrics:
                 result.append((contact, -np.asarray(contact.frame[:3])))
         return result
 
+    def _flex_vertices(self, data):
+        return data.flexvert_xpos[self.flex_start:self.flex_start + self.flex_count]
+
+    def _flex_contacts(self, data, geoms):
+        result = []
+        for index in range(data.ncon):
+            contact = data.contact[index]
+            if contact.geom[0] in geoms and contact.flex[1] == self.object_flex:
+                result.append((contact, np.asarray(contact.frame[:3])))
+            elif contact.geom[1] in geoms and contact.flex[0] == self.object_flex:
+                result.append((contact, -np.asarray(contact.frame[:3])))
+        return result
+
+    def _object_contacts(self, data, geoms):
+        if self.object_flex >= 0:
+            return self._flex_contacts(data, geoms)
+        return self._contacts(data, geoms, self.object_geoms)
+
+    def _object_center(self, data):
+        if self.object_flex >= 0:
+            return np.mean(self._flex_vertices(data), axis=0)
+        return data.xpos[self.object_body]
+
     def _object_grasped(self, contacts):
         if len(contacts) < 2:
             return False
@@ -284,6 +356,18 @@ class PackagingMetrics:
         return center - extent, center + extent
 
     def _object_in_box(self, data):
+        if self.object_flex >= 0:
+            box_position = data.xpos[self.box_body]
+            box_rotation = data.xmat[self.box_body].reshape(3, 3)
+            local = (self._flex_vertices(data) - box_position) @ box_rotation
+            lower = np.min(local, axis=0) - self.flex_radius
+            upper = np.max(local, axis=0) + self.flex_radius
+            inner_half = np.asarray(BOX_HALF_XY) - 2 * BOX_PANEL_HALF_THICKNESS
+            inside = np.all(lower[:2] >= -inner_half) and np.all(upper[:2] <= inner_half)
+            supported = bool(self._flex_contacts(data, {self.floor_geom}))
+            settled = np.max(np.abs(data.qvel[self.object_dofs])) < 0.05
+            return bool(inside and supported and settled)
+
         bounds = [self._geom_extent_in_box(data, geom) for geom in self.object_geoms]
         lower = np.min([bound[0] for bound in bounds], axis=0)
         upper = np.max([bound[1] for bound in bounds], axis=0)
@@ -296,7 +380,7 @@ class PackagingMetrics:
         return bool(inside and supported and settled)
 
     def update(self, data: mujoco.MjData) -> dict:
-        right_object = self._contacts(data, self.right_geoms, self.object_geoms)
+        right_object = self._object_contacts(data, self.right_geoms)
         left_lid = self._contacts(data, self.left_geoms, self.lid_geoms)
         left_box = self._contacts(data, self.left_geoms, self.box_geoms)
         for index, contacts in enumerate((right_object, left_lid, left_box)):
@@ -305,9 +389,9 @@ class PackagingMetrics:
         box_xy = np.asarray(data.xpos[self.box_body, :2]).copy()
         center_distance = np.linalg.norm(box_xy - WORKSPACE_CENTER)
         self.minimum_center_distance = min(self.minimum_center_distance, center_distance)
-        lifted = data.xpos[self.object_body, 2] > self.initial_object_z + 0.01
-        object_grasped = lifted and self._object_grasped(right_object) and not self._contacts(
-            data, self.object_geoms, {self.table_geom}
+        lifted = self._object_center(data)[2] > self.initial_object_z + 0.01
+        object_grasped = lifted and self._object_grasped(right_object) and not self._object_contacts(
+            data, {self.table_geom}
         )
         object_released = self.ever_grasped and not object_grasped
         self.ever_grasped |= object_grasped

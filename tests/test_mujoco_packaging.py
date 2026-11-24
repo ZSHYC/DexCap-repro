@@ -18,6 +18,7 @@ class MujocoPackagingTest(unittest.TestCase):
 
         spec = mujoco.MjSpec()
         spec.option.timestep = 0.002
+        spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
         spec.worldbody.add_geom(
             name="table",
             type=mujoco.mjtGeom.mjGEOM_PLANE,
@@ -57,6 +58,60 @@ class MujocoPackagingTest(unittest.TestCase):
             model.geom("packaging_object_geom").size,
             [0.070, 0.028, 0.044],
         )
+
+    def test_folded_cloth_deforms_and_requires_box_support_for_placement(self):
+        model, data, metrics = self.make_scene("yellow-cloth")
+        flex = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_FLEX, "packaging_object")
+        self.assertGreaterEqual(flex, 0)
+        start = model.flex_vertadr[flex]
+        count = model.flex_vertnum[flex]
+        initial = data.flexvert_xpos[start:start + count].copy()
+        np.testing.assert_allclose(np.ptp(initial, axis=0), [0.15, 0.13, 0.04])
+
+        # Press one half while the folded bundle rests on the table.
+        for _ in range(500):
+            mujoco.mj_step(model, data)
+        settled = data.flexvert_xpos[start:start + count].copy()
+        centers = {
+            body: model.body_pos[body, 0]
+            for body in range(model.nbody)
+            if model.body(body).name.startswith("packaging_object_")
+        }
+        for body, x in centers.items():
+            if x > np.median(list(centers.values())):
+                data.xfrc_applied[body, 2] = -1.0
+        for _ in range(250):
+            mujoco.mj_step(model, data)
+        bent = data.flexvert_xpos[start:start + count]
+        top = initial[:, 2] == initial[:, 2].max()
+        sides = initial[:, 0] > np.median(initial[:, 0])
+        self.assertGreater(
+            abs(bent[top & sides, 2].mean() - bent[top & ~sides, 2].mean()),
+            0.002,
+        )
+        self.assertGreater(
+            settled[top & sides, 2].mean() - bent[top & sides, 2].mean(),
+            0.001,
+        )
+
+        # Reinitialize above the box: it is not placed until it settles on the box floor.
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        box_rotation = data.xmat[metrics.box_body].reshape(3, 3)[:2, :2]
+        cloth_center = np.mean([model.body_pos[body, :2] for body in centers], axis=0)
+        for body in centers:
+            position = model.body_pos[body]
+            target_xy = box_rotation @ (position[:2] - cloth_center)
+            shift = np.r_[target_xy - position[:2], 0.15]
+            joint = model.body_jntadr[body]
+            for joint in range(joint, joint + model.body_jntnum[body]):
+                qpos = model.jnt_qposadr[joint]
+                data.qpos[qpos] += np.dot(shift, model.jnt_axis[joint])
+        mujoco.mj_forward(model, data)
+        self.assertFalse(metrics.update(data)["object_in_box"])
+        for _ in range(500):
+            mujoco.mj_step(model, data)
+        self.assertTrue(metrics.update(data)["object_in_box"])
 
     def test_scene_uses_two_free_bodies_and_an_unactuated_lid_hinge(self):
         model, _, _ = self.make_scene("blue-mug")
