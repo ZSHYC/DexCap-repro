@@ -36,7 +36,7 @@ class SpongePickingTest(unittest.TestCase):
         second = model.geom("right_hand_1").id
         other = model.geom("left_hand_0").id
         contacts = [
-            SimpleNamespace(geom=(g, -1), flex=(-1, metrics.flex))
+            SimpleNamespace(geom=(g, -1), flex=(-1, metrics.flex), frame=np.array([1.0, 0, 0]))
             for g in (first, second)
         ]
         sample = SimpleNamespace(ncon=2, contact=contacts, flexvert_xpos=vertices)
@@ -48,6 +48,8 @@ class SpongePickingTest(unittest.TestCase):
         contacts[1].geom = (other, -1)
         self.assertFalse(metrics.update(sample)["sim_success"])
         contacts[1].geom = (second, -1)
+        self.assertFalse(metrics.update(sample)["sim_success"])
+        contacts[1].geom = (-1, second)
         self.assertTrue(metrics.update(sample)["sim_success"])
 
     def test_sponge_is_sampled_in_the_published_rectangle(self):

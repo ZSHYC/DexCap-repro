@@ -1,5 +1,7 @@
 """Single-hand sponge pickup and lift from DexCap appendix A-F."""
 
+from itertools import combinations
+
 import mujoco
 import numpy as np
 
@@ -39,11 +41,24 @@ class SpongePickingMetrics:
 
     def update(self, data):
         contacts = [c for c in data.contact[:data.ncon] if self.flex in c.flex]
-        touch_geoms = {geom for c in contacts for geom in c.geom if geom >= 0}
-        counts = [len(touch_geoms & hand) for hand in self.hands]
-        if self.table not in touch_geoms and min(counts) == 0 and max(counts) >= 2:
-            lift = float(data.flexvert_xpos[self.vertices, 2].mean() - self.initial_height)
-            self.max_lift_m = max(self.max_lift_m, lift)
+        if not any(self.table in contact.geom for contact in contacts):
+            grips = []
+            for hand in self.hands:
+                normals = []
+                for contact in contacts:
+                    first, second = contact.geom
+                    if first in hand:
+                        normals.append((first, contact.frame[:3]))
+                    elif second in hand:
+                        normals.append((second, -contact.frame[:3]))
+                if normals:
+                    grips.append(normals)
+            if len(grips) == 1 and any(
+                first != second and np.dot(a, b) < -0.25
+                for (first, a), (second, b) in combinations(grips[0], 2)
+            ):
+                lift = float(data.flexvert_xpos[self.vertices, 2].mean() - self.initial_height)
+                self.max_lift_m = max(self.max_lift_m, lift)
         return {
             "sponge_grasped": self.max_lift_m > 0.01,
             "sponge_lift_m": float(self.max_lift_m),
