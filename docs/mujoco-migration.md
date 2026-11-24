@@ -724,9 +724,17 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 同一段 273 动作撑盘重放中，原版与新版均在末段保持约 80 mm 的盘下净空。新版随后固定保持最后一个腕位命令 200 周期，末态倾角约 21.0°、净空约 80.5 mm、盘与桌面有 9 个实际支点接触，无机械臂碰撞、双手碰撞或物理警告。标准 EGL 入口输出 `10000 × 6` 点云，50 项 MuJoCo 测试通过。此处净空沿盘局部 r125 mm、z14.5 mm 参考线计算。早先约 42 mm 的记录来自较长的接盘续段。几何和重放对照见 `/data/dexcap-repro/benchmarks/wiping-plate-convex-rim/`。
 
+在这一撑盘状态下重新执行右手完整预成形并保持左腕目标，1,112 步实际动作得到无右手接触的规划起点，盘仍由桌面支撑。从这个起点找出五条满足机器臂关节范围及原生接触约束的路线，并用正常执行器重放其中一条 49 路点路线。右食指从下方接触第 2 道径向坡段的第 53 扇区，最大实测盘面局部向上法向载荷为 0.746 N，右手无自碰、无碰桌，盘始终有桌面支撑。记录见 `/data/dexcap-repro/benchmarks/wiping-wedges-clear-preshape-state.npz`、`wiping-index-shared-wedges-arm-approach-b.json` 和 `wiping-index-wedge53-live-c9-trace.json`。
+
+从这次加载后的实测盘姿重新拟合拇指位置。四个拇指关节分段调整后，以局部盘面法线接近上表面，食指和拇指在真实接触中连续相向受力 41 个控制周期、约 2.05 s。食指力约 0.738–0.769 N，拇指力约 0.008–0.031 N。两指接触分别在 `rim_2_53` 的下表面与 `rim_2_57` 的上表面，盘仍由桌面支撑。逐步力记录见 `/data/dexcap-repro/benchmarks/wiping-index-wedge53-live-c9-dynamic-thumb-trace.json`。1,629 步可复放动作存于 `data/derived/wiping-index-thumb-wedge-opposed-reference.hdf5`，标准入口完整回放无物理警告、机械臂碰撞或双手碰撞，结果见 `runs/wiping-index-thumb-wedge-opposed-reference-rollout.json`。
+
 剪刀 334 步参考在紧邻分块提交前后的相同布局分别抬升 4.00 和 4.04 mm，未形成双手柄自由夹持，均无碰撞或物理警告。历史抬升 117.25 mm 的实验使用了 y 方向相差约 18.3 mm 的初始剪刀位置。现行布局需要重新规划接近开孔的手腕和指形。对照见 `runs/scissor-e941e61-matched-334.json` 和 `runs/leap-finger-parts-scissor-carry-rollout.json`。
 
+用现行剪刀位姿直接穿固定环，12 个腕部滚转方向均可把食指完整截面送入开孔。最少干涉的 330° 方案仍使无名指尖最深穿桌约 43.87 mm。以实测固定刀刃与托盘底的接触点为支点，静态转动约 21° 后开孔中心抬高约 57.05 mm，手部通过完整截面且无干涉，剪刀仍有真实几何支撑。对应的剪刀枢轴下侧需跟随上移约 32.2 mm。下一阶段需要执行器实际触碰枢轴并建立该转动。证据见 `runs/scissor_current_roll330_blade_floor_pivot_feasibility.json`。
+
 红银包装的旧接触模型在第 125 步左右靠食指和拇指的相向法向夹住包装物。现行模型同一阶段仅食指接触，物体随后被推开。拇指微闭合和腕部补偿两种尝试都未恢复抓取或入盒。另一条旧参考在前 463 步使用同一动作，差分发生在撤手关盖阶段。对照及补偿回放在 `/data/dexcap-repro/benchmarks/runs/red-610-*-grasp-trace.json` 和同目录的 `red-610-triangle-*-retune-*-rollout.json`。
+
+另用 60 mm 高位路径到达新的打开手形，接近阶段包装仅移动约 0.108 mm。首次触碰时食指尖离包装还有约 18.22 mm。把固定腕姿倾转约 23.6° 可在静态把两指配到相向，但食指近端和中指网格会侵入包装约 3.9–6.4 mm。这种姿态未执行动态回放。实际高位接近与倾角几何记录见 `/data/dexcap-repro/benchmarks/runs/red-live-4-16-high-approach-trace.json` 和 `red-tilted-4-16-pregrasp-fit.json`。
 
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
