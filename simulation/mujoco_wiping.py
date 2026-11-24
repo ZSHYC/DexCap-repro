@@ -10,12 +10,20 @@ import numpy as np
 from simulation.mujoco_sponge import SPONGE_HALF_XY, sponge_flexcomp, texture_sponge
 
 
-DEMO_OBJECT_XY = np.array([[0.54, -0.15], [0.542, 0.112]])
+DEMO_OBJECT_XY = np.array([[0.5509, -0.1559], [0.542, 0.112]])
 TABLE_HEIGHT = -0.03
-PLATE_RADIUS = 0.125
+PLATE_RADIUS = 0.134
 PLATE_INNER_RADIUS = 0.09
-PLATE_BASE_THICKNESS = 0.004
-PLATE_PROFILE = ((0.09, 0.002), (0.10, 0.007), (0.115, 0.0195), (0.125, 0.0185))
+PLATE_BASE_THICKNESS = 0.002
+# Top profile from RGB-D frames 2220 and 2295, relative to the base center.
+PLATE_PROFILE = (
+    (PLATE_INNER_RADIUS, PLATE_BASE_THICKNESS / 2),
+    (0.100, 0.0105),
+    (0.105, 0.0190),
+    (0.115, 0.0222),
+    (0.125, 0.0223),
+    (PLATE_RADIUS, 0.0181),
+)
 PLATE_CONTACT_TOLERANCE = 0.001
 MIN_WIPE_STROKE_M = 0.06
 
@@ -53,7 +61,8 @@ def _quat_for_ring(yaw, slope):
 def _plate_geoms():
     color = "0.88 0.90 0.96 1"
     geoms = [
-        '<geom name="wiping_plate_base" type="cylinder" size="0.09 0.002" '
+        f'<geom name="wiping_plate_base" type="cylinder" '
+        f'size="{PLATE_INNER_RADIUS} {PLATE_BASE_THICKNESS / 2}" '
         f'rgba="{color}" friction="0.8 0.01 0.001" condim="4"/>'
     ]
     segments = 32
@@ -119,7 +128,7 @@ def add_wiping_scene(spec, object_xy=DEMO_OBJECT_XY):
         f"""
         <mujoco model="dexcap_wiping">
           <worldbody>
-            <body name="wiping_plate" pos="{plate_xy[0]} {plate_xy[1]} {TABLE_HEIGHT + 0.002}">
+            <body name="wiping_plate" pos="{plate_xy[0]} {plate_xy[1]} {TABLE_HEIGHT + PLATE_BASE_THICKNESS / 2}">
               <freejoint name="wiping_plate_free"/>
               <inertial pos="0 0 0" mass="0.25" diaginertia="0.001 0.001 0.002"/>
               {_plate_geoms()}

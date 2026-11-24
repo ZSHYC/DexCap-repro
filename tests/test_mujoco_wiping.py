@@ -83,7 +83,7 @@ class MujocoWipingTest(unittest.TestCase):
         self.assertGreater(v[vertices[:, 2].argmax()], v[vertices[:, 2].argmin()])
 
         heights = []
-        for radius in (0.0, 0.115):
+        for radius in (0.0, 0.115, 0.131):
             geom = np.array([-1], dtype=np.int32)
             distance = mujoco.mj_ray(
                 model, data, np.array([object_xy[0, 0] + radius, object_xy[0, 1], 0.1]),
@@ -91,7 +91,8 @@ class MujocoWipingTest(unittest.TestCase):
             )
             self.assertTrue(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom[0]).startswith("wiping_plate_"))
             heights.append(0.1 - distance)
-        self.assertAlmostEqual(heights[1] - heights[0], 0.0175, delta=0.0015)
+        self.assertAlmostEqual(heights[1] - heights[0], 0.0212, delta=0.0015)
+        self.assertAlmostEqual(heights[2] - heights[0], 0.0185, delta=0.002)
         rim = model.geom("wiping_plate_rim_visual")
         self.assertEqual(tuple(rim.contype), (0,))
         self.assertEqual(tuple(rim.conaffinity), (0,))

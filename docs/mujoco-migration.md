@@ -84,7 +84,7 @@ python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
 | SetXF Packaging 训练物体 | 30 | 入盒 0 | 合盖 4 | 0 |
 | SetXF Packaging 未见物体 | 45 | 入盒 0 | 合盖 7 | 0 |
 
-115 个回合均使用 MuJoCo 3.6.0 和校正后的 LEAP 实体网格。逐回合核对确认数据、权重、步数和初始摆放与 `runs/leap-physical-benchmark/` 中的结果一致。Wiping PointNet 有 2 个回合抓起盘子、2 个回合抓起海绵，SetXF 分别为 0 和 3。表中的内盘面接触统计原始几何接触。累计擦拭笔画要求在同一次计分采样中双手都实际持物。Packaging 的接触参数已更新，75 个回合按后续加入 0.1 mm 入盒边界容差之前的条件计分。论文中的成功率来自实体机器人。 [逐物体汇总](assets/dexcap-formal-mujoco.json) · [论文评估](https://arxiv.org/html/2403.07788v2#S5.SS1)
+115 个回合均使用 MuJoCo 3.6.0 和校正后的 LEAP 实体网格。Wiping 结果来自这批评估运行时的 125 mm 半径盘型。逐回合核对确认数据、权重、步数和初始摆放与 `runs/leap-physical-benchmark/` 中的结果一致。Wiping PointNet 有 2 个回合抓起盘子、2 个回合抓起海绵，SetXF 分别为 0 和 3。表中的内盘面接触统计原始几何接触。累计擦拭笔画要求在同一次计分采样中双手都实际持物。Packaging 的接触参数已更新，75 个回合按后续加入 0.1 mm 入盒边界容差之前的条件计分。论文中的成功率来自实体机器人。 [逐物体汇总](assets/dexcap-formal-mujoco.json) · [论文评估](https://arxiv.org/html/2403.07788v2#S5.SS1)
 
 在 `pro1` 上复算已保存的汇总。
 
@@ -120,8 +120,12 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 
 将官方示范抓取前 13 帧的 13,820 个盘沿点按录制中的盘心与法向配准。用每像素约 3.9 mm 的正投影聚合蓝色区域。交替把帧分成两组后，两组同时有足够样本的像素上，蓝色分类一致率约 91.7%。配准和取样记录位于 `runs/wiping-rim-texture-{fit.json,samples.npz}`，生成脚本为 `runs/wiping-fit-rim-texture.py`。高频印刷细节和盘底外观仍缺少直接观测。
 
-公用盘沿剖面生成 MuJoCo 渲染网格。EGL 图像验证了盘沿图案的方向。原来承受物体接触的碰撞轮廓、盘子惯性和抓取判据继续使用。校正 LEAP 手模型前，111 步同动作回放抓起两件物体，内盘面接触为 0。可见图案与开环结果在 `runs/wiping-measured-rim-render.png` 和 `runs/wiping-measured-rim-replay.json`。
+公用盘沿剖面生成 MuJoCo 渲染网格。EGL 图像验证了盘沿图案的方向。纹理首次加入时沿用了当时的碰撞轮廓、盘子惯性和抓取判据。校正 LEAP 手模型前，111 步同动作回放抓起两件物体，内盘面接触为 0。可见图案与开环结果在 `runs/wiping-measured-rim-render.png` 和 `runs/wiping-measured-rim-replay.json`。
 
+
+随后对原始深度的第 0 和 15 帧各自做外缘圆拟合，半径分别为 133.81 和 133.82 mm，圆拟合残差中位数均低于 0.7 mm。生产场景据此更新盘心、半径和碰撞与渲染共用的径向剖面。115–125 mm 的盘沿高于盘底内表面约 21 mm。盘底和盘沿按 2 mm 建模，厚度和惯量均缺少实物标定。测量与模型对照在 `runs/wiping-measured-thin-plate-profile.{py,json}`。标准入口完成 111 步并输出 `10000 × 6` 点云，两件物体均未抓起，机械臂接触计数为 19。记录在 `runs/wiping-measured-plate-standard-rollout.json`。
+
+将五帧原始右手指尖投影到同步画面中，观察到拇指先进入盘内、食指从外侧靠近。第 27 帧发布动作在机器人运动学中把食指碰撞网格压入仿真桌面约 32.7 mm，拇指网格到录制指尖约 15.7 mm。正常回放第 27 步的右食指桌面接触力约 74.7 N，采到的受力点与发布网格的三角面相符。记录在 `runs/wiping-source-right-hand-contact-path.{py,json}` 和 `runs/wiping-leap-hull-contact-diagnosis.{py,json}`。
 
 ## Sponge Picking
 
