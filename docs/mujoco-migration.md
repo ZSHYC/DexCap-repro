@@ -72,3 +72,33 @@ python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
 用 `--first-seed` 可以把多个摆放拆给独立进程。每块按固定种子生成，按种子合并后使用与单进程评估相同的配对。用 `MUJOCO_EGL_DEVICE_ID` 设置渲染卡，用 `CUDA_VISIBLE_DEVICES` 设置策略推理卡。 `pro1` 评估分配在 GPU 0–3。
 
 历史 PyBullet 仿真代码和入口保存在基线提交。当前分支的 `simulation.rollout`、示范图和策略动作诊断均运行 MuJoCo。官方数据重建仍沿用作者的 PyBullet 指尖 IK。 [基线提交](https://github.com/ZSHYC/DexCap-repro/tree/0ee5418)
+
+
+## 115 回合闭环结果
+
+| 权重及任务 | 回合 | 抓取或入盒 | 内盘面接触或合盖 | 完整成功 |
+| --- | ---: | ---: | ---: | ---: |
+| PointNet Wiping | 20 | 两件均抓取 1 | 内盘面接触 0 | 0 |
+| SetXF Wiping | 20 | 两件均抓取 0 | 内盘面接触 0 | 0 |
+| SetXF Packaging 训练物体 | 30 | 入盒 0 | 合盖 20 | 0 |
+| SetXF Packaging 未见物体 | 45 | 入盒 0 | 合盖 22 | 0 |
+
+Wiping PointNet 分别有 4 个回合抓起盘子、2 个回合抓起海绵。SetXF 分别为 5 和 0。Packaging 的 15 个物体都完成 5 个回合。所有结果均由 MuJoCo 3.6.0 生成。论文中的成功率来自实体机器人。 [逐物体汇总](assets/dexcap-formal-mujoco.json) · [论文评估](https://arxiv.org/html/2403.07788v2#S5.SS1)
+
+在 `pro1` 上复算已保存的汇总。
+
+```bash
+folder=runs/formal-mujoco
+python -m simulation.summarize_results "$folder/wiping-pointnet.json" \
+  "$folder/wiping-setxf.json" "$folder/packaging-setxf-seed1-full-20261119T111945Z" \
+  --output "$folder/summary.json"
+```
+
+同一 Wiping 示范的 15 个时刻和 3 个推理种子用于对照动作误差。下表是第一步动作的右腕、左腕位置误差中位数，单位 mm。每个条件只比较同一个时刻和种子的策略输出。录制、移动相机渲染和固定相机渲染都沿用录制的本体状态，完整仿真输入由仿真提供本体状态。
+
+| 权重 | 录制输入 | MuJoCo 跟随录制相机 | MuJoCo 固定相机 | 完整仿真输入 |
+| --- | ---: | ---: | ---: | ---: |
+| PointNet | 3.3 / 3.9 | 7.8 / 11.5 | 7.5 / 11.4 | 11.8 / 15.0 |
+| SetXF | 3.4 / 4.6 | 5.9 / 12.6 | 6.1 / 12.1 | 6.8 / 11.9 |
+
+使用录制相机位姿时，两种权重仍有明显左腕误差。当前差异也来自接触后物体姿态和观测的变化。诊断在数据盘 `runs/formal-mujoco/wiping-*-action-diagnostics.json`。场景仍使用估计的泡棉、织物和铰链材料参数，以及依据录制估计的物体外形和安装位置。

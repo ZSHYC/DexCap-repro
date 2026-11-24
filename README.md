@@ -1,6 +1,6 @@
 # DexCap 论文复现
 
-`repro/mujoco` 分支的 `simulation.rollout` 使用双 Franka、双 LEAP 的 MuJoCo 场景。下文的 115 个回合记录的是先前的 PyBullet 实验。 [MuJoCo 运行方式与当前验证](docs/mujoco-migration.md)
+`repro/mujoco` 分支的 `simulation.rollout` 使用双 Franka、双 LEAP 的 MuJoCo 场景。Wiping 和 Packaging 已完成 115 回合闭环评估。 [MuJoCo 运行方式与当前验证](docs/mujoco-migration.md)
 
 在 `pro1` 上复现 DexCap / DexIL 的点云策略训练，使用作者发布的 Wiping 和 Packaging 数据。当前阶段聚焦仿真，支持两项公开任务的无界面轨迹回放和策略闭环。公开源码位于 `DexCap/`，取自 [`j96w/DexCap@4b0bed0`](https://github.com/j96w/DexCap/tree/4b0bed0966c87368f3cde4476aadb7585c3b94b5)。原作者许可见 [DexCap/LICENSE](DexCap/LICENSE)。 [DexCap 论文](https://arxiv.org/html/2403.07788v2#S5) · [运行 MuJoCo](docs/mujoco-migration.md) · [与论文表格的对应关系](docs/reproduction.md#与论文表格的对应关系)
 
@@ -8,7 +8,20 @@
 
 所有运行从 `pro1:~/dexcap-repro` 进入。`configs/` 保存训练配置，`envs/train` 是 Conda 环境。`data/` 和 `runs/` 分别链接到 `/data/dexcap-repro/data/` 和 `/data/dexcap-repro/runs/`，后续下载、预处理和训练输出通过这些入口写入数据盘。 [复现操作说明](docs/reproduction.md)
 
-## 正式仿真结果
+## MuJoCo 仿真结果
+
+在 `pro1` 上使用原有第 3000 轮权重、400 步回合和与基线配对的摆放种子。
+
+| 实验 | 分项结果 | 完整成功 |
+| --- | --- | ---: |
+| Wiping PointNet | 两件均抓取 1/20，内盘面接触 0/20 | 0/20 |
+| Wiping SetXF | 两件均抓取 0/20，内盘面接触 0/20 | 0/20 |
+| Packaging 训练物体 | 入盒 0/30，合盖 20/30 | 0/30 |
+| Packaging 未见物体 | 入盒 0/45，合盖 22/45 | 0/45 |
+
+[MuJoCo 汇总 JSON](docs/assets/dexcap-formal-mujoco.json) · [回放、动作诊断与服务器路径](docs/mujoco-migration.md)
+
+## PyBullet 基线
 
 三组训练各完成 3000 轮，每轮 500 个梯度步。正式评估使用第 3000 轮权重，合计 115 个回合，每回合 400 步。
 
