@@ -51,6 +51,13 @@ class MujocoPackagingTest(unittest.TestCase):
                     mujoco.mj_step(model, data)
                 self.assertTrue(np.isfinite(data.qpos).all())
 
+    def test_red_box_uses_measured_visible_envelope(self):
+        model, _, _ = self.make_scene()
+        np.testing.assert_allclose(
+            model.geom("packaging_object_geom").size,
+            [0.070, 0.028, 0.044],
+        )
+
     def test_scene_uses_two_free_bodies_and_an_unactuated_lid_hinge(self):
         model, _, _ = self.make_scene("blue-mug")
         box_joint = model.joint("packaging_box_free")

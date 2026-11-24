@@ -29,6 +29,7 @@ LID_OPEN_ANGLE = 0.108
 LID_CLOSED_TOLERANCE = np.deg2rad(6)
 DEFAULT_OBJECT = "red-box"
 RED_BOX_YAW = np.deg2rad(64)
+RED_BOX_HALF_SIZE = (0.070, 0.028, 0.044)
 CARDBOARD = (0.62, 0.42, 0.22, 1.0)
 RED_BOX_TOP_COLOR = (0.93, 0.20, 0.06, 1.0)
 WORKSPACE_CENTER = np.array([0.4, 0.0])
@@ -143,6 +144,8 @@ def _object_definition(object_name):
         return parts, -lower[2]
     registry = UNSEEN_PRIMITIVES if object_name in UNSEEN_PRIMITIVES else PACKAGING_OBJECTS
     kind, size, color, _ = registry[object_name]
+    if object_name == DEFAULT_OBJECT:
+        size = RED_BOX_HALF_SIZE
     return ((kind, size, (0, 0, 0), color, (0, 0, 0, 1)),), size[2]
 
 
