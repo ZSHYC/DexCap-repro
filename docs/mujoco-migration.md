@@ -742,6 +742,10 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 独立右腕上抬及双指闭环续段有少量采样没有桌面或左手接触，按盘沿最低点估计的最大净空仅约 0.031 mm，之后重新受桌面支撑。食指接触从平底附近滑到坡段，基于实际接触点的静态平衡估计随后也失效。闭环控制测到约 5.45/3.00 N 的峰值附近对夹，未稳定悬空。数据见 `wiping-c6-both-pad-feedback-lift-trace.json`、`wiping-c6-contact-anchor-lift-trace.json` 和 `wiping-c6-measured-wrench-history.json`。
 
+再次按实测腕位调整，双块掌部模型的擦盘右手续段从第 2598 步推进到第 2707 步。终点食指和拇指法向力为 5.76 和 3.50 N，桌面与左手仍接触盘子。此时第 13 块与拇指近节在第三组实测姿态产生约 6.32 N 接触，触点距掌部原始三角面约 3.55 mm，距拇指三角面约 0.034 mm。记录见 `/data/dexcap-repro/benchmarks/wiping-c6-palm13-z2-rebased-wrist-trace.json` 和同目录的 `wiping-c6-palm13-z2-source-contact.json`。
+
+在 `af96b28` 的另一条执行器回放中，绕右食指内侧预期接触点与拇指外侧接触点的连线滚转 −4°，可在加大预载时保留更靠内的平底支点。第 2264 步食指在半径约 69.36 mm 的平底承受 2.01 N，半径 90 mm 的盘沿坡段承受约 0.39 N。未滚转的旧路线在高载阶段 3.87 N 均落在半径约 90 mm 处。这个回放已确认食指支点的改变，余下的拇指加载和双手交接需继续验证。数据见 `/data/dexcap-repro/benchmarks/wiping-large-lever-index-roll-load-extension-trace.json`。
+
 单独重放 Wiping 的左手海绵拾取时，海绵由左中指和拇指相向夹持，从默认桌面抬升 39.64 mm。抬升超过 30 mm、对夹且无桌面接触的连续观测跨度为 3.5 s。标准入口重放前 162 步时 `sponge_grasped=true`，无碰撞或警告。右臂停在远处，盘位移约 0.007 mm。这段证据覆盖海绵拾取。数据见 `data/derived/wiping-left-sponge-isolated-current-reference.hdf5`，结果见 `runs/wiping-left-sponge-isolated-current-rollout.json`。
 
 剪刀 334 步参考在紧邻分块提交前后的相同布局分别抬升 4.00 和 4.04 mm，未形成双手柄自由夹持，均无碰撞或物理警告。历史抬升 117.25 mm 的实验使用了 y 方向相差约 18.3 mm 的初始剪刀位置。现行布局需要重新规划接近开孔的手腕和指形。对照见 `runs/scissor-e941e61-matched-334.json` 和 `runs/leap-finger-parts-scissor-carry-rollout.json`。
@@ -758,9 +762,13 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 中指与拇指替代抓法仍让多段指节穿入包装。左臂的桌面滚转尝试在接触前失去腕位跟踪。红银包装的挂耳槽几何为 12 × 28 mm，当前指尖横截面无法按测试姿态穿槽。对于挂耳外缘的上拉方案，在对侧长边为支点的静态估计中约需 0.57 N 向上载荷。对应数据见 `/data/dexcap-repro/benchmarks/runs/red-left-supported-roll-trace.json` 和 `red-hanger-hook-geometry.json`。
 
+红银包装的挂耳路线在静态关节路径上保留约 0.198 rad 的腕部第七轴余量。换算为腕位目标并实际执行后，第六轴先碰硬止挡，随后第七轴也逼近限位。停止时腕位误差约 14.1 mm，尚未碰到挂耳。当前笛卡尔控制器的冗余自由度回归默认姿态，这次执行偏离了静态逆解的关节分支。证据见 `/data/dexcap-repro/benchmarks/runs/red-hanger-branch-detour-plan.json` 和同目录的 `red-hanger-branch-detour-trace.json`。
+
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
 对现有工具另试中指与拇指夹持，在动力学回放中有 296 个 2 ms 子步出现相向接触，最佳同时法向力约 0.103 和 0.030 N，托架仍承重，随后拇指脱开。在默认镊子上从侧面尝试滚动未建立手部接触，工具仍由原托架支撑。证据见 `runs/tea-convex47-alt-digit-physical.json` 和 `runs/tea-tweezers-top-tangent-production-cradle-roll-a.json`。
 
+
+备茶在默认镊子和木托架上进行连续两次推移。首次右食指与镊子的接触峰值为 1.12 N，卸载后镊子沿世界 y 轴移动约 18.79 mm。由实际到位的镊子姿态重新接近后，第二次接触峰值为 0.505 N。撤手稳定后镊子相对原姿态转动约 38.40°，总水平位移约 44.7 mm，托架仍承担约 0.089 N，茶盘底未接触镊子。第二次推移无机械臂碰撞或物理警告。逐步记录见 `runs/tea-production-cradle-roll-contact.json` 和 `runs/tea-production-cradle-slide-extension.json`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
