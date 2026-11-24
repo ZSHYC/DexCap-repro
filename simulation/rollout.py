@@ -9,13 +9,18 @@ import mujoco
 import numpy as np
 
 from simulation.frames import ActionFrames
-from simulation import mujoco_packaging, mujoco_wiping
+from simulation import mujoco_packaging, mujoco_sponge_picking, mujoco_wiping
 from simulation.mujoco_control import CONTROL_INTERVAL
 from simulation.mujoco_scene import MAX_CONTROL_CYCLES, MujocoScene, PHYSICS_STEP, rig_base_positions
 
 
 PROPRIOCEPTION = ("robot0_eef_pos", "robot0_eef_quat", "robot0_eef_hand")
 ASSET_ROOT = Path(__file__).resolve().parents[1] / "data/mujoco_menagerie"
+TASKS = {
+    "wiping": (mujoco_wiping, ("plate_xy", "sponge_xy")),
+    "packaging": (mujoco_packaging, ("box_xy", "object_xy")),
+    "sponge-picking": (mujoco_sponge_picking, ("sponge_xy",)),
+}
 
 
 def load_demo(dataset):
@@ -46,9 +51,8 @@ def rollout(args):
         policy, _ = policy_from_checkpoint(ckpt_path=args.checkpoint, device=device)
 
     packaging = args.task == "packaging"
-    task = mujoco_packaging if packaging else mujoco_wiping
+    task, position_keys = TASKS[args.task]
     object_name = (args.object or mujoco_packaging.DEFAULT_OBJECT) if packaging else None
-    position_keys = ("box_xy", "object_xy") if packaging else ("plate_xy", "sponge_xy")
     start = frames.to_world(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
 
@@ -139,7 +143,7 @@ def rollout(args):
 def main():
     parser = argparse.ArgumentParser(description="Run a dual-arm DexCap MuJoCo episode")
     parser.add_argument("dataset", type=Path)
-    parser.add_argument("--task", choices=("wiping", "packaging"), default="wiping")
+    parser.add_argument("--task", choices=TASKS, default="wiping")
     parser.add_argument("--object", choices=(*mujoco_packaging.PACKAGING_OBJECTS,
                                            *mujoco_packaging.PACKAGING_UNSEEN_OBJECTS),
                         help="Select the Packaging policy-evaluation object")

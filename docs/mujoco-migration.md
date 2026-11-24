@@ -117,3 +117,12 @@ python -m simulation.summarize_results "$folder/wiping-pointnet.json" \
 将官方示范抓取前 13 帧的 13,820 个盘沿点按录制中的盘心与法向配准。用每像素约 3.9 mm 的正投影聚合蓝色区域。交替把帧分成两组后，两组同时有足够样本的像素上，蓝色分类一致率约 91.7%。配准和取样记录位于 `runs/wiping-rim-texture-{fit.json,samples.npz}`，生成脚本为 `runs/wiping-fit-rim-texture.py`。高频印刷细节和盘底外观仍缺少直接观测。
 
 公用盘沿剖面生成 MuJoCo 渲染网格。EGL 图像验证了盘沿图案的方向。原来承受物体接触的碰撞轮廓、盘子惯性和抓取判据继续使用。111 步同动作回放仍抓起两件物体，内盘面接触为 0。可见图案与开环结果在 `runs/wiping-measured-rim-render.png` 和 `runs/wiping-measured-rim-replay.json`。
+
+
+## Sponge Picking
+
+论文图 5 中的单手拾取任务使用与 Wiping 相同外观的分层海绵。仿真复用已测量的弹性海绵，移除盘子，按论文在 40 × 70 cm 区域采样。单只手保持接触、海绵脱离桌面且质心上升超过 30 cm 时，任务通过。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
+
+在 `pro1` 的 MuJoCo 中，从公开 Wiping 轨迹取接近段。第 75 步建立了实际抓持，随后沿竖直方向以每步 1 cm 移动腕部目标。第 32 个抬升指令后，海绵在单手接触中累计上升 **306.0 mm**。轨迹通过双 Franka 与 LEAP 的力限控制执行。验证脚本和每步记录存于数据盘的 `runs/sponge-picking-physical-lift-probe.{py,json}`。
+
+`python -m simulation.rollout --task sponge-picking` 接受项目使用的 46 维动作 HDF5 与兼容策略权重。作者当前公开数据文件未包含 Sponge Picking 轨迹或权重，306.0 mm 的结果衡量场景中的物理拾取功能。论文的策略成功率仍缺少可配对数据。 [发布的文件列表](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/main)

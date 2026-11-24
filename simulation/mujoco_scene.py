@@ -40,19 +40,28 @@ class MujocoScene:
         add_robots(spec, asset_root, self.base_positions, [[1, 0, 0, 0]] * 2)
         add_camera(spec, camera)
 
+        metrics_args = ()
         if task == "wiping":
             from simulation.mujoco_wiping import WipingMetrics, add_wiping_scene
 
             add_wiping_scene(spec, object_xy)
+            metrics_type = WipingMetrics
+        elif task == "sponge-picking":
+            from simulation.mujoco_sponge_picking import SpongePickingMetrics, add_sponge_picking_scene
+
+            add_sponge_picking_scene(spec, object_xy)
+            metrics_type = SpongePickingMetrics
         else:
             from simulation.mujoco_packaging import PackagingMetrics, add_packaging_scene
 
             add_packaging_scene(spec, object_xy, object_name)
+            metrics_type = PackagingMetrics
+            metrics_args = (object_name,)
 
         self.model = spec.compile()
         self.data = mujoco.MjData(self.model)
         self.control = DualArmController(self.model, self.data)
-        self.metrics = WipingMetrics(self.model) if task == "wiping" else PackagingMetrics(self.model, object_name)
+        self.metrics = metrics_type(self.model, *metrics_args)
         self.camera = DexCapCamera(self.model, camera)
         self.arm_geoms = np.array([
             (self.model.geom(index).name or "").startswith(("right_arm_", "left_arm_"))
