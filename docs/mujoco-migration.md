@@ -798,7 +798,7 @@ python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference
 
 改从上方用左食指压固定刀片侧面，首次真实接触约 1.01 N，侵入约 0.027 mm，未出现其他机器人碰撞。加载随后由托盘底和柄侧邻墙共同承受，活动柄没有抬升，固定环仅向内约 0.096 mm。逐动力学子步见 `runs/scissor_ed8bba8_left_blade_lever_recovery/`。
 
-右食指接近托盘墙上方露出的活动柄下侧。调整未参与操作的指关节后，完整模型在原布局执行 3,534 个 2 ms 子步，记录到 927 个右食指托柄接触子步，峰值法向力 0.0503 N，无其他机器人接触或求解器警告。活动环净抬升约 5.00 mm，剪刀始终受托盘承托，尚未提起剪刀或剪纸。记录见 `runs/scissor_89a2f80_moving_handle_underlift/underhandle_dynamic_final.json`。
+右食指接近托盘墙上方露出的活动柄下侧。调整未参与操作的指关节后，完整模型在原布局执行 3,534 个 2 ms 子步，记录到 927 个右食指托柄接触子步，峰值法向力 0.0503 N，无其他机器人接触或求解器警告。活动环净抬升约 5.00 mm，剪刀始终受托盘承托，尚未提起剪刀或剪纸。记录见 `runs/scissor_89a2f80_moving_handle_underlift/underhandle_dynamic_final.json`。 沿同一路径把抬升目标延至 15 mm 后，活动环、固定环和工具基座分别实测抬升约 15.02、3.08、4.89 mm。806 个子步记录到食指接触，峰值约 0.130 N。结束时活动刀片与托盘底和桌面仍接触，固定刀片还与前隔板接触。抬升目标增至 30 mm 时，活动环实际抬升 20.96 mm，工具基座抬升 8.14 mm，食指峰值载荷 0.156 N。三处刀片支撑仍在，未脱离托盘。两条续段见同目录的 `underhandle_dynamic_continuation15.json` 和 `underhandle_dynamic_continuation30.json`。
 
 固定和活动椭圆柄环的碰撞体使用共享边界的 24 和 20 块凸楔体。内侧边与标称椭圆相切，保留 4 mm 厚度以及现有被动铰链。原矩形分段按每个柄 1,440 个角度测量，固定环和活动环最多向开孔内侵入约 0.57 和 0.30 mm。在标称内半径的 99% 位置，原版分别误挡 838 和 912 个采样，改后均为 0。新版的多边形顶点相对标称椭圆往外约 0–0.34 mm。标准动作回放完成 334 步，剪刀仍只抬升约 4.08 mm，无物理警告。托盘支撑、两环位置与纸带稳定性现有回归通过，51 项 MuJoCo 测试通过。证据见 `/data/dexcap-repro/benchmarks/scissor-handle-box-ray-measurement.json` 与 `scissor-continuous-oval/`。
 
@@ -817,6 +817,13 @@ python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference
 红银包装初始底面贴桌，约 21.1 mm 的实际食指最小截面无法从下方进入。沿挂耳切向推移时，实测峰值法向力约 0.180 N，包装物仅移动约 0.10 mm。另拟合左手从上方接近主盒的路线。双手可以在同一初始动作下合法复位，实际左臂行进时，无名指末节与掌部产生约 2.24 N 的自碰载荷，因此在接触包装之前停止。记录在 `/data/dexcap-repro/benchmarks/runs/red-hanger-away-push-trace.json` 与同目录的 `left-overhead-red-bimanual-prepose-native-contact.json`。
 
 复核左臂的整条载荷路径后，确认旧待机姿态的右臂阻挡左臂。受力最大的双臂接触约 11.48 N，另有右臂与左掌间约 6.45 N 的接触。让右臂在默认关节姿态待机，保持已测的包装摆放，用受限关节力矩跟踪左臂，左手在第 93 个目标接触包装顶部，初始法向力约 0.881 N。随后沿远离纸盒方向续推，包装净位移约 13.87 mm，其中朝远离纸盒方向约 8.34 mm，转动约 15.58°，峰值法向力约 1.23 N，机械臂碰撞计数为 0。此为 MuJoCo 物理诊断过程，使用左臂关节目标，尚未恢复现行手模型下的完整入盒动作。原碰撞与续推数据见 `/data/dexcap-repro/benchmarks/runs/left-overhead-red-full-constraint-audit.json` 和同目录的 `left-overhead-red-carton-away-active.json`。
+
+将同一动作的实测腕位换成 46 维标准输入后，从默认包装摆放重放 159 个动作。实测包装平移约 13.04 mm、转动约 14.87°。54 个动作端点记录到左手载荷超过 0.015 N，峰值约 1.08 N。重放无物理警告、机械臂碰撞、双手碰撞或关节越限失败。该文件覆盖包装重新摆位，包装尚未被右手夹起。接触和位移数据在 `/data/dexcap-repro/benchmarks/runs/left-overhead-red-carton-cartesian-observed-trace.json`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-left-reposition-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-red-carton-left-reposition-rollout.json
+```
 
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
