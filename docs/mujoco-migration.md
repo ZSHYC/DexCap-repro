@@ -244,7 +244,9 @@ python -m simulation.rollout data/derived/ball-collecting-compound-palm-referenc
 
 ## Scissor Cutting
 
-`python -m simulation.rollout --task scissor-cutting` 使用固定分隔托盘、两个可碰撞的剪刀刚体、被动铰链、与铰链实际相连的镂空手柄和粉色纸带。纸带分段间由带弯曲阻力的弹性约束保持连续。每个 MuJoCo 子步读取刀刃压力，只有剪刀真实闭合且双侧压力到达接缝邻域时才断开局部纸带键。累计切口超过 3 mm 为论文的切割成功条件。初始布局来自图 5，尺寸和纸张断裂力仍按仿真设定。纸带只支持已建模的接缝。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
+`python -m simulation.rollout --task scissor-cutting` 使用固定分隔托盘、两个可碰撞的剪刀刚体、被动铰链、与铰链实际相连的镂空手柄和粉色纸带。120 × 20 mm 的纸带由 10 × 5 个可碰撞单元和 85 条具有弯曲阻力的可断裂连接构成。剪刀闭合时，两片刀刃都必须在刀锋交汇点附近压到同一条网格边才会断开该边。报告的切口按断开的边长累加，分辨率由 4 mm 和 12 mm 的网格边决定。机器人有效抓持时累计切口超过 3 mm 为论文的任务判据。初始布局参考图 5，几何和材料参数仍为估计。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [MuJoCo 焊接约束](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#equality-weld)
+
+偏离纸带中部的夹具试验中，旧单排接缝的切口为 0。新模型记录了 3 次局部断裂事件，断开边长累计 40 mm。纸带移到刀口之外时为 0。在默认摆放下，纸带由托盘底和侧壁承托，连续静置 25 s，无物理警告。标准双臂入口执行 8 步并输出 `10000 × 6` 点云。记录见 `runs/scissor-paper-grid-cut-fixture.json`、`runs/scissor-paper-grid-settle-1-.120.json` 和 `runs/scissor-paper-grid-production-entry.json`。
 
 在包含双臂和摄像的正式 2 ms 场景中，对铰链施加力矩后实际断开一个 4 mm 接缝段。把纸带放到刀口之外时切口保持为 0。这个试验验证机构和子步回调，整段双手抓剪刀、提纸和切割仍缺官方轨迹。记录见 `runs/scissor-production-hook-probe.{py,json}`。
 

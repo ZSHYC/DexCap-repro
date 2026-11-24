@@ -36,22 +36,24 @@ HANDLE_BAR_HALF_WIDTH = 0.004
 HANDLE_HALF_HEIGHT = 0.001
 FIXED_HANDLE_CENTER = np.array([-0.082, 0.032])
 MOVING_HANDLE_CENTER = np.array([-0.075, -0.032])
-PAPER_HALF_LENGTH = 0.030
+PAPER_LENGTH = 0.120
+PAPER_COLUMNS = 10
+PAPER_ROWS = 5
+PAPER_CELL_LENGTH = PAPER_LENGTH / PAPER_COLUMNS
+PAPER_CELL_WIDTH = 0.004
 PAPER_HALF_THICKNESS = 0.0004
 PAPER_LEAN = np.deg2rad(8)
 PAPER_STIFFNESS = 1.0e5
 PAPER_SOLREF = [-PAPER_STIFFNESS, -2 * np.sqrt(PAPER_STIFFNESS)]
 PAPER_SOLIMP = [0.998, 0.9999, 0.0001, 0.5, 2]
 # The tape's lower edge meets the tray floor and its face meets the inner rim.
-PAPER_SEAM_Y = (
+PAPER_CENTER_Y = (
     TRAY_CENTER[1] - TRAY_HALF_XY[1] + TRAY_THICKNESS
     + TRAY_WALL_HEIGHT * np.tan(PAPER_LEAN)
     + PAPER_HALF_THICKNESS / np.cos(PAPER_LEAN)
-    - 2 * PAPER_HALF_LENGTH * np.sin(PAPER_LEAN)
+    - PAPER_LENGTH / 2 * np.sin(PAPER_LEAN)
 )
-DEMO_OBJECT_XY = np.array([SCISSOR_DEFAULT_POSITION[:2], [0.41, PAPER_SEAM_Y]])
-BOND_COUNT = 5
-BOND_PITCH = 0.004
+DEMO_OBJECT_XY = np.array([SCISSOR_DEFAULT_POSITION[:2], [0.41, PAPER_CENTER_Y]])
 BOND_BREAK_FORCE_N = 0.05
 GRASP_CONTACT_FORCE_N = 0.05
 CUT_CONTACT_RADIUS_M = 0.006
@@ -155,56 +157,58 @@ def _add_scissors(spec, xy):
 
 
 def _add_paper(spec, xy):
-    pink = [0.98, 0.25, 0.55, 1]
-    segment_half_width = BOND_PITCH * 0.45
     along = np.array([0.0, -np.sin(PAPER_LEAN), np.cos(PAPER_LEAN)])
     across = np.array([1.0, 0.0, 0.0])
     rotation = np.column_stack([along, across, np.cross(along, across)])
     quat = np.empty(4)
     mujoco.mju_mat2Quat(quat, rotation.ravel())
     foot_z = TABLE_HEIGHT + PAPER_HALF_THICKNESS * np.sin(PAPER_LEAN) + 0.00005
-    seam_z = foot_z + 2 * PAPER_HALF_LENGTH * along[2]
-    bodies = {"left": [], "right": []}
-    for index in range(BOND_COUNT):
-        seam = np.array([*xy, seam_z]) + across * (index - (BOND_COUNT - 1) / 2) * BOND_PITCH
-        names = []
-        for side, direction in (("left", -1), ("right", 1)):
-            name = f"cutting_paper_{side}_{index}"
+    center = np.array([*xy, foot_z + PAPER_LENGTH / 2 * along[2]])
+    cell_size = np.array([PAPER_CELL_LENGTH, PAPER_CELL_WIDTH])
+
+    def name(column, row):
+        return f"cutting_paper_{column}_{row}"
+
+    for column in range(PAPER_COLUMNS):
+        for row in range(PAPER_ROWS):
+            offset = np.array([
+                (column - (PAPER_COLUMNS - 1) / 2) * PAPER_CELL_LENGTH,
+                (row - (PAPER_ROWS - 1) / 2) * PAPER_CELL_WIDTH,
+                0,
+            ])
             body = spec.worldbody.add_body(
-                name=name,
-                pos=seam + direction * PAPER_HALF_LENGTH * along, quat=quat,
+                name=name(column, row), pos=center + rotation @ offset, quat=quat,
             )
-            body.add_freejoint(name=f"{name}_free")
+            body.add_freejoint(name=f"{body.name}_free")
             paper = _box(
-                body, f"{name}_geom",
-                [PAPER_HALF_LENGTH, segment_half_width, PAPER_HALF_THICKNESS],
-                [0, 0, 0], pink, density=180,
+                body, f"{body.name}_geom",
+                [*(cell_size / 2 - 0.00005), PAPER_HALF_THICKNESS],
+                [0, 0, 0], [0.98, 0.25, 0.55, 1], density=180,
             )
             # Firm paper contacts avoid slow slip while the tape rests on the rim.
             paper.solmix = 12
             paper.solimp = [0.985, 0.998, 0.00005, 0.5, 2]
-            names.append(name)
-            bodies[side].append(name)
-        spec.add_equality(
-            name=f"paper_bond_{index}", type=mujoco.mjtEq.mjEQ_WELD,
-            objtype=mujoco.mjtObj.mjOBJ_BODY, name1=names[0], name2=names[1],
-            data=[-PAPER_HALF_LENGTH, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.04],
-            solref=PAPER_SOLREF, solimp=PAPER_SOLIMP,
-        )
-    for side, names in bodies.items():
-        for index, (first, second) in enumerate(zip(names, names[1:])):
-            spec.add_equality(
-                name=f"paper_{side}_link_{index}",
-                type=mujoco.mjtEq.mjEQ_WELD,
-                objtype=mujoco.mjtObj.mjOBJ_BODY,
-                name1=first, name2=second,
-                data=[0, -BOND_PITCH / 2, 0, 0, 1, 0, 0, 0, 0, 0, 0.024],
-                solref=PAPER_SOLREF, solimp=PAPER_SOLIMP,
-            )
+
+    for column in range(PAPER_COLUMNS):
+        for row in range(PAPER_ROWS):
+            neighbors = [(column + 1, row), (column, row + 1)]
+            for axis, (next_column, next_row) in enumerate(neighbors):
+                if next_column == PAPER_COLUMNS or next_row == PAPER_ROWS:
+                    continue
+                anchor = np.zeros(3)
+                anchor[axis] = cell_size[axis] / 2
+                spec.add_equality(
+                    name=f"paper_bond_{column}_{row}_{axis}", type=mujoco.mjtEq.mjEQ_WELD,
+                    objtype=mujoco.mjtObj.mjOBJ_BODY,
+                    name1=name(column, row), name2=name(next_column, next_row),
+                    # A smaller bending compliance keeps the finer tape upright on the rim.
+                    data=[*(-anchor), *anchor, 1, 0, 0, 0, 0.12],
+                    solref=PAPER_SOLREF, solimp=PAPER_SOLIMP,
+                )
 
 
 def add_scissor_cutting_scene(spec: mujoco.MjSpec, object_xy=DEMO_OBJECT_XY):
-    """Add fixed tray, passive free scissors, and seamed free paper tape."""
+    """Add fixed tray, passive free scissors, and free bonded paper tape."""
     positions = np.asarray(object_xy, dtype=float)
     if positions.shape != (2, 2) or not np.isfinite(positions).all():
         raise ValueError("object_xy must contain finite scissors and paper XY positions")
@@ -231,7 +235,7 @@ def _mesh_section_fits_opening(vertices, faces, half_opening):
 
 
 class ScissorCuttingMetrics:
-    """Release seam bonds from local opposing-blade contact and report progress."""
+    """Release paper bonds from local opposing-blade contact and report progress."""
 
     def __init__(self, model: mujoco.MjModel):
         self.model = model
@@ -240,25 +244,27 @@ class ScissorCuttingMetrics:
         hinge = model.joint("scissor_hinge")
         self.hinge_dof = hinge.dofadr[0]
         self.scissor_body = model.body("scissor_base").id
-        self.paper_bodies = []
-        self.paper_geoms = set()
-        self.geom_bond = {}
-        self.geom_body = {}
-        self.geom_anchor = {}
-        self.bond_equalities = []
-        for index in range(BOND_COUNT):
-            self.bond_equalities.append(model.equality(f"paper_bond_{index}").id)
-            for side in ("left", "right"):
-                body = model.body(f"cutting_paper_{side}_{index}").id
-                geom = model.geom(f"cutting_paper_{side}_{index}_geom").id
-                self.paper_bodies.append(body)
-                self.paper_geoms.add(geom)
-                self.geom_bond[geom] = index
-                self.geom_body[geom] = body
-                self.geom_anchor[geom] = np.array([
-                    PAPER_HALF_LENGTH if side == "left" else -PAPER_HALF_LENGTH,
-                    0, 0,
-                ])
+        paper_geom_by_body = {
+            model.geom_bodyid[geom]: geom for geom in self._geoms("cutting_paper_")
+        }
+        self.paper_bodies = list(paper_geom_by_body)
+        self.paper_geoms = set(paper_geom_by_body.values())
+        self.geom_bonds = {geom: [] for geom in self.paper_geoms}
+        self.bond_lengths = {}
+        for equality in range(model.neq):
+            if not model.equality(equality).name.startswith("paper_bond_"):
+                continue
+            first, second = model.eq_obj1id[equality], model.eq_obj2id[equality]
+            second_anchor, first_anchor = model.eq_data[equality, :6].reshape(2, 3)
+            tangent = 1 - int(np.argmax(np.abs(first_anchor)))
+            length = (PAPER_CELL_LENGTH, PAPER_CELL_WIDTH)[tangent]
+            self.bond_lengths[equality] = length
+            self.geom_bonds[paper_geom_by_body[first]].append(
+                (equality, first_anchor, tangent, length),
+            )
+            self.geom_bonds[paper_geom_by_body[second]].append(
+                (equality, second_anchor, tangent, length),
+            )
         self.tray_geoms = self._geoms("cutting_tray_")
         self.fixed_handle = self._geoms("scissor_fixed_handle_")
         self.moving_handle = self._geoms("scissor_moving_handle_")
@@ -290,7 +296,7 @@ class ScissorCuttingMetrics:
             for geom in self._geoms("right_hand_collision_")
         }
         self.right_pads.update(dict.fromkeys(self._geoms("right_hand_palm_collision_"), False))
-        self.held_bonds = 0
+        self.held_cut_length = 0.0
         self.initial_scissor_z = float(model.body_pos[self.scissor_body, 2])
         self.initial_paper_z = float(np.mean(model.body_pos[self.paper_bodies, 2]))
         self.max_scissor_lift = 0.0
@@ -350,44 +356,69 @@ class ScissorCuttingMetrics:
             and self._finger_in_opening(data, self.left_middle, self.fixed_opening)
         )
 
+    def _blade_crossing(self, data):
+        fixed, moving = self.fixed_blade, self.moving_blade
+        fixed_axes = data.geom_xmat[fixed].reshape(3, 3)[:, :2]
+        moving_axes = data.geom_xmat[moving].reshape(3, 3)[:, :2]
+        fixed_edge = data.geom_xpos[fixed] + fixed_axes[:, 1] * self.model.geom_size[fixed, 1]
+        moving_edge = data.geom_xpos[moving] - moving_axes[:, 1] * self.model.geom_size[moving, 1]
+        offset = fixed_axes.T @ (moving_edge - fixed_edge)
+        direction = fixed_axes.T @ moving_axes[:, 0]
+        if direction[1] <= 0:
+            return None
+        along_moving = -offset[1] / direction[1]
+        along_fixed = offset[0] + along_moving * direction[0]
+        if (abs(along_fixed) > self.model.geom_size[fixed, 0]
+                or abs(along_moving) > self.model.geom_size[moving, 0]):
+            return None
+        return (fixed_edge + along_fixed * fixed_axes[:, 0]
+                + moving_edge + along_moving * moving_axes[:, 0]) / 2
+
     def physics_step(self, data: mujoco.MjData) -> None:
         """Apply cohesive failure from contacts produced by the latest substep."""
-        contacts = {index: {} for index in range(BOND_COUNT)}
+        closing = data.qvel[self.hinge_dof] < -0.01
+        crossing = self._blade_crossing(data) if closing else None
+        contacts = {}
         force = np.zeros(6)
         blades = {self.fixed_blade, self.moving_blade}
         for contact_index in range(data.ncon):
             contact = data.contact[contact_index]
-            pair = {contact.geom1, contact.geom2}
-            blade = next((geom for geom in blades if geom in pair), None)
-            paper = next((geom for geom in self.paper_geoms if geom in pair), None)
-            if blade is None or paper is None:
-                continue
-            body = self.geom_body[paper]
-            seam = (
-                data.xpos[body]
-                + data.xmat[body].reshape(3, 3) @ self.geom_anchor[paper]
-            )
-            if np.linalg.norm(np.asarray(contact.pos) - seam) > CUT_CONTACT_RADIUS_M:
+            first, second = contact.geom1, contact.geom2
+            blade, paper = (first, second) if first in blades else (second, first)
+            if blade not in blades or paper not in self.paper_geoms:
                 continue
             mujoco.mj_contactForce(self.model, data, contact_index, force)
             normal_force = abs(float(force[0]))
-            bond = self.geom_bond[paper]
-            contacts[bond][blade] = contacts[bond].get(blade, 0.0) + normal_force
             self.max_blade_force = max(self.max_blade_force, normal_force)
+            if crossing is None or np.linalg.norm(contact.pos - crossing) > CUT_CONTACT_RADIUS_M:
+                continue
+            body = self.model.geom_bodyid[paper]
+            local = data.xmat[body].reshape(3, 3).T @ (contact.pos - data.xpos[body])
+            closest_bond, closest_distance = None, CUT_CONTACT_RADIUS_M
+            for equality, anchor, tangent, length in self.geom_bonds[paper]:
+                delta = local - anchor
+                delta[tangent] -= np.clip(delta[tangent], -length / 2, length / 2)
+                distance = np.linalg.norm(delta)
+                if distance < closest_distance:
+                    closest_bond, closest_distance = equality, distance
+            if closest_bond is None:
+                continue
+            by_blade = contacts.setdefault(closest_bond, {})
+            by_blade[blade] = by_blade.get(blade, 0.0) + normal_force
 
-        closing_speed = max(0.0, -float(data.qvel[self.hinge_dof]))
         held_for_cut = None
-        for bond, blade_forces in contacts.items():
-            equality = self.bond_equalities[bond]
+        for equality, blade_forces in contacts.items():
             opposed_force = min(
                 blade_forces.get(self.fixed_blade, 0.0),
                 blade_forces.get(self.moving_blade, 0.0),
             )
-            if (data.eq_active[equality] and closing_speed > 0.01
-                    and opposed_force >= BOND_BREAK_FORCE_N):
+            length = self.bond_lengths[equality]
+            break_force = BOND_BREAK_FORCE_N * length / PAPER_CELL_WIDTH
+            if data.eq_active[equality] and opposed_force >= break_force:
                 if held_for_cut is None:
                     held_for_cut = self._held_for_cut(data)
-                self.held_bonds += int(held_for_cut)
+                if held_for_cut:
+                    self.held_cut_length += length
                 data.eq_active[equality] = 0
 
     def update(self, data: mujoco.MjData) -> dict:
@@ -395,16 +426,16 @@ class ScissorCuttingMetrics:
         paper_lift = float(np.mean(data.xpos[self.paper_bodies, 2]) - self.initial_paper_z)
         self.max_scissor_lift = max(self.max_scissor_lift, scissor_lift)
         self.max_paper_lift = max(self.max_paper_lift, paper_lift)
-        broken = sum(not data.eq_active[equality] for equality in self.bond_equalities)
-        cut_length = broken * BOND_PITCH
+        broken = [length for equality, length in self.bond_lengths.items()
+                  if not data.eq_active[equality]]
         return {
             "blade_contact_force_n": float(self.max_blade_force),
-            "broken_bonds": int(broken),
-            "cut_length_m": float(cut_length),
-            "held_cut_length_m": float(self.held_bonds * BOND_PITCH),
+            "broken_bonds": len(broken),
+            "cut_length_m": sum(broken, 0.0),
+            "held_cut_length_m": self.held_cut_length,
             "scissors_lift_m": float(self.max_scissor_lift),
             "paper_lift_m": float(self.max_paper_lift),
             "scissors_lifted": self.max_scissor_lift > 0.01,
             "paper_lifted": self.max_paper_lift > 0.01,
-            "sim_success": self.held_bonds * BOND_PITCH > SUCCESS_CUT_M,
+            "sim_success": self.held_cut_length > SUCCESS_CUT_M,
         }
