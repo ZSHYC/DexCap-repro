@@ -14,20 +14,25 @@ POINTS = 10_000
 HAND_POINTS = 80_000
 
 
-def add_camera(spec: mujoco.MjSpec, mocap_from_camera, *, world_from_mocap=BULLET_FROM_MOCAP):
-    """Add the source-calibrated L515 camera to a scene in mocap coordinates."""
+def _camera_pose(mocap_from_camera, world_from_mocap):
     mocap_from_camera = np.asarray(mocap_from_camera, dtype=float)
     world_from_camera = np.asarray(world_from_mocap, dtype=float) @ mocap_from_camera
     # RealSense uses +Y down/+Z forward; MuJoCo cameras use +Y up/-Z forward.
     rotation = world_from_camera[:3, :3] @ np.diag([1.0, -1.0, -1.0])
     quat = np.empty(4)
     mujoco.mju_mat2Quat(quat, rotation.ravel())
+    return world_from_camera[:3, 3], quat
+
+
+def add_camera(spec: mujoco.MjSpec, mocap_from_camera, *, world_from_mocap=BULLET_FROM_MOCAP):
+    """Add the source-calibrated L515 camera to a scene in mocap coordinates."""
+    position, quaternion = _camera_pose(mocap_from_camera, world_from_mocap)
     spec.visual.global_.offwidth = max(spec.visual.global_.offwidth, int(IMAGE_SIZE[0]))
     spec.visual.global_.offheight = max(spec.visual.global_.offheight, int(IMAGE_SIZE[1]))
     return spec.worldbody.add_camera(
         name=CAMERA_NAME,
-        pos=world_from_camera[:3, 3],
-        quat=quat,
+        pos=position,
+        quat=quaternion,
         resolution=IMAGE_SIZE,
         focal_pixel=FOCAL,
         # MuJoCo specifies principal point as an offset from the image center.
@@ -90,9 +95,9 @@ class DexCapCamera:
 
     def __init__(self, model, mocap_from_camera, *, world_from_mocap=BULLET_FROM_MOCAP):
         self.model = model
-        self.mocap_from_camera = np.asarray(mocap_from_camera, dtype=float)
-        self.camera_from_mocap = np.linalg.inv(self.mocap_from_camera)
-        self.mocap_from_world = np.linalg.inv(np.asarray(world_from_mocap, dtype=float))
+        self.world_from_mocap = np.asarray(world_from_mocap, dtype=float)
+        self.mocap_from_world = np.linalg.inv(self.world_from_mocap)
+        self.camera_id = model.camera(CAMERA_NAME).id
         self.renderer = mujoco.Renderer(
             model, height=int(IMAGE_SIZE[1]), width=int(IMAGE_SIZE[0])
         )
@@ -113,6 +118,19 @@ class DexCapCamera:
             )
             for side_index, side in enumerate(("right", "left"))
         ]
+        self._set_mocap_pose(mocap_from_camera)
+
+    def _set_mocap_pose(self, mocap_from_camera):
+        self.mocap_from_camera = np.asarray(mocap_from_camera, dtype=float)
+        self.camera_from_mocap = np.linalg.inv(self.mocap_from_camera)
+
+    def set_pose(self, data, mocap_from_camera):
+        """Move the calibrated camera without changing the simulated robot state."""
+        position, quaternion = _camera_pose(mocap_from_camera, self.world_from_mocap)
+        self.model.cam_pos[self.camera_id] = position
+        self.model.cam_quat[self.camera_id] = quaternion
+        self._set_mocap_pose(mocap_from_camera)
+        mujoco.mj_forward(self.model, data)
 
     def _render(self, data):
         self.renderer.update_scene(data, camera=CAMERA_NAME, scene_option=self.options)

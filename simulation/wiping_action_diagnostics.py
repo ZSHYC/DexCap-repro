@@ -7,10 +7,10 @@ import numpy as np
 import torch
 
 from robomimic.utils.file_utils import policy_from_checkpoint
-from simulation.camera import capture_pointcloud, sample_hand_surfaces
-from simulation.frames import ActionFrames, BULLET_FROM_MOCAP
-from simulation.rollout import PROPRIOCEPTION
-from simulation.wiping import PlateWipingSimulation
+from simulation import mujoco_wiping
+from simulation.frames import ActionFrames
+from simulation.mujoco_scene import MujocoScene
+from simulation.rollout import ASSET_ROOT, PROPRIOCEPTION
 
 
 FRAME_IDS = (2, 10, 17, 22, 26, 28, 32, 38, 44, 54, 64, 72, 83, 95, 104)
@@ -30,31 +30,29 @@ def make_paired_inputs(demo):
     initial_state = np.concatenate([observed[key][0] for key in PROPRIOCEPTION])
     cases = {"recorded": recorded, "rendered_view": {}, "fixed_view": {}, "simulation": {}}
 
-    sim = PlateWipingSimulation()
+    scene = MujocoScene(
+        ASSET_ROOT, frames, fixed_camera, "wiping", mujoco_wiping.DEMO_OBJECT_XY, None,
+    )
     try:
-        state = sim.reset(frames.to_bullet(initial_state))
-        bodies = sim.right_hand, sim.left_hand
-        surfaces = sample_hand_surfaces(sim.client, bodies)
+        scene.reset(frames.to_bullet(initial_state))
         for index in range(max(INPUT_IDS) + 1):
             if index:
-                state, _ = sim.step(frames.to_bullet(actions[index - 1]))
+                scene.step(frames.to_bullet(actions[index - 1]))
             if index not in INPUT_IDS:
                 continue
             recorded_wrist = {key: recorded[index][key] for key in PROPRIOCEPTION}
-            sim_wrist = frames.from_bullet(np.concatenate([state[key] for key in PROPRIOCEPTION]))
+            sim_wrist = frames.from_bullet(scene.control.observed_action())
             sim_proprioception = dict(zip(PROPRIOCEPTION, np.split(sim_wrist, [6, 14])))
             for name, camera in (("rendered_view", cameras[index]), ("fixed_view", fixed_camera)):
-                points = capture_pointcloud(
-                    sim.client, camera, BULLET_FROM_MOCAP, np.random.default_rng(1 + index),
-                    hand_bodies=bodies, hand_samples=surfaces,
-                )
+                scene.camera.set_pose(scene.data, camera)
+                points = scene.camera.capture(scene.data, np.random.default_rng(1 + index))
                 cases[name][index] = {**recorded_wrist, "pointcloud": points}
             cases["simulation"][index] = {
                 **sim_proprioception,
                 "pointcloud": cases["fixed_view"][index]["pointcloud"],
             }
     finally:
-        sim.close()
+        scene.close()
     return frames, actions, cases
 
 
