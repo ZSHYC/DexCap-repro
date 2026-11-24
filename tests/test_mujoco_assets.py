@@ -47,6 +47,13 @@ class MujocoRobotAssetsTest(unittest.TestCase):
                 self.assertGreaterEqual(actuator.id, 0)
                 self.assertTrue(model.actuator_forcelimited[actuator.id])
                 self.assertTrue(np.isfinite(model.actuator_forcerange[actuator.id]).all())
+            # LEAP V1's physical fingertip and thumb masses exclude IK markers.
+            self.assertAlmostEqual(model.body(f"{side}_fingertip").mass[0], 0.016)
+            self.assertAlmostEqual(model.body(f"{side}_thumb_fingertip").mass[0], 0.049)
+            self.assertEqual(sum(
+                model.geom(index).name.startswith(f"{side}_hand_collision_")
+                for index in range(model.ngeom)
+            ), 17)
             wrist = model.site(WRIST_SITES[side])
             palm = model.body(f"{side}_palm_lower")
             self.assertEqual(model.site_bodyid[wrist.id], palm.id)

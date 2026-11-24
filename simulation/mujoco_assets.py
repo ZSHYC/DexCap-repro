@@ -1,7 +1,6 @@
 """Articulated Panda + DexCap LEAP assets for MuJoCo task scenes."""
 
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
 
 import mujoco
@@ -65,36 +64,42 @@ def _split_hand_geometry(hand):
         )
 
 
-def _mirrored_hand_spec(source):
-    tree = ElementTree.parse(source)
-    for origin in tree.iter("origin"):
-        if "xyz" in origin.attrib:
-            x, y, z = map(float, origin.attrib["xyz"].split())
-            origin.set("xyz", f"{x} {-y} {z}")
-        if "rpy" in origin.attrib:
-            roll, pitch, yaw = map(float, origin.attrib["rpy"].split())
-            origin.set("rpy", f"{-roll} {pitch} {-yaw}")
-    for axis in tree.iter("axis"):
-        x, y, z = map(float, axis.attrib["xyz"].split())
-        axis.set("xyz", f"{-x} {y} {-z}")
-    for mesh in tree.iter("mesh"):
-        x, y, z = map(float, mesh.attrib.get("scale", "1 1 1").split())
-        mesh.set("scale", f"{x} {-y} {z}")
-    for inertia in tree.iter("inertia"):
-        for term in ("ixy", "iyz"):
-            inertia.set(term, str(-float(inertia.attrib[term])))
+def _physical_hand_spec(source, side):
+    robot = ElementTree.parse(source).getroot()
+    # DexCap adds fixed fingertip targets for IK. LEAP V1 has only the physical mesh links.
+    markers = [link for link in robot.findall("link") if link.get("name").startswith("realtip")]
+    marker_names = {link.get("name") for link in markers}
+    for link in markers:
+        robot.remove(link)
+    for joint in robot.findall("joint"):
+        if joint.find("child").get("link") in marker_names:
+            robot.remove(joint)
 
-    with NamedTemporaryFile(mode="w", suffix=".urdf") as mirrored:
-        tree.write(mirrored, encoding="unicode")
-        mirrored.flush()
-        hand = mujoco.MjSpec.from_file(mirrored.name)
+    if side == "left":
+        for origin in robot.iter("origin"):
+            if "xyz" in origin.attrib:
+                x, y, z = map(float, origin.attrib["xyz"].split())
+                origin.set("xyz", f"{x} {-y} {z}")
+            if "rpy" in origin.attrib:
+                roll, pitch, yaw = map(float, origin.attrib["rpy"].split())
+                origin.set("rpy", f"{-roll} {pitch} {-yaw}")
+        for axis in robot.iter("axis"):
+            x, y, z = map(float, axis.attrib["xyz"].split())
+            axis.set("xyz", f"{-x} {y} {-z}")
+        for mesh in robot.iter("mesh"):
+            x, y, z = map(float, mesh.attrib.get("scale", "1 1 1").split())
+            mesh.set("scale", f"{x} {-y} {z}")
+        for inertia in robot.iter("inertia"):
+            for term in ("ixy", "iyz"):
+                inertia.set(term, str(-float(inertia.attrib[term])))
+
+    hand = mujoco.MjSpec.from_string(ElementTree.tostring(robot, encoding="unicode"))
     hand.modelfiledir = f"{source.parent}/"
     return hand
 
 
 def _load_hand(side):
-    source = _HAND_MESHES / "robot_pybullet.urdf"
-    hand = mujoco.MjSpec.from_file(str(source)) if side == "right" else _mirrored_hand_spec(source)
+    hand = _physical_hand_spec(_HAND_MESHES / "robot_pybullet.urdf", side)
     physical_joints = list(hand.joints)
     if len(physical_joints) != 16:
         raise ValueError(f"DexCap {side} LEAP URDF has {len(physical_joints)} actuated joints")

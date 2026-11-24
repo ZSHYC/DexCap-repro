@@ -170,3 +170,10 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 ## 六个场景的渲染与接入验证
 
 六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview/six-mujoco-scenes.png` 和 `runs/task-scene-overview/smoke.json`。Ball Collecting、Scissor Cutting、Tea Preparing 的执行机构分别经过物理子步骤实验，整段机器臂动作和作者的策略分数仍须进一步验证。
+
+
+## 校正 LEAP 指尖碰撞与惯量
+
+DexCap 的重定向 URDF 比 LEAP V1 官方物理模型多四个 `realtip` 固定链接。它们各带半径 5 mm 的圆球和 0.1 kg 的惯量条目，用于表示指尖 IK 目标。现在构建 MuJoCo 手部时只加载官方物理模型对应的 17 个实体链接。原始 DexCap URDF 仍供发布数据的重建使用。编译后每只手质量由 0.909 kg 校正为 0.509 kg。 [LEAP V1 官方 URDF](https://github.com/leap-hand/LEAP_Hand_Sim/blob/master/assets/leap_hand/robot.urdf)
+
+两条参考动作使用原来的放置与控制参数重新回放。Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。上面的闭环基准与其他验证记录对应各自运行时的模型。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
