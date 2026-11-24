@@ -14,7 +14,7 @@
 
 ## 运行
 
-`pro1` 的开发工作树是 `/home/zhangshihao/dexcap-repro/worktrees/mujoco/`。`data/` 指向 `/data/dexcap-repro/data/`，官方 HDF5、模型资产和安装包缓存都在数据盘。`runs/` 指向 `/data/dexcap-repro/runs/mujoco/`，保存 MuJoCo 日志、轨迹和结果。工作树复用 `/home/zhangshihao/dexcap-repro/envs/train/` 的 Conda 环境。
+`pro1` 的开发工作树是 `/home/zhangshihao/dexcap-repro/worktrees/mujoco/`。`data/` 指向 `/data/dexcap-repro/data/`，官方 HDF5、模型资产和安装包缓存都在数据盘。`runs/` 指向 `/data/dexcap-repro/runs/mujoco/`，保存 MuJoCo 日志、轨迹和结果。工作树复用系统盘 `/home/zhangshihao/dexcap-repro/envs/train/` 的 Conda 环境。旧训练权重在数据盘项目的 `runs/`，归档权重在 `auxiliary-checkpoints/`。新下载、重建数据、训练输出和 MuJoCo 试验记录均通过工作树的 `data/` 或 `runs/` 写入数据盘。
 
 在 Conda 环境安装 `requirements-train.txt` 中的 MuJoCo 3.6.0。`scripts/fetch_mujoco_assets.sh` 把固定版本的 Panda 模型和许可证放在 `data/mujoco_menagerie/`。借助原项目的 `data/` 链接，这些资产和官方 HDF5 一起存储在 `pro1` 数据盘。
 
@@ -117,16 +117,16 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 
 将官方示范抓取前 13 帧的 13,820 个盘沿点按录制中的盘心与法向配准。用每像素约 3.9 mm 的正投影聚合蓝色区域。交替把帧分成两组后，两组同时有足够样本的像素上，蓝色分类一致率约 91.7%。配准和取样记录位于 `runs/wiping-rim-texture-{fit.json,samples.npz}`，生成脚本为 `runs/wiping-fit-rim-texture.py`。高频印刷细节和盘底外观仍缺少直接观测。
 
-公用盘沿剖面生成 MuJoCo 渲染网格。EGL 图像验证了盘沿图案的方向。原来承受物体接触的碰撞轮廓、盘子惯性和抓取判据继续使用。111 步同动作回放仍抓起两件物体，内盘面接触为 0。可见图案与开环结果在 `runs/wiping-measured-rim-render.png` 和 `runs/wiping-measured-rim-replay.json`。
+公用盘沿剖面生成 MuJoCo 渲染网格。EGL 图像验证了盘沿图案的方向。原来承受物体接触的碰撞轮廓、盘子惯性和抓取判据继续使用。校正 LEAP 手模型前，111 步同动作回放抓起两件物体，内盘面接触为 0。可见图案与开环结果在 `runs/wiping-measured-rim-render.png` 和 `runs/wiping-measured-rim-replay.json`。
 
 
 ## Sponge Picking
 
 论文图 5 中的单手拾取任务使用与 Wiping 相同外观的分层海绵。仿真复用已测量的弹性海绵，移除盘子，按论文在 40 × 70 cm 区域采样。单只手保持接触、海绵脱离桌面且质心上升超过 30 cm 时，任务通过。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
-在 `pro1` 的 MuJoCo 中，从公开 Wiping 轨迹取接近段。第 75 步建立了实际抓持，随后沿竖直方向以每步 1 cm 移动腕部目标。第 32 个抬升指令后，海绵在单手接触中累计上升 **306.0 mm**。轨迹通过双 Franka 与 LEAP 的力限控制执行。验证脚本和每步记录存于数据盘的 `runs/sponge-picking-physical-lift-probe.{py,json}`。
+旧手模型使用公开 Wiping 轨迹的接近段和按厘米递增的腕部目标，在单手接触中把海绵抬高 306.0 mm。该结果依赖包含指尖 IK 定位球的旧模型。校正 LEAP 后，复跑同一脚本只抬高约 80.1 mm，未过 30 cm 阈值。验证脚本和每步记录存于数据盘的 `runs/sponge-picking-physical-lift-probe.{py,json}` 和 `runs/sponge-picking-leap-mesh-lift.{py,json}`。
 
-`python -m simulation.rollout --task sponge-picking` 接受项目使用的 46 维动作 HDF5 与兼容策略权重。作者当前公开数据文件未包含 Sponge Picking 轨迹或权重，306.0 mm 的结果衡量场景中的物理拾取功能。论文的策略成功率仍缺少可配对数据。 [发布的文件列表](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/main)
+`python -m simulation.rollout --task sponge-picking` 接受项目使用的 46 维动作 HDF5 与兼容策略权重。作者当前公开数据文件未包含 Sponge Picking 轨迹或权重。 [发布的文件列表](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/main)
 
 
 ## Packaging 六类参考动作回放
@@ -142,7 +142,7 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 | 卷尺 | 91 | 否 | 是 |
 | 黄色折叠布 | 147 | 否 | 是 |
 
-六条带完整双臂和点云采集的回放均在 `pro1` 完成，结果位于 `runs/packaging-reference-replays/`。这是参考动作实验，闭环评估仍从相同的随机种子采样。
+表中六条参考回放使用校正前的 LEAP 手模型，结果位于 `runs/packaging-reference-replays/`。闭环评估从与原基线配对的随机种子采样。
 
 红银包装的录制红色表面在第 37 步约位于 z = 223 mm。分件模型使用上一版参考起点时，同一步质心高 89 mm，右腕沿目标的位置误差约 4.4 mm，盒体高度滞后远超腕位差。相应录制轨迹在 `runs/packaging-official-red-surface-track.json`。六个原始 RGB-D 帧拟合出的台面倾角可辨，局部高度随帧变化约 12–15 mm。只把首帧倾斜桌面代入回放会提前失去抓持，暂作为标定诊断记录在 `runs/packaging-table-plane-multi-frame.json` 与 `runs/packaging-red-carton-tilted-table-probe.json`。
 
@@ -151,7 +151,14 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
 
-判据要求右手形成相向接触、球实际抬离桌面，再释放到篮中。进篮通过完整球体位置、篮底铁丝接触和低速度判定。物理试验验证了球经重力落入篮底后能够稳定承托。实际双臂的控制与摄像已运行，接触试验中的现有候选手姿仍会把球推走，尚未跑通机械臂抓球到入篮。物体落下桌面后由估计在桌面下 0.75 m 的地面承托。实际落球和模板动作记录在 `runs/ball-collecting-finger-clearance-probe.json` 与 `runs/ball-collecting-sim-smoke.json`。
+判据要求右手形成相向接触、球实际抬离桌面，再释放到篮中。进篮通过完整球体位置、篮底铁丝接触和低速度判定。物理试验验证了球经重力落入篮底后能够稳定承托。在默认球和篮子位置，一条 252 步脚本轨迹通过标准回放入口完成了从空手接近、夹球到球由篮底承托的全过程。右手用三处真实手部表面建立抓持，球相对起点最高上升约 169 mm，转运时接触篮沿并落入篮中。全程没有机械臂碰撞。结果只覆盖默认摆放和这条脚本动作，公开数据仍缺该任务的作者轨迹与权重。生成脚本及逐步接触记录见 `runs/ball-leap-tabletop-reference.{py,json}`。
+
+```bash
+python -m simulation.rollout data/derived/ball-collecting-scripted-reference.hdf5 \
+  --task ball-collecting --output runs/ball-leap-tabletop-rollout.json
+```
+
+球掉下桌面后由估计在桌面下 0.75 m 的地面承托。
 
 
 ## Scissor Cutting
@@ -169,7 +176,7 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 
 ## 六个场景的渲染与接入验证
 
-六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview/six-mujoco-scenes.png` 和 `runs/task-scene-overview/smoke.json`。Ball Collecting、Scissor Cutting、Tea Preparing 的执行机构分别经过物理子步骤实验，整段机器臂动作和作者的策略分数仍须进一步验证。
+六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview-physical-leap/six-mujoco-scenes.png` 和 `runs/task-scene-overview-physical-leap/smoke.json`。Scissor Cutting 和 Tea Preparing 已验证关键机构的物理响应，仍缺整段双臂任务动作。
 
 
 ## 校正 LEAP 指尖碰撞与惯量
@@ -177,3 +184,7 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 DexCap 的重定向 URDF 比 LEAP V1 官方物理模型多四个 `realtip` 固定链接。它们各带半径 5 mm 的圆球和 0.1 kg 的惯量条目，用于表示指尖 IK 目标。现在构建 MuJoCo 手部时只加载官方物理模型对应的 17 个实体链接。原始 DexCap URDF 仍供发布数据的重建使用。编译后每只手质量由 0.909 kg 校正为 0.509 kg。 [LEAP V1 官方 URDF](https://github.com/leap-hand/LEAP_Hand_Sim/blob/master/assets/leap_hand/robot.urdf)
 
 两条参考动作使用原来的放置与控制参数重新回放。Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。上面的闭环基准与其他验证记录对应各自运行时的模型。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
+
+另用 Wiping 和 Packaging 的 `demo_0` 分别对照 25 和 22 个录制观测。将已发布的腕姿和当前解码的手关节传给校正后的 LEAP 网格，距离手部 12 mm 内的录制黑点到网格采样点的中位距离均约 0.83 mm，逐帧的 2 mm 以内比例中位数约 98%。这验证了输入腕姿、当前手指顺序和作者预处理点云之间的对应。数据及脚本在 `runs/{wiping,packaging}-released-hand-observation-order.{py,json}`。
+
+Wiping 的前 54 步中，第 24 步食指先撞盘沿。第 28 步仅一个控制周期检测到拇指和另一指的同时接触，盘始终受桌面支撑。第 42–44 步右腕位置误差约 0.2 mm，盘中心相比录制状态已偏离约 71–79 mm。手部保持相向接触是当前的主要缺口。逐步接触法向、支撑和腕姿记录在 `runs/wiping-current-wrist-plate-proof.{py,json}`。
