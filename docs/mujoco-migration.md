@@ -14,9 +14,18 @@
 
 ## 运行
 
+`pro1` 的开发工作树是 `/home/zhangshihao/dexcap-repro/worktrees/mujoco/`。`data/` 指向 `/data/dexcap-repro/data/`，官方 HDF5、模型资产和安装包缓存都在数据盘。`runs/` 指向 `/data/dexcap-repro/runs/mujoco/`，保存 MuJoCo 日志、轨迹和结果。工作树复用 `/home/zhangshihao/dexcap-repro/envs/train/` 的 Conda 环境。
+
 在 Conda 环境安装 `requirements-train.txt` 中的 MuJoCo 3.6.0。`scripts/fetch_mujoco_assets.sh` 把固定版本的 Panda 模型和许可证放在 `data/mujoco_menagerie/`。借助原项目的 `data/` 链接，这些资产和官方 HDF5 一起存储在 `pro1` 数据盘。
 
+`pro1` 的 NVIDIA 驱动提供厂商 EGL 库，项目的通用 EGL 库来自 Ubuntu 24.04 的 `libegl1`、`libglvnd0` 和 `libopengl0`，已经解包到数据盘的 `data/mujoco-gl/`。在 `pro1` 打开新终端后使用以下设置。
+
 ```bash
+cd ~/dexcap-repro/worktrees/mujoco
+source envs/conda/etc/profile.d/conda.sh
+conda activate "$PWD/envs/train"
+export LD_LIBRARY_PATH="$PWD/data/mujoco-gl/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export MUJOCO_EGL_DEVICE_ID=0 CUDA_VISIBLE_DEVICES=0
 bash scripts/fetch_mujoco_assets.sh
 MUJOCO_GL=egl python -m simulation.rollout data/derived/wiping-demo-0-playback.hdf5 \
   --output runs/wiping-replay.json
@@ -34,3 +43,5 @@ MUJOCO_GL=egl python -m simulation.rollout data/derived/packaging-demo-0-playbac
 | Packaging | 5.6 mm | 14.5 mm | 触发抓取和释放。终点未入盒、未合盖。 |
 
 两段回放在采样的控制周期均未出现机械臂碰撞接触，且能生成 `10000 × 6` 点云。当前泡棉材料、手指接触系数、纸盒铰链和物体表面参数仍需要用实测或录制行为标定。正式策略评估尚待进行。
+
+在 `pro1` 的同一个 Conda 环境验证了 EGL 渲染和三份现有第 3000 轮权重。PointNet Wiping、SetXF Wiping 和 SetXF Packaging 分别在 GPU 0、1、2 完成两步策略闭环，均输出 `10000 × 6` 点云。记录位于数据盘的 `runs/*-policy-smoke.json`。
