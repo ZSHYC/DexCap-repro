@@ -29,6 +29,8 @@ def add_camera(spec: mujoco.MjSpec, mocap_from_camera, *, world_from_mocap=WORLD
     position, quaternion = _camera_pose(mocap_from_camera, world_from_mocap)
     spec.visual.global_.offwidth = max(spec.visual.global_.offwidth, int(IMAGE_SIZE[0]))
     spec.visual.global_.offheight = max(spec.visual.global_.offheight, int(IMAGE_SIZE[1]))
+    # Offscreen multisampling can blend adjacent RGB-encoded segmentation IDs.
+    spec.visual.quality.offsamples = 0
     return spec.worldbody.add_camera(
         name=CAMERA_NAME,
         pos=position,

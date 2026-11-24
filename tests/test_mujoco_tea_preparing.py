@@ -12,7 +12,7 @@ except ImportError:
 class MujocoTeaPreparingTest(unittest.TestCase):
     def make_scene(self, fix_bottle=False):
         from simulation.mujoco_tea_preparing import (
-            TRAY_TOP, TeaPreparingMetrics, add_tea_preparing_scene,
+            TEA_PARTICLES, TRAY_TOP, TeaPreparingMetrics, add_tea_preparing_scene,
         )
 
         spec = mujoco.MjSpec()
@@ -24,6 +24,18 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         )
         positions = np.array([[0, 0], [0, 0], [0.12, -0.05], [0.10, 0.09]])
         add_tea_preparing_scene(spec, positions)
+        # A few spherical probes make the isolated stack and edge contacts deterministic.
+        for index in range(4, TEA_PARTICLES):
+            spec.delete(spec.body(f"tea_particle_{index}"))
+        for index, (x, y) in enumerate(((-.010, -.009), (.010, -.009),
+                                       (-.010, .009), (.010, .009))):
+            body = spec.body(f"tea_particle_{index}")
+            body.pos = [x, y, TRAY_TOP + .015]
+            body.quat = [1, 0, 0, 0]
+            geom = spec.geom(f"tea_particle_geom_{index}")
+            geom.type = mujoco.mjtGeom.mjGEOM_SPHERE
+            geom.size = [.004, 0, 0]
+            geom.mass = .0015
         if fix_bottle:
             spec.add_equality(
                 name="tea_bottle_test_fixture", type=mujoco.mjtEq.mjEQ_WELD,
@@ -180,17 +192,16 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         self.assertFalse(info["sim_success"])
 
     def test_grain_resting_on_other_grains_in_the_pot_counts(self):
-        from simulation.mujoco_tea_preparing import TEA_RADIUS
-
+        radius = .004
         model, data, metrics = self.make_scene()
         pot_pos = data.xpos[metrics.pot_body].copy()
         pot_rotation = data.xmat[metrics.pot_body].reshape(3, 3).copy()
-        circle = 2 * TEA_RADIUS / np.sqrt(3)
+        circle = 2 * radius / np.sqrt(3)
         bottom = [
             [circle * np.cos(angle), circle * np.sin(angle), .013]
             for angle in np.arange(3) * 2 * np.pi / 3
         ]
-        top = [0, 0, .013 + np.sqrt((2 * TEA_RADIUS) ** 2 - circle ** 2)]
+        top = [0, 0, .013 + np.sqrt((2 * radius) ** 2 - circle ** 2)]
         for joint, local in zip(metrics.tea_joints, [*bottom, top]):
             qpos = model.jnt_qposadr[joint]
             dof = model.jnt_dofadr[joint]
@@ -234,9 +245,25 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         self.assertFalse(info["bottle_used"])
         self.assertFalse(info["tweezers_used"])
 
+    def test_default_scene_loads_the_settled_tea_charge(self):
+        from simulation.mujoco_tea_preparing import TeaPreparingMetrics, add_tea_preparing_scene
+
+        spec = mujoco.MjSpec()
+        add_tea_preparing_scene(spec)
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        metrics = TeaPreparingMetrics(model)
+        charge = metrics.tea_bodies
+        self.assertTrue(np.all(model.geom_type[metrics.tea_geoms] == mujoco.mjtGeom.mjGEOM_ELLIPSOID))
+        self.assertAlmostEqual(float(model.body_mass[charge].sum()), .037, delta=.002)
+        height = data.xpos[charge, 2] - data.xpos[metrics.bottle_body, 2]
+        self.assertGreater(float(height.max()), .043)
+        self.assertLess(float(height.max()), .054)
+
     def test_default_tweezers_remain_on_free_cradle_with_bridge_outboard(self):
         from simulation.mujoco_tea_preparing import (
-            TABLE_HEIGHT, TRAY_HALF_XY, TeaPreparingMetrics, add_tea_preparing_scene,
+            TABLE_HEIGHT, TEA_PARTICLES, TRAY_HALF_XY, TeaPreparingMetrics, add_tea_preparing_scene,
         )
 
         spec = mujoco.MjSpec()
@@ -250,6 +277,8 @@ class MujocoTeaPreparingTest(unittest.TestCase):
             friction=[0.8, 0.008, 0.0005],
         )
         add_tea_preparing_scene(spec)
+        for index in range(TEA_PARTICLES):
+            spec.delete(spec.body(f"tea_particle_{index}"))
         model = spec.compile()
         data = mujoco.MjData(model)
         metrics = TeaPreparingMetrics(model)

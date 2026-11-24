@@ -359,6 +359,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 从实际入固定环的状态继续复核时，发现右手指节与左食指仍有约 3.8 mm 的交叠。改为右手完全撤离后才推进左手，实际采样的手间交叠降至零，但旧左手关节路径插入桌面约 38.8 mm，未重新取得入环。标准回放现记录 `hand_collision_steps` 和 `hand_max_penetration_m`，分别表示发生双手穿透的控制采样数和最大穿透深度，用于诊断接近路径。轨迹见 `runs/scissor_current_oval_{index_first_thumb,retreat_then_index}.json`，回放入口验证见 `runs/scissor-hand-collision-telemetry-entry.json`。
 
+
+右手完全撤离后，将旧的左手关节直线路径改为先去高位，再保持腕姿分 41 个目标沿 Cartesian 路线下降。从真实初始位执行抬高 80 mm 的路线，105 个观测周期内左手与桌面、托盘、剪刀及右臂接触均为零，最终分离悬停的腕位置误差约 0.123 mm。随后以剪刀当前位姿更新双环目标，完整扫掠可找到静态双指端点，动态峰值食指和拇指接触力约 0.54 N 和 0.30 N。剪刀在接触中移动约 2.21 mm，尚未测到实际同时入环。证据见 `runs/scissor_current_oval_{high_clearance_route,live_micro_entry}.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的木质托槽、空心瓶和茶壶、弹簧镊子以及可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际茶盘或木槽接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -432,7 +435,12 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 在新版瓶身的固定瓶体夹具上复跑右手换握动作，实际帽体峰值约 0.907 圈，轴向约 1.814 mm，结束时约 0.904 圈。自由瓶身的初步合拢试验曾出现瞬时离托盘，未形成相向夹持，不算抬瓶。记录见 `runs/tea-live-cap-regrasp-ribbed-probe.json` 和 `runs/tea-bottle-material-ribbed-physical-close.json`。
 
 
-把瓶内填充从 8 颗球换成 63 块估计尺寸的茶叶团是独立试验。装料质量由 12 g 增至约 25.9 g，站立时最高粒中心约 27 mm。150° 倾角下，封盖留住全部 63 粒。开盖后，63 粒最终都在壶中，其中只有 30 粒直接触壶，其它由茶粒层承托。正式计数现在沿壶内受支持的颗粒接触链判断，包含稳定叠放的茶粒。默认场景仍使用 8 粒球，较高填充量、叶团尺寸和机械臂动作仍待与视频校准并联调。数据见 `runs/tea-filled-bottle-transfer-sensitivity.json` 和 `runs/tea-filled-bottle-pot-support.json`。
+把瓶内填充从 8 颗球换成 63 块估计尺寸的茶叶团是独立试验。装料质量由 12 g 增至约 25.9 g，站立时最高粒中心约 27 mm。150° 倾角下，封盖留住全部 63 粒。开盖后，63 粒最终都在壶中，其中只有 30 粒直接触壶，其它由茶粒层承托。正式计数现在沿壶内受支持的颗粒接触链判断，包含稳定叠放的茶粒。这组 63 粒试验提供了后续装料标定的对照。数据见 `runs/tea-filled-bottle-transfer-sensitivity.json` 和 `runs/tea-filled-bottle-pot-support.json`。
+
+
+默认装料按官方侧视图估计为约半瓶。108 个折叠茶叶团使用可碰撞的独立椭球，按重力沉降后的瓶内相对位姿复位，最高表面约 50.4 mm，装料约 37.0 g。椭球尺寸和密度为估计；装料的体积质量与既有散装茶叶测量同量级。以 150° 倾角隔离验证，新默认封盖保住全部 108 片，开盖夹具将 108 片稳定倒入壶内。夹具测量不依赖手部抓取。较重装料的抬瓶和双手过渡仍需验证。装料位姿和试验见 `simulation/assets/tea_charge_poses.txt`、`runs/tea-source-fill-108.json` 和 `runs/tea-production-filled-{sealed,open}-fixture.json`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4) [精制绿茶堆积密度实测](https://www.jstage.jst.go.jp/article/cha1953/1971/34/1971_34_37/_article)
+
+加入更多几何后，原离屏多重采样在木槽和托盘边缘将 RGB 编码的分割编号 351 和 137 混出了编号 361。禁用离屏多重采样后，标准双臂入口完成三步，输出 `10000 × 6` 点云且无物理警告。当前填充物使 CPU 求解更慢。Newton 在封盖夹具的对照中保持有限状态，CG 在 0.008 s 出现加速度警告。生产采用已验证的 Newton 设置。见 `runs/tea-production-filled-entry.json` 和 `runs/tea-loaded-solver-timing-probe.json`。 [MuJoCo 离屏多重采样参数](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#visual-quality)
 
 
 ## 六个场景的渲染与接入验证

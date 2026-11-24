@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import math
 from itertools import combinations
+from pathlib import Path
 
 import mujoco
 import numpy as np
@@ -33,7 +34,10 @@ CAP_RADIUS, CAP_HALF_HEIGHT = 0.035, 0.014
 THREAD_PITCH, THREAD_TURNS = 0.002, 2.0
 THREAD_LIMIT = 2 * np.pi * THREAD_TURNS
 POT_INNER_RADIUS, POT_HEIGHT = 0.037, 0.060
-TEA_RADIUS, TEA_PARTICLES = 0.004, 8
+TEA_PIECE_SIZE = (.0077, .0048, .0034)
+TEA_DENSITY = 650
+TEA_CHARGE_POSES = np.loadtxt(Path(__file__).with_name("assets") / "tea_charge_poses.txt")
+TEA_PARTICLES = len(TEA_CHARGE_POSES)
 
 # Tray-plane estimates from the first view, with wall clearance for the bottle.
 TRAY_CENTER = np.array([0.52, 0.00])
@@ -170,23 +174,17 @@ def _add_bottle_cap_and_tea(spec, xy):
         solimp=[.95, .99, .001, .5, 2],
     )
 
-    offsets = (
-        (-.010, -.009, .012), (.010, -.009, .012),
-        (-.010, .009, .012), (.010, .009, .012),
-        (-.010, -.009, .025), (.010, -.009, .025),
-        (-.010, .009, .025), (.010, .009, .025),
-    )
-    for index, offset in enumerate(offsets):
+    bottle_pos = np.array([*xy, bottle_z])
+    for index, pose in enumerate(TEA_CHARGE_POSES):
         tea = spec.worldbody.add_body(
-            name=f"tea_particle_{index}", pos=np.r_[xy, bottle_z] + offset
+            name=f"tea_particle_{index}", pos=bottle_pos + pose[:3], quat=pose[3:],
         )
         tea.add_freejoint(name=f"tea_particle_free_{index}")
         tea.add_geom(
-            name=f"tea_particle_geom_{index}", type=mujoco.mjtGeom.mjGEOM_SPHERE,
-            size=[TEA_RADIUS, 0, 0], mass=.0015,
+            name=f"tea_particle_geom_{index}", type=mujoco.mjtGeom.mjGEOM_ELLIPSOID,
+            size=TEA_PIECE_SIZE, density=TEA_DENSITY,
             solref=[.004, 1], solimp=[.95, .99, .001, .5, 2],
-            priority=1,
-            rgba=[.18, .09, .025, 1], friction=[.7, .01, .001],
+            priority=1, rgba=[.19, .095, .023, 1], friction=[.7, .01, .001],
         )
 
 
@@ -307,9 +305,11 @@ class TeaPreparingMetrics:
         self.support_geoms = self.cap_support_geoms | self.tweezers_support_geoms | {
             g for g in geoms if model.geom(g).name == "room_floor_surface"
         }
-        self.tea_geoms = [model.geom(f"tea_particle_geom_{i}").id for i in range(TEA_PARTICLES)]
-        self.tea_bodies = [model.body(f"tea_particle_{i}").id for i in range(TEA_PARTICLES)]
-        self.tea_joints = [model.joint(f"tea_particle_free_{i}").id for i in range(TEA_PARTICLES)]
+        self.tea_geoms = [g for g in geoms if model.geom(g).name.startswith("tea_particle_geom_")]
+        self.tea_bodies = [model.geom_bodyid[geom] for geom in self.tea_geoms]
+        self.tea_joints = [model.body_jntadr[body] for body in self.tea_bodies]
+        pot_floor = model.geom("tea_teapot_floor")
+        self.pot_floor_height = pot_floor.pos[2] + pot_floor.size[1]
         self.initial_bottle_pos = model.qpos0[model.jnt_qposadr[self.bottle_joint]:][:3].copy()
         self.initial_tweezers_pos = model.qpos0[model.jnt_qposadr[self.tweezers_joint]:][:3].copy()
         self.bottle_used = False
@@ -368,7 +368,7 @@ class TeaPreparingMetrics:
             local = rotation.T @ (data.xpos[body] - data.xpos[self.pot_body])
             inside = (
                 np.linalg.norm(local[:2]) <= POT_INNER_RADIUS
-                and TEA_RADIUS - .003 <= local[2] <= POT_HEIGHT - TEA_RADIUS
+                and self.pot_floor_height <= local[2] <= POT_HEIGHT
             )
             dof = self.model.jnt_dofadr[joint]
             if inside and np.linalg.norm(data.qvel[dof:dof + 3]) < .12:
