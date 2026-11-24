@@ -149,28 +149,6 @@ def sample_object_xy(rng):
     return DEMO_OBJECT_XY + rng.uniform(-half_area, half_area)
 
 
-def create_compound_shapes(parts, client):
-    import pybullet as p
-
-    common = dict(
-        shapeTypes=[part.shape for part in parts],
-        halfExtents=[part.half_size for part in parts],
-        radii=[part.half_size[0] for part in parts],
-        lengths=[2 * part.half_size[2] for part in parts],
-        physicsClientId=client,
-    )
-    centers = [part.center for part in parts]
-    orientations = [part.orientation for part in parts]
-    collision = p.createCollisionShapeArray(
-        **common, collisionFramePositions=centers, collisionFrameOrientations=orientations,
-    )
-    visual = p.createVisualShapeArray(
-        **common, visualFramePositions=centers, visualFrameOrientations=orientations,
-        rgbaColors=[part.color for part in parts],
-    )
-    return collision, visual
-
-
 def cylinder_extent(rotation, half_size):
     axis = np.abs(rotation[:, 2])
     return half_size[0] * np.sqrt(np.maximum(0, 1 - axis**2)) + half_size[2] * axis

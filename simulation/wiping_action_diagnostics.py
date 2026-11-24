@@ -34,14 +34,14 @@ def make_paired_inputs(demo):
         ASSET_ROOT, frames, fixed_camera, "wiping", mujoco_wiping.DEMO_OBJECT_XY, None,
     )
     try:
-        scene.reset(frames.to_bullet(initial_state))
+        scene.reset(frames.to_world(initial_state))
         for index in range(max(INPUT_IDS) + 1):
             if index:
-                scene.step(frames.to_bullet(actions[index - 1]))
+                scene.step(frames.to_world(actions[index - 1]))
             if index not in INPUT_IDS:
                 continue
             recorded_wrist = {key: recorded[index][key] for key in PROPRIOCEPTION}
-            sim_wrist = frames.from_bullet(scene.control.observed_action())
+            sim_wrist = frames.from_world(scene.control.observed_action())
             sim_proprioception = dict(zip(PROPRIOCEPTION, np.split(sim_wrist, [6, 14])))
             for name, camera in (("rendered_view", cameras[index]), ("fixed_view", fixed_camera)):
                 scene.camera.set_pose(scene.data, camera)
@@ -57,8 +57,8 @@ def make_paired_inputs(demo):
 
 
 def action_errors(prediction, expert, frames):
-    predicted_pose = frames.to_bullet(prediction)
-    expert_pose = frames.to_bullet(expert)
+    predicted_pose = frames.to_world(prediction)
+    expert_pose = frames.to_world(expert)
     wrist_delta = (predicted_pose[:6] - expert_pose[:6]).reshape(2, 3)
     quat_dots = np.abs(np.sum(
         predicted_pose[6:14].reshape(2, 4) * expert_pose[6:14].reshape(2, 4), axis=1

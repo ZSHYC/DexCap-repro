@@ -31,10 +31,10 @@ def render_replay(dataset, task):
         return renderer.render().copy()
 
     try:
-        scene.reset(transform.to_bullet(initial))
+        scene.reset(transform.to_world(initial))
         frames = {0: capture()}
         for index, action in enumerate(actions, start=1):
-            metrics, _, _ = scene.step(transform.to_bullet(action))
+            metrics, _, _ = scene.step(transform.to_world(action))
             if index in sampled_steps:
                 frames[index] = capture()
     finally:

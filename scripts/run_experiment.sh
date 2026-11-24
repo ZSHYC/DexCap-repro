@@ -60,6 +60,8 @@ train smoke 2
 [[ "$stage" == full ]] || exit 0
 
 train full 3000
+export MUJOCO_GL="${MUJOCO_GL:-egl}"
+export MUJOCO_EGL_DEVICE_ID="${MUJOCO_EGL_DEVICE_ID:-${CUDA_VISIBLE_DEVICES%%,*}}"
 if [[ "$task" == wiping ]]; then
     "$python" -m simulation.rollout "$dataset" --task "$task" --checkpoint "$checkpoint" \
         --trials 20 --output "$runs/$name.final-sim.json"

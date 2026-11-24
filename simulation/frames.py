@@ -5,14 +5,14 @@ from scipy.spatial.transform import Rotation
 import yaml
 
 
-BULLET_FROM_MOCAP = np.array([
+WORLD_FROM_MOCAP = np.array([
     [0, 0, -1, 0],
     [-1, 0, 0, 0],
     [0, 1, 0, 0.235],
     [0, 0, 0, 1],
 ])
-AXES = BULLET_FROM_MOCAP[:3, :3]
-TABLE_SHIFT = BULLET_FROM_MOCAP[:3, 3]
+AXES = WORLD_FROM_MOCAP[:3, :3]
+TABLE_SHIFT = WORLD_FROM_MOCAP[:3, 3]
 HAND_TO_WRIST = np.array([[0, -1, 0], [0, 0, 1], [1, 0, 0]])
 LEAP_TO_HAND = Rotation.from_euler("xyz", [-np.pi / 2, np.pi / 2, 0]).as_matrix()
 HAND_MESH_OFFSETS = np.array([[-0.02, 0.05, -0.1], [0.02, 0.05, -0.1]])
@@ -20,7 +20,7 @@ CALIBRATION = Path(__file__).resolve().parents[1] / "DexCap/STEP2_build_dataset/
 
 
 class ActionFrames:
-    """Invert the released wrist retargeting and position the LEAP URDFs in Bullet."""
+    """Invert the released wrist retargeting and position the LEAP hands in the simulation world."""
 
     def __init__(self, frame_0_eef_quat):
         frame = Rotation.from_quat(frame_0_eef_quat, scalar_first=True)
@@ -37,7 +37,7 @@ class ActionFrames:
                 mesh_offset,
             ))
 
-    def to_bullet(self, action):
+    def to_world(self, action):
         output = np.asarray(action, dtype=float).copy()
         for side, (absolute, orientation, mesh) in enumerate(self.offsets):
             xyz = slice(side * 3, (side + 1) * 3)
@@ -51,7 +51,7 @@ class ActionFrames:
             )
         return output
 
-    def from_bullet(self, state):
+    def from_world(self, state):
         output = np.asarray(state, dtype=float).copy()
         for side, (absolute, orientation, mesh) in enumerate(self.offsets):
             xyz = slice(side * 3, (side + 1) * 3)

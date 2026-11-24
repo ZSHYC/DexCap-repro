@@ -3,7 +3,7 @@ import numpy as np
 import trimesh
 
 from DexCap.STEP2_build_dataset.pointcloud_crop import table_point_mask
-from simulation.frames import BULLET_FROM_MOCAP, HAND_MESH_OFFSETS, LEAP_TO_HAND
+from simulation.frames import WORLD_FROM_MOCAP, HAND_MESH_OFFSETS, LEAP_TO_HAND
 
 
 IMAGE_SIZE = np.array([1280, 720])
@@ -24,7 +24,7 @@ def _camera_pose(mocap_from_camera, world_from_mocap):
     return world_from_camera[:3, 3], quat
 
 
-def add_camera(spec: mujoco.MjSpec, mocap_from_camera, *, world_from_mocap=BULLET_FROM_MOCAP):
+def add_camera(spec: mujoco.MjSpec, mocap_from_camera, *, world_from_mocap=WORLD_FROM_MOCAP):
     """Add the source-calibrated L515 camera to a scene in mocap coordinates."""
     position, quaternion = _camera_pose(mocap_from_camera, world_from_mocap)
     spec.visual.global_.offwidth = max(spec.visual.global_.offwidth, int(IMAGE_SIZE[0]))
@@ -93,7 +93,7 @@ def _hand_atlas(model, prefix):
 class DexCapCamera:
     """Render the policy's 10,000-point XYZRGB observation in the mocap frame."""
 
-    def __init__(self, model, mocap_from_camera, *, world_from_mocap=BULLET_FROM_MOCAP):
+    def __init__(self, model, mocap_from_camera, *, world_from_mocap=WORLD_FROM_MOCAP):
         self.model = model
         self.world_from_mocap = np.asarray(world_from_mocap, dtype=float)
         self.mocap_from_world = np.linalg.inv(self.world_from_mocap)

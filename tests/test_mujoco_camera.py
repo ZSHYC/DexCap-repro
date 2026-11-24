@@ -4,7 +4,7 @@ import mujoco
 import numpy as np
 
 from simulation.mujoco_camera import DexCapCamera, add_camera
-from simulation.frames import BULLET_FROM_MOCAP
+from simulation.frames import WORLD_FROM_MOCAP
 
 
 class MuJoCoCameraTest(unittest.TestCase):
@@ -15,8 +15,8 @@ class MuJoCoCameraTest(unittest.TestCase):
 
     def test_capture_back_projects_known_depth_in_mocap_frame(self):
         # This catches OpenGL/OpenCV axis mistakes and treating MuJoCo depth as range.
-        spec = self._spec(BULLET_FROM_MOCAP)
-        center = BULLET_FROM_MOCAP @ [0, 0, 0.5, 1]
+        spec = self._spec(WORLD_FROM_MOCAP)
+        center = WORLD_FROM_MOCAP @ [0, 0, 0.5, 1]
         spec.worldbody.add_geom(
             name="object",
             type=mujoco.mjtGeom.mjGEOM_BOX,
@@ -27,7 +27,7 @@ class MuJoCoCameraTest(unittest.TestCase):
         model = spec.compile()
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
-        camera = DexCapCamera(model, np.eye(4), world_from_mocap=BULLET_FROM_MOCAP)
+        camera = DexCapCamera(model, np.eye(4), world_from_mocap=WORLD_FROM_MOCAP)
         self.addCleanup(camera.close)
 
         points = camera.capture(data, np.random.default_rng(3))

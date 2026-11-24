@@ -2,6 +2,7 @@ import argparse
 from collections import deque
 import json
 from pathlib import Path
+import sys
 
 import h5py
 import mujoco
@@ -27,7 +28,7 @@ def load_demo(dataset):
 
 
 def observe(scene, frames, rng):
-    robot = frames.from_bullet(scene.control.observed_action())
+    robot = frames.from_world(scene.control.observed_action())
     result = dict(zip(PROPRIOCEPTION, np.split(robot, [6, 14])))
     result["pointcloud"] = scene.camera.capture(scene.data, rng)
     return result
@@ -48,7 +49,7 @@ def rollout(args):
     task = mujoco_packaging if packaging else mujoco_wiping
     object_name = (args.object or mujoco_packaging.DEFAULT_OBJECT) if packaging else None
     position_keys = ("box_xy", "object_xy") if packaging else ("plate_xy", "sponge_xy")
-    start = frames.to_bullet(initial)
+    start = frames.to_world(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
 
     def episode(seed, object_xy):
@@ -72,7 +73,7 @@ def rollout(args):
                     batch = {key: np.stack([frame[key] for frame in history]) for key in observation}
                     with torch.inference_mode():
                         action = policy(batch)
-                info, position_error, angle_error = scene.step(frames.to_bullet(action))
+                info, position_error, angle_error = scene.step(frames.to_world(action))
                 position_errors.append(position_error)
                 max_position_error = np.maximum(max_position_error, position_error)
                 max_angle_error = np.maximum(max_angle_error, angle_error)
@@ -99,6 +100,8 @@ def rollout(args):
             positions = task.sample_object_xy(np.random.default_rng(seed))
             placements = dict(zip(position_keys, positions.tolist()))
             results.append({"seed": seed, **placements, **episode(seed, positions)})
+            label = object_name if packaging else args.task
+            print(f"{label}: completed trial {seed}/{args.trials}", file=sys.stderr, flush=True)
 
     result = {
         "task": args.task,
