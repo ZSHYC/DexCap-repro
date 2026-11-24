@@ -83,7 +83,7 @@ class DualArmController:
         self.data.qvel[:] = 0
         mujoco.mj_forward(self.model, self.data)
 
-    def track(self, action, cycles):
+    def track(self, action, cycles, *, physics_step=None):
         """Interpolate wrists during the first cycle, then hold the absolute targets."""
         targets = tuple(self._targets(action))
         fractions = np.minimum(1, np.arange(1, self.substeps + 1) / (WRIST_RAMP_FRACTION * self.substeps))
@@ -115,6 +115,8 @@ class DualArmController:
                 torque = task_torque + null_torque + self.data.qfrc_bias[arm.dofs]
                 self.data.ctrl[arm.arm_actuators] = np.clip(torque, *arm.torque_limits)
             mujoco.mj_step2(self.model, self.data)
+            if physics_step is not None:
+                physics_step(self.data)
             if (substep + 1) % self.substeps == 0:
                 mujoco.mj_forward(self.model, self.data)
                 yield self.tracking_error(action)

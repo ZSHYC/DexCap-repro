@@ -9,7 +9,13 @@ import mujoco
 import numpy as np
 
 from simulation.frames import ActionFrames
-from simulation import mujoco_ball_collecting, mujoco_packaging, mujoco_sponge_picking, mujoco_wiping
+from simulation import (
+    mujoco_ball_collecting,
+    mujoco_packaging,
+    mujoco_scissor_cutting,
+    mujoco_sponge_picking,
+    mujoco_wiping,
+)
 from simulation.mujoco_control import CONTROL_INTERVAL
 from simulation.mujoco_scene import MAX_CONTROL_CYCLES, MujocoScene, PHYSICS_STEP, rig_base_positions
 
@@ -21,6 +27,7 @@ TASKS = {
     "packaging": (mujoco_packaging, ("box_xy", "object_xy")),
     "sponge-picking": (mujoco_sponge_picking, ("sponge_xy",)),
     "ball-collecting": (mujoco_ball_collecting, ("basket_xy", "ball_xy")),
+    "scissor-cutting": (mujoco_scissor_cutting, ("scissors_xy", "paper_xy")),
 }
 
 
@@ -111,7 +118,10 @@ def rollout(args):
         if not randomized:
             results.append(episode(seed, reference_xy))
         else:
-            positions = task.sample_object_xy(np.random.default_rng(seed))
+            if args.task == "scissor-cutting":
+                positions = reference_xy
+            else:
+                positions = task.sample_object_xy(np.random.default_rng(seed))
             placements = dict(zip(position_keys, positions.tolist()))
             results.append({"seed": seed, **placements, **episode(seed, positions)})
             label = object_name if packaging else args.task

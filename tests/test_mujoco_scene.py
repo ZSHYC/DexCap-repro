@@ -19,12 +19,13 @@ class RigCalibrationTest(unittest.TestCase):
         scene.control = Mock()
         scene.data = SimpleNamespace(contact=SimpleNamespace(geom=np.empty((0, 2), dtype=int)), ncon=0)
         scene.metrics = Mock()
+        scene.physics_step = scene.metrics.physics_step
         scene.arm_geoms = np.zeros(1, dtype=bool)
         scene.arm_contact_steps = 0
         pose = np.zeros(2)
         scene.control.track.return_value = iter([(pose, pose)] * 10)
         scene.step("reachable")
-        scene.control.track.assert_called_once_with("reachable", 10)
+        scene.control.track.assert_called_once_with("reachable", 10, physics_step=scene.metrics.physics_step)
         scene.metrics.update.assert_called_once_with(scene.data)
 
         scene.metrics.update.reset_mock()

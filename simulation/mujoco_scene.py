@@ -56,6 +56,11 @@ class MujocoScene:
 
             add_ball_collecting_scene(spec, object_xy)
             metrics_type = BallCollectingMetrics
+        elif task == "scissor-cutting":
+            from simulation.mujoco_scissor_cutting import ScissorCuttingMetrics, add_scissor_cutting_scene
+
+            add_scissor_cutting_scene(spec, object_xy)
+            metrics_type = ScissorCuttingMetrics
         else:
             from simulation.mujoco_packaging import PackagingMetrics, add_packaging_scene
 
@@ -71,6 +76,7 @@ class MujocoScene:
         self.data = mujoco.MjData(self.model)
         self.control = DualArmController(self.model, self.data)
         self.metrics = metrics_type(self.model, *metrics_args)
+        self.physics_step = getattr(self.metrics, "physics_step", None)
         self.camera = DexCapCamera(self.model, camera)
         self.arm_geoms = np.array([
             (self.model.geom(index).name or "").startswith(("right_arm_", "left_arm_"))
@@ -82,7 +88,8 @@ class MujocoScene:
         self.control.initialize(initial)
 
     def step(self, targets):
-        for wrist_position_error, wrist_angle_error in self.control.track(targets, MAX_CONTROL_CYCLES):
+        cycles = self.control.track(targets, MAX_CONTROL_CYCLES, physics_step=self.physics_step)
+        for wrist_position_error, wrist_angle_error in cycles:
             geometries = self.data.contact.geom[:self.data.ncon]
             rigid_contacts = geometries[geometries >= 0]
             self.arm_contact_steps += int(self.arm_geoms[rigid_contacts].any())
