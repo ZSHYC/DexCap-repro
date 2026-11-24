@@ -985,13 +985,15 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
   --task tea-preparing --output "$tea/tea-standard-osc-cap-unthread-rollout.json"
 ```
 
+以上导出经独立标准入口实际复放 2,301 步，终态同样为 1.995295 圈且 `cap_unthreaded=true`。EGL 输出 `10000 × 6` 点云，机械臂、双手及采样同手穿透均为 0，无物理警告。标准出口文件为 `tea-standard-osc-cap-unthread-rollout.json`。
+
 ### 退丝后的取盖与进剪刀柄
 
 从标准腕位控制实际退丝后的积分态撤手，再在高位调整右手指形并限速接近。食指和拇指首次相向抬盖约 11.98 mm。用这一实测夹持接续上提，盖子在无瓶身支撑时累计上移约 21.3 mm，其侧壁随后重新触到瓶颈。按实际接触法向侧向退出后，瓶颈接触短时消失，双指仍有载荷，继续移动时滑脱。取盖仍未完成右侧放置。逐步受力与实际积分态见数据盘 `benchmarks/tea-bottle-native/after-scaled-trough/after-standard-release/` 的 `tea-standard-cap-quiet-extraction.json`、`tea-standard-cap-carry-live-tilt.json` 和 `tea-standard-cap-unhook-and-carry.json`。
 
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
-擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。下一次接触调整需依据盘和海绵的实际相对姿态。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
+擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。逐步复算确认海绵在盘坐标的法向高度仅变化约 −0.003 mm，而切向位移约 15.5 mm，盘本身同时平移和倾转。按实际斑块反向转动，法向开口约增加 1.03 mm，最深接触仍约 0.74 mm，载荷增至约 3.78 N。下一次接触调整从第一笔更早的轻载状态开始。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
 
 ### 捡球的 20 个随机摆放标准复放
 
