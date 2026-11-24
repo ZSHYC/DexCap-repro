@@ -280,7 +280,7 @@ Wiping 的前 54 步中，第 24 步食指先撞盘沿。第 28 步仅一个控�
 
 让左食指先压盘内缘，盘子绕桌面支点倾斜约 21°。沿右食指插入弧，净空大于 10 mm 的窗口约 0.4 s。固定右腕角度后重新拟合拇指，在盘底净空约 39 mm 时采到右食指在盘底、拇指在盘沿的一次有效相向接触。保持该姿态的试验缩小了盘面平移，仍未延长相向接触。试验未让左手提前释放。见 `runs/wiping-left-index-only-sector26-gap.json` 和 `runs/wiping-sector26-left-assisted-right-fixed35-contact-latch.json`。
 
-从默认物体摆放和无接触机器人预抓位出发，左食指先压盘内缘，右食指进入盘底。待腕部减速后小步闭合右拇指，维持食指和拇指相向受力，左手撤开。按固定世界目标抬升并根据盘姿有限速地调整右腕，盘子完全离桌，仅由右手接触时上抬约 109 mm。相向接触连续覆盖 26 个 50 ms 周期采样，首末间隔 1.25 s。记录在 `runs/wiping-right-plate-lift-reference-trace.json`。同批次让左手在右手抬盘时转向海绵，维持了独立持盘，但海绵未出现拇指和中指相向接触。记录在 `runs/wiping-plate-sponge-synchronized.{py,json}`。
+从默认物体摆放和无接触机器人预抓位出发，左食指先压盘内缘，右食指进入盘底。待腕部减速后小步闭合右拇指，维持食指和拇指相向受力，左手撤开。按固定世界目标抬升并根据盘姿有限速地调整右腕，盘子完全离桌，仅由右手接触时上抬约 109 mm。相向接触连续覆盖 26 个 50 ms 周期采样，首末间隔 1.25 s。记录在 `runs/wiping-right-plate-lift-reference-trace.json`。
 
 
 这段持盘动作已导出为 387 步，标准入口记录到 `plate_grasped=true`、机械臂碰撞计数 0 和 `10000 × 6` 点云。HDF5 的 `robot_frame=mujoco_world` 标明初始机器人目标和动作都采用 MuJoCo 世界坐标，`control_cycles_per_action=1` 标明每个动作执行一个 50 ms 的控制周期。试验中把贴近盘沿的动作经 DexCap 坐标往返转换后，回放未能完成持盘，因此参考文件直接保存实际发给控制器的目标。
@@ -288,6 +288,16 @@ Wiping 的前 54 步中，第 24 步食指先撞盘沿。第 28 步仅一个控�
 ```bash
 python -m simulation.rollout data/derived/wiping-right-plate-lift-reference.hdf5 \
   --task wiping --output runs/wiping-right-plate-lift-reference-rollout.json
+```
+
+
+双手取物试验中，原左手转场使海绵平移约 60 mm，按初始位置抓取时漏抓。将左手转场中段抬高约 45 mm，通过海绵网格的当前位置和偏航角更新接近目标，再用真实接触力小幅闭合拇指和中指。右手持盘和左手持海绵同时离桌，维持相向接触 5 个连续 50 ms 样本，首末间隔 0.20 s。窗口内海绵中心抬高约 33–36 mm，盘心仍高于初始位置约 94–104 mm。盘子在该段下降约 9 mm，下一步需要稳定双持并在盘内走擦拭轨迹。详细记录见 `runs/wiping-two-object-lift-reference-trace.json`。
+
+396 步的双手取物参考在标准入口复跑后，`plate_grasped` 和 `sponge_grasped` 均为真，机械臂碰撞计数为 0，实际擦拭笔画为 0。
+
+```bash
+python -m simulation.rollout data/derived/wiping-two-object-lift-reference.hdf5 \
+  --task wiping --output runs/wiping-two-object-lift-reference-rollout.json
 ```
 
 
