@@ -73,6 +73,10 @@ class MujocoWipingTest(unittest.TestCase):
         start = model.flex_vertadr[flex]
         vertices = data.flexvert_xpos[start:start + model.flex_vertnum[flex]]
         np.testing.assert_allclose(vertices.mean(axis=0)[:2], object_xy[1], atol=1e-12)
+        self.assertAlmostEqual(np.ptp(vertices[:, 2]), 0.034)
+        self.assertGreaterEqual(model.flex_matid[flex], 0)
+        v = model.flex_texcoord[:, 1]
+        self.assertGreater(v[vertices[:, 2].argmax()], v[vertices[:, 2].argmin()])
 
         heights = []
         for radius in (0.0, 0.115):
@@ -96,7 +100,7 @@ class MujocoWipingTest(unittest.TestCase):
         for _ in range(1000):
             mujoco.mj_step(model, data)
         resting = flex_thickness(model, data)
-        for height in np.linspace(0.08, -0.005, 1200):
+        for height in np.linspace(0.08, -0.007, 1200):
             data.mocap_pos[compressor] = [*sponge_xy, height]
             mujoco.mj_step(model, data)
         compressed = flex_thickness(model, data)
