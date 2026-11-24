@@ -728,6 +728,8 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 从这次加载后的实测盘姿重新拟合拇指位置。四个拇指关节分段调整后，以局部盘面法线接近上表面，食指和拇指在真实接触中连续相向受力 41 个控制周期、约 2.05 s。食指力约 0.738–0.769 N，拇指力约 0.008–0.031 N。两指接触分别在 `rim_2_53` 的下表面与 `rim_2_57` 的上表面，盘仍由桌面支撑。逐步力记录见 `/data/dexcap-repro/benchmarks/wiping-index-wedge53-live-c9-dynamic-thumb-trace.json`。1,629 步可复放动作存于 `data/derived/wiping-index-thumb-wedge-opposed-reference.hdf5`，标准入口完整回放无物理警告、机械臂碰撞或双手碰撞，结果见 `runs/wiping-index-thumb-wedge-opposed-reference-rollout.json`。
 
+逐级加强拇指预载后，1,665 步动作的末态保持约 1.358 N 食指力和 0.612 N 拇指力，无新增碰撞或物理警告。从该状态继续保持左手撑盘并尝试竖直抬腕。右腕实际升高约 5.87 mm 时，盘心仅上移约 1.24 mm，仍与桌面接触。下一个目标拇指力降到 0.194 N，触发该试验的保持门限。在整个采样中，右手对盘面的局部向上合力峰值约 1.80 N。记录见 `/data/dexcap-repro/benchmarks/wiping-index-wedge53-c9-loaded-opposed-prefix.npz` 与 `wiping-index-wedge53-live-c9-preload-extension-trace.json`。
+
 剪刀 334 步参考在紧邻分块提交前后的相同布局分别抬升 4.00 和 4.04 mm，未形成双手柄自由夹持，均无碰撞或物理警告。历史抬升 117.25 mm 的实验使用了 y 方向相差约 18.3 mm 的初始剪刀位置。现行布局需要重新规划接近开孔的手腕和指形。对照见 `runs/scissor-e941e61-matched-334.json` 和 `runs/leap-finger-parts-scissor-carry-rollout.json`。
 
 用现行剪刀位姿直接穿固定环，12 个腕部滚转方向均可把食指完整截面送入开孔。最少干涉的 330° 方案仍使无名指尖最深穿桌约 43.87 mm。以实测固定刀刃与托盘底的接触点为支点，静态转动约 21° 后开孔中心抬高约 57.05 mm，手部通过完整截面且无干涉，剪刀仍有真实几何支撑。对应的剪刀枢轴下侧需跟随上移约 32.2 mm。下一阶段需要执行器实际触碰枢轴并建立该转动。证据见 `runs/scissor_current_roll330_blade_floor_pivot_feasibility.json`。
