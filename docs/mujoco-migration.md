@@ -923,3 +923,13 @@ python -m simulation.rollout data/derived/packaging-red-carton-bimanual-closure-
 擦盘的第二笔试验先撤掉原先向下压住海绵的左无名指接触。17 个约 50 ms 周期内，左中指和拇指仍各约有 4.3 N，双手继续同时持盘和海绵，末段连续 5 个周期无名指载荷为零。随后按实测状态尝试让无名指从海绵下侧进入，扫掠仍接触柔性海绵或其他刚体，未执行该路径。记录位于 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/stroke-support/left-return-ring-{release,under-from-release-plan}.json`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
+
+### 加宽木托后的备茶续段
+
+从默认满载茶瓶与闭盖开始，在新木托的完整现场重验退丝。左手相向稳瓶，右手分六轮转到 1.99541 圈，螺纹连接实际解除。瓶身平移约 3.83 mm，全程无物理警告。两手撤开后，以实测瓶盖位置重拟合右手并将原抓取腕位提高 2 mm。右手两指相向抬盖，盖子与瓶身分离，独立提盖段最高抬升约 17.65 mm。之后的高位续段将相向夹持且脱离瓶身的盖子抬升约 67.51 mm，开始横移后滑脱，仍未完成右侧放置。该续段数据为 `tea-current-cap-carry-overhead.json`。积分状态和受限关节控制记录位于数据盘 `benchmarks/tea-bottle-native/after-scaled-trough/` 的 `tea-production-cap.json`、`tea-production-cap-anchored-raised.json` 和 `tea-anchored-cap-carry-seed-*.npz`。
+
+从声明已放盖的独立阶段起点验证提瓶。把左食指和拇指尽量放在圆瓶同高的相对壁面，重新规划经过瓶肩的整臂路径，再按实际相向接触保持夹力。左手将满载瓶抬离托盘，瓶身最高上移约 40.95 mm。2 ms 积分中，只有左手夹持且无托盘支撑的最长区间为 1,463 个子步，即约 2.93 s。右臂退让后仍可夹持运瓶至茶壶上方。首条原生动力学倾倒路线在转腕时滑脱。改用更接近垂直于两指触点连线的转轴后，瓶身实际倾斜达到约 64.85°，该周期开始时仍有约 0.95 N 的较小夹持载荷。之后仍然滑脱，两条路线均无茶粒入壶。脚本、逐步受力与阶段积分状态在数据盘 `benchmarks/tea-bottle-native/` 的 `lift-bottle-planes-routed.py`、`tea-balanced-bottle-lift-routed.json`、`tea-balanced-bottle-lift-held.npz`、`tea-balanced-bottle-pour-parked.json` 和 `tea-balanced-bottle-pour-transverse-partial.json`。论文备茶还要求右手用镊子辅助倾倒，并将两件物品放回。 [操作顺序](https://arxiv.org/html/2403.07788v2#A1.SS6)
+
+### 擦盘回程的第三支点
+
+擦盘的独立回程试验中，右无名指接入后承担第三支点，右食指和拇指继续夹住离桌的盘。无名指入接时峰值约 83.45 N，接触收敛后后段约 4.0–4.7 N。第三支点的连续观测段为 0.65 s。该起点海绵与盘心相距约 293.8 mm，每腕每个 50 ms 周期移动 2 mm。相向推进时左中指逐渐卸载，海绵脱夹前未重新接触盘面。第二笔尚未建立。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/left-return-right-ring-bilateral-approach.json`。
