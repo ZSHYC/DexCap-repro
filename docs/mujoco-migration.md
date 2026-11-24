@@ -865,6 +865,20 @@ python -m simulation.rollout data/derived/packaging-box-centerward-reentry-refer
   --task packaging --object red-box --output runs/packaging-box-centerward-reentry-rollout.json
 ```
 
+从默认摆放连续执行三次重入后，5,752 步标准回放把外盒平移约 85.07 mm，距工作区中心从 141.24 mm 减至约 81.76 mm。两次额外重入在连续动力学试验中进一步减至 76.51 mm。三次重入的标准动作接上高位过渡与红盒拾取后，共 7,143 步。外盒保留推移结果，末端右手仍独立抬持红盒，包装最低点离桌约 97.64 mm。2 ms 审计记录最长独立夹持 2,183 子步，即 4.37 s。标准回放无机械臂碰撞、双手碰撞、关节越限失败或物理警告。额外重入与组合回放记录分别位于数据盘 `benchmarks/runs/box-centering-wall3-final-two.json` 与 `benchmarks/runs/box-centering-and-red-lift-standard.json`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-box-centering-and-red-lift-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-box-centering-and-red-lift-rollout.json
+```
+
+另从默认摆放把右食指和拇指的夹点移至红银包装长边中段，两侧法线相向。先撤左手，再用右手抬升并越过盒壁，夹持下降至盒底上方约 2 mm 后松手。1,144 步标准回放复现了盒底承托和 `object_in_box=true`，连续独立右手夹持 7,706 个 2 ms 子步，即 15.41 s，无机械臂碰撞、双手碰撞、关节越限失败或物理警告。末态开盖，包装上缘仍比盒沿高约 18 mm。标准回放与接触审计位于数据盘 `benchmarks/runs/carton-supported-deposit-standard{,-audit}.json`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-supported-deposit-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-red-carton-supported-deposit-rollout.json
+```
+
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
 对现有工具另试中指与拇指夹持，在动力学回放中有 296 个 2 ms 子步出现相向接触，最佳同时法向力约 0.103 和 0.030 N，托架仍承重，随后拇指脱开。在默认镊子上从侧面尝试滚动未建立手部接触，工具仍由原托架支撑。证据见 `runs/tea-convex47-alt-digit-physical.json` 和 `runs/tea-tweezers-top-tangent-production-cradle-roll-a.json`。
@@ -877,5 +891,7 @@ python -m simulation.rollout data/derived/packaging-box-centerward-reentry-refer
 将原工具接触腕位变换到实测倾转约 38° 的镊子末态后，沿托盘外侧的 55 个候选腕位可达。加入原推指所需的 8 mm 下压后，中指先与木托外端和侧壁分别侵入约 1.97、1.50 mm。只重调中指可避开木托，但会触及其他指链。保留当时托盘、木托和工具的真实几何，未在该路线执行动态推送。见 `runs/tea-ed8bba8-outward-static.json` 与 `runs/tea-ed8bba8-link8-retune.json`。
 
 保留右食指接触点，以腕工具轴旋转约 −15° 后，在该镊子摆放上得到 3 条完整手部静态无干涉路径。筛选覆盖高位预姿、下降和沿 −Y 移动约 25 mm 的 51 个位置。备茶木托、托盘和镊子支撑未在该静态试验中移除。物理回放用于确认负载下的接触和离架。静态数据见 `runs/tea-89a2f80-index-pivot-static.json`。 两次真实推移后衔接这条腕位路线，标准 OSC 的预抓和下降末端误差分别约 17.18 和 18.15 mm。手与镊子接触力为 0，后续外推未执行，木托仍承担约 0.0923 N。记录见 `runs/tea-89a2f80-index-pivot-physical.json`。受限关节力矩接续首先保存从默认摆放所得的第一段工具状态，供复用的积分状态见 `runs/tea-pivot-joint-pd-stage1-first-slide-settled.npz`。 第二次推移的全场景积分状态也已保存为 `runs/tea-pivot-joint-pd-stage2-second-slide-settled.npz`。在该实际姿态上，原 −15° 路线的拇指末端与桌面静态侵入约 3.40 mm。调整拇指后静态扫掠通过，实际接近出现约 0.423 rad 的最大关节跟踪差，右食指没有给镊子施力。记录见 `runs/tea-pivot-joint-thumb-clear.json`。 根据实际关节误差限速后，最大跟踪差降至约 0.060 rad。镊子在完整到位前仍在木托内移动，手未给镊子施加载荷。记录见 `runs/tea-pivot-joint-rate-follow.json`。
+
+从备茶第一次推移后的实测姿态出发，重新进入镊子高端，使右食指—工具接触峰值达 0.316 N。后续保载超过 2.39 s，末端木托仍承担约 0.232 N，茶盘底载荷为零。该腕位下拇指无法接触工具，尚无相向夹持或离架。轨迹和接续积分状态位于 `runs/tea-pivot-joint-stage1-{grip,pinch}.json` 和相应的 `*.npz`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
