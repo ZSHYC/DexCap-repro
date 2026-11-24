@@ -229,11 +229,11 @@ class MujocoScissorCuttingTest(unittest.TestCase):
             mujoco.mj_step(model, data)
             metrics.physics_step(data)
             latest = metrics.update(data)
-            if latest["sim_success"]:
+            if latest["cut_length_m"] > 0.003:
                 break
         return latest
 
-    def test_real_blade_closure_breaks_more_than_three_millimeters(self):
+    def test_mechanical_cut_without_robot_grasp_is_not_task_success(self):
         model, data, metrics = self.make_scene()
         info = self._close_scissors(model, data, metrics)
         self.assertTrue(np.isfinite(data.qpos).all())
@@ -243,7 +243,8 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         self.assertLess(data.qpos[hinge.qposadr[0]], 0.2)
         self.assertGreater(info["blade_contact_force_n"], 0)
         self.assertGreater(info["cut_length_m"], 0.003)
-        self.assertTrue(info["sim_success"])
+        self.assertEqual(info["held_cut_length_m"], 0)
+        self.assertFalse(info["sim_success"])
         self.assertLess(np.count_nonzero(data.eq_active), model.neq)
 
     def test_empty_or_disjoint_closure_does_not_cut(self):

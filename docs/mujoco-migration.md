@@ -239,6 +239,18 @@ python -m simulation.rollout data/derived/scissor-left-thumb-lift-reference.hdf5
 高墙候选的补充尝试在初次对夹后按实测接触收拢两指，抬升阶段有 277 个双指接触子步，但仍至少有 17 个纸带与托盘接触。沿隔间拉出再上抬、降低试验纸带摩擦及增加连接的弯曲刚度都未让纸带整个卸载。记录见 `runs/scissor_right_paper_tall_wall_adaptive_closure.{py,json}`。在另一条低力支撑试验的起点，左拇指单独托住悬空剪刀时，食指垫距固定柄约 54 mm，限幅 6 mm 的补入先失去了拇指接触。见 `runs/scissor_left_underhandle_fixed_loop_brace.{py,json}`。
 
 
+将接近固定柄的食指力调节放到 2 ms 物理子步，双柄在悬空时有连续 15 个子步同时受力，食指峰值约 0.73 N。随剪刀转动，活动柄在拇指上的接触法向从向上转到接近水平，随后滑脱。见 `runs/scissor_airborne_tactile_brace_extended.json`。
+
+后续从更早出现双柄接触的状态开始，左腕在上提时同时向托盘外侧移。剪刀脱离托盘和桌面后，左食指与拇指对两个独立柄的接触连续保持约 3.4 s。这段内剪刀轴向外移动约 111 mm，升高约 25 mm，机械臂碰撞计数为 0。334 步的标准参考回放记录剪刀轴最高比初始位置高约 117 mm，纸带仍在原位。详细的双柄接触在 `runs/scissor-two-handle-carry-reference-trace.json`。
+
+```bash
+python -m simulation.rollout data/derived/scissor-two-handle-carry-reference.hdf5 \
+  --task scissor-cutting --output runs/scissor-two-handle-carry-reference-rollout.json
+```
+
+现在 `cut_length_m` 记录实际断开的全部接缝。只有在两物均无桌面或托盘支撑、左拇指接触活动柄、左食指或中指接触固定柄、右手相向夹持纸带时断开的接缝才计入 `held_cut_length_m`。后者超过 3 mm 才记为完整任务成功。直接驱动机构的试验仍会得到真实 4 mm 切口，完整任务成功标志保持为假。见 `runs/scissor-production-held-cut-probe.json`。
+
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -258,6 +270,9 @@ python -m simulation.rollout data/derived/scissor-left-thumb-lift-reference.hdf5
 在托盘内将自由瓶身初始放在 `[0.47, -0.075] m` 的边框试验中，左手经真实接触将瓶身推到边框，拇指和食指相向接触持续 0.3 s。瓶身随后在对向接触下沿边框滚回内侧，仍由托盘底承托。请求上提 24 mm 时实际瓶身只升约 1 mm。记录在 `runs/tea-leap-rim-supported-lift-probe.json` 和 `runs/tea-leap-rim-roll-exit-lift-probe.json`。
 
 在同一声明的边框摆放中，从竖直自由瓶和闭合瓶盖开始。左手倾瓶后用拇指和两根手指配合真实托盘沿支住瓶身。右手连续 18 次转腕期间，瓶身倾角保持在 78.3–79.6°，世界偏航变化约 1.8°。右手前六次与瓶盖有接触，螺纹回退约 0.04 圈后接触丢失。反向转腕和缩短夹距也未取得有接触证据的正向旋转，因此完整退丝仍待验证。见 `runs/tea-leap-tilted-rim-counterhold-right-turn-result.json`。针对该反持姿态拟合了两组右手指尖，测试的 Panda 腕姿分支到达关节限位，仍未形成两个真实指面的相向接触。见 `runs/tea-leap-cap-reachable-fit-result.json`。
+
+
+另一条试验用真实左拇指和托盘支点将自由瓶停在约 37.4°。此姿态离线拟合到左手两面相向接触，全臂最小关节余量约 0.89 rad。物理执行闭合时，瓶体在第二侧形成受力前出现摆动，左手仍只有短暂单侧支撑。该姿态的两支右腕拟合也未形成可用的对向指尖接触。见 `runs/tea-leap-midtilt-study-result.json`。
 
 
 ## 六个场景的渲染与接入验证

@@ -43,6 +43,7 @@ PAPER_HALF_THICKNESS = 0.0004
 BOND_COUNT = 5
 BOND_PITCH = 0.004
 BOND_BREAK_FORCE_N = 0.05
+GRASP_CONTACT_FORCE_N = 0.05
 CUT_CONTACT_RADIUS_M = 0.006
 SUCCESS_CUT_M = 0.003
 
@@ -223,15 +224,52 @@ class ScissorCuttingMetrics:
                     PAPER_HALF_LENGTH if side == "left" else -PAPER_HALF_LENGTH,
                     0, 0,
                 ])
-        self.tray_geoms = {
+        self.tray_geoms = self._geoms("cutting_tray_")
+        self.fixed_handle = self._geoms("scissor_fixed_handle_")
+        self.moving_handle = self._geoms("scissor_moving_handle_")
+        self.movable_geoms = self._geoms("scissor_") | self.paper_geoms
+        self.support_geoms = self.tray_geoms | {
             geom for geom in range(model.ngeom)
-            if model.geom(geom).name.startswith("cutting_tray_")
+            if model.geom(geom).name in ("table", "room_floor_surface")
         }
+        self.left_thumb = self._geoms("left_hand_collision_16")
+        self.left_fingers = self._geoms("left_hand_collision_4") | self._geoms("left_hand_collision_8")
+        self.right_pads = {
+            geom: int(model.geom(geom).name.rsplit("_", 1)[1]) >= 13
+            for geom in self._geoms("right_hand_collision_")
+        }
+        self.held_bonds = 0
         self.initial_scissor_z = float(model.body_pos[self.scissor_body, 2])
         self.initial_paper_z = float(np.mean(model.body_pos[self.paper_bodies, 2]))
         self.max_scissor_lift = 0.0
         self.max_paper_lift = 0.0
         self.max_blade_force = 0.0
+
+    def _geoms(self, prefix):
+        return {geom for geom in range(self.model.ngeom) if self.model.geom(geom).name.startswith(prefix)}
+
+    def _held_for_cut(self, data):
+        thumb_engaged = fixed_engaged = False
+        paper_normals = ([], [])
+        force = np.zeros(6)
+        for index, contact in enumerate(data.contact[:data.ncon]):
+            pair = {contact.geom1, contact.geom2}
+            if pair & self.support_geoms and pair & self.movable_geoms:
+                return False
+            if pair & self.moving_handle and pair & self.left_thumb:
+                mujoco.mj_contactForce(self.model, data, index, force)
+                thumb_engaged |= force[0] > GRASP_CONTACT_FORCE_N
+            if pair & self.fixed_handle and pair & self.left_fingers:
+                mujoco.mj_contactForce(self.model, data, index, force)
+                fixed_engaged |= force[0] > GRASP_CONTACT_FORCE_N
+            if pair & self.paper_geoms and (pads := pair & self.right_pads.keys()):
+                pad = next(iter(pads))
+                mujoco.mj_contactForce(self.model, data, index, force)
+                if force[0] > GRASP_CONTACT_FORCE_N:
+                    normal = contact.frame[:3] if contact.geom1 == pad else -contact.frame[:3]
+                    paper_normals[self.right_pads[pad]].append(normal.copy())
+        return (thumb_engaged and fixed_engaged
+                and any(a @ b < -.25 for a in paper_normals[0] for b in paper_normals[1]))
 
     def physics_step(self, data: mujoco.MjData) -> None:
         """Apply cohesive failure from contacts produced by the latest substep."""
@@ -259,6 +297,7 @@ class ScissorCuttingMetrics:
             self.max_blade_force = max(self.max_blade_force, normal_force)
 
         closing_speed = max(0.0, -float(data.qvel[self.hinge_dof]))
+        held_for_cut = None
         for bond, blade_forces in contacts.items():
             equality = self.bond_equalities[bond]
             opposed_force = min(
@@ -267,6 +306,9 @@ class ScissorCuttingMetrics:
             )
             if (data.eq_active[equality] and closing_speed > 0.01
                     and opposed_force >= BOND_BREAK_FORCE_N):
+                if held_for_cut is None:
+                    held_for_cut = self._held_for_cut(data)
+                self.held_bonds += int(held_for_cut)
                 data.eq_active[equality] = 0
 
     def update(self, data: mujoco.MjData) -> dict:
@@ -280,9 +322,10 @@ class ScissorCuttingMetrics:
             "blade_contact_force_n": float(self.max_blade_force),
             "broken_bonds": int(broken),
             "cut_length_m": float(cut_length),
+            "held_cut_length_m": float(self.held_bonds * BOND_PITCH),
             "scissors_lift_m": float(self.max_scissor_lift),
             "paper_lift_m": float(self.max_paper_lift),
             "scissors_lifted": self.max_scissor_lift > 0.01,
             "paper_lifted": self.max_paper_lift > 0.01,
-            "sim_success": cut_length > SUCCESS_CUT_M,
+            "sim_success": self.held_bonds * BOND_PITCH > SUCCESS_CUT_M,
         }
