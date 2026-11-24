@@ -14,9 +14,9 @@
 
 | 实验 | 分项结果 | 完整成功 |
 | --- | --- | ---: |
-| Wiping PointNet | 两件均抓取 1/20，内盘面接触 0/20 | 0/20 |
-| Wiping SetXF | 两件均抓取 0/20，内盘面接触 0/20 | 0/20 |
-| Packaging 训练物体 | 入盒 0/30，合盖 20/30 | 0/30 |
+| Wiping PointNet | 两件均抓取 0/20，内盘面接触 1/20 | 0/20 |
+| Wiping SetXF | 两件均抓取 1/20，内盘面接触 1/20 | 0/20 |
+| Packaging 训练物体 | 入盒 0/30，合盖 21/30 | 0/30 |
 | Packaging 未见物体 | 入盒 0/45，合盖 22/45 | 0/45 |
 
 [MuJoCo 汇总 JSON](docs/assets/dexcap-formal-mujoco.json) · [回放、动作诊断与服务器路径](docs/mujoco-migration.md)
