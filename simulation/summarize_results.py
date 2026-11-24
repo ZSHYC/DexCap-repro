@@ -2,7 +2,7 @@ import argparse
 import json
 from pathlib import Path
 
-from simulation.packaging import PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJECTS
+from simulation.packaging_objects import PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJECTS
 
 
 def read_report(path, task, trial_count):
@@ -31,9 +31,15 @@ def tally(trials, metrics):
     return result
 
 
+def engine(report):
+    return report.get("engine", "pybullet"), report.get("engine_version")
+
+
 def summarize(pointnet_path, setxf_path, packaging_run):
     pointnet = read_report(pointnet_path, "wiping", 20)
     setxf = read_report(setxf_path, "wiping", 20)
+    if engine(pointnet) != engine(setxf):
+        raise ValueError("The Wiping reports must use the same physics engine and version")
     if pairing(pointnet, "plate_xy", "sponge_xy") != pairing(setxf, "plate_xy", "sponge_xy"):
         raise ValueError(f"{setxf_path} and {pointnet_path} must use the same dataset and placements")
     wiping_metrics = {
@@ -68,6 +74,8 @@ def summarize(pointnet_path, setxf_path, packaging_run):
             else:
                 path = Path(f"{packaging_run}-unseen-final") / f"{name}.json"
             report = read_report(path, "packaging", 5)
+            if engine(report) != engine(pointnet):
+                raise ValueError(f"{path} must use the same physics engine and version as the Wiping reports")
             if (report["object_group"], report["object"]) != (group, name):
                 raise ValueError(f"{path} must contain trials for {group} object {name}")
 
@@ -87,7 +95,8 @@ def summarize(pointnet_path, setxf_path, packaging_run):
             group_trials.extend(report["trials"])
         packaging[group] = {**tally(group_trials, metrics), "objects": object_scores}
 
-    return {"epoch": 3000, "steps_per_trial": 400, "wiping": wiping, "packaging": packaging}
+    return {"epoch": 3000, "steps_per_trial": 400, "engine": engine(pointnet)[0],
+            "engine_version": engine(pointnet)[1], "wiping": wiping, "packaging": packaging}
 
 
 def main():

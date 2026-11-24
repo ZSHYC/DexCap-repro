@@ -13,5 +13,6 @@ tensorboardX
 imageio
 matplotlib
 pybullet==3.2.6
+mujoco==3.6.0
 trimesh==3.23.5
 PyYAML

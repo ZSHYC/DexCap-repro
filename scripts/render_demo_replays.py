@@ -4,50 +4,41 @@ import argparse
 import json
 from pathlib import Path
 
-import h5py
 import matplotlib
-import numpy as np
-import pybullet as p
+import mujoco
 
-from simulation.frames import ActionFrames
-from simulation.packaging import PackagingSimulation
-from simulation.rollout import PROPRIOCEPTION
-from simulation.wiping import PlateWipingSimulation
+from simulation import mujoco_packaging, mujoco_wiping
+from simulation.mujoco_scene import MujocoScene
+from simulation.rollout import ASSET_ROOT, load_demo
 
 
-def capture_frame(client):
-    width, height = 500, 370
-    view = p.computeViewMatrix([0.13, -0.46, 0.58], [0.54, 0, 0.12], [0, 0, 1])
-    projection = p.computeProjectionMatrixFOV(51, width / height, 0.05, 2.0)
-    _, _, rgba, _, _ = p.getCameraImage(
-        width, height, view, projection, renderer=p.ER_TINY_RENDERER,
-        lightDirection=[-1, -1, 2], physicsClientId=client,
-    )
-    return np.asarray(rgba).reshape(height, width, 4)[..., :3]
+def render_replay(dataset, task):
+    transform, initial, calibrated_camera, actions = load_demo(dataset)
+    packaging = task == "packaging"
+    module = mujoco_packaging if packaging else mujoco_wiping
+    object_name = module.DEFAULT_OBJECT if packaging else None
+    scene = MujocoScene(ASSET_ROOT, transform, calibrated_camera, task, module.DEMO_OBJECT_XY, object_name)
+    camera = mujoco.MjvCamera()
+    camera.lookat[:] = (0.45, 0, 0.22)
+    camera.distance = 1.75
+    camera.azimuth = 137
+    camera.elevation = -31
+    sampled_steps = {0, len(actions) // 3, 2 * len(actions) // 3, len(actions)}
 
+    def capture():
+        renderer = scene.camera.renderer
+        renderer.update_scene(scene.data, camera=camera, scene_option=scene.camera.options)
+        return renderer.render().copy()
 
-def render_replay(dataset, make_scene, stages):
-    with h5py.File(dataset, "r") as file:
-        demo = file["data/demo_0"]
-        transform = ActionFrames(demo.attrs["frame_0_eef_quat"])
-        initial = np.concatenate([demo[f"obs/{key}"][0] for key in PROPRIOCEPTION])
-        actions = demo["actions"][:]
-
-    scene = make_scene()
     try:
         scene.reset(transform.to_bullet(initial))
-        frames = {"Initial pose": (0, capture_frame(scene.client))}
+        frames = {0: capture()}
         for index, action in enumerate(actions, start=1):
-            _, metrics = scene.step(transform.to_bullet(action))
-            for label, reached in stages:
-                if label not in frames and reached(metrics):
-                    frames[label] = (index, capture_frame(scene.client))
-        frames["Final state"] = (len(actions), capture_frame(scene.client))
+            metrics, _, _ = scene.step(transform.to_bullet(action))
+            if index in sampled_steps:
+                frames[index] = capture()
     finally:
         scene.close()
-
-    if not all(label in frames for label, _ in stages):
-        raise ValueError(f"{dataset} demo_0 did not reach all keyframe stages")
     return frames, metrics
 
 
@@ -60,29 +51,20 @@ def main():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    tasks = [
-        ("Plate Wiping", args.wiping_dataset, PlateWipingSimulation, [
-            ("Both objects grasped", lambda m: m["plate_grasped"] and m["sponge_grasped"]),
-            ("Inner surface contact", lambda m: m["wipe_surface_contact_steps"] > 0),
-        ]),
-        ("Packaging", args.packaging_dataset, PackagingSimulation, [
-            ("Object grasped", lambda m: m["object_grasped"]),
-            ("Object placed in box", lambda m: m["object_in_box"]),
-        ]),
-    ]
+    tasks = (("wiping", args.wiping_dataset), ("packaging", args.packaging_dataset))
     figure, axes = plt.subplots(2, 4, figsize=(13, 5.7), layout="constrained")
-    figure.suptitle("DexCap released actions in PyBullet", fontsize=16)
+    figure.suptitle("DexCap released actions on dual Franka–LEAP in MuJoCo", fontsize=16)
     report = {}
-    for row, (task, dataset, make_scene, stages) in zip(axes, tasks):
-        frames, metrics = render_replay(dataset, make_scene, stages)
-        for column, (axis, (label, (step, pixels))) in enumerate(zip(row, frames.items())):
-            title = f"{label} · step {step}"
+    for row, (task, dataset) in zip(axes, tasks):
+        frames, metrics = render_replay(dataset, task)
+        for column, (axis, (step, pixels)) in enumerate(zip(row, frames.items())):
+            title = f"Step {step}"
             if column == 0:
-                title = f"{task}\n{title}"
+                title = f"{task.title()}\n{title}"
             axis.imshow(pixels)
             axis.set_title(title, fontsize=11)
             axis.axis("off")
-        report[task] = {"keyframes": {label: step for label, (step, _) in frames.items()}, **metrics}
+        report[task] = {"keyframes": list(frames), **metrics}
     figure.savefig(args.output, dpi=140)
     plt.close(figure)
     print(json.dumps(report, indent=2))

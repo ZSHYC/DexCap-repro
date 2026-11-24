@@ -1,7 +1,7 @@
 /.env
 /.omx/
 /data
-/envs/
+/envs
 /runs
 /worktrees/
 __pycache__/

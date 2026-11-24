@@ -1,0 +1,165 @@
+import unittest
+
+import mujoco
+import numpy as np
+
+from simulation.mujoco_wiping import (
+    DEMO_OBJECT_XY,
+    SUMMARY_KEYS,
+    WipingMetrics,
+    add_wiping_scene,
+    sample_object_xy,
+)
+
+
+def base_spec():
+    return mujoco.MjSpec.from_string(
+        """
+        <mujoco>
+          <option timestep="0.001" gravity="0 0 -9.81" integrator="implicitfast"
+                  iterations="100" tolerance="1e-9"/>
+          <size memory="20M"/>
+          <worldbody>
+            <geom name="table" type="plane" pos="0 0 -0.03" size="2 2 0.1"
+                  friction="1.2 0.01 0.001"/>
+            <body name="compressor" mocap="true" pos="0 0 1">
+              <geom name="compressor_geom" type="box" size="0.06 0.08 0.01"/>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+    )
+
+
+def flex_thickness(model, data):
+    flex_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_FLEX, "wiping_sponge")
+    start = model.flex_vertadr[flex_id]
+    z = data.flexvert_xpos[start:start + model.flex_vertnum[flex_id], 2]
+    return float(np.ptp(z))
+
+
+def set_free_plate_and_flex_pose(model, data, plate_position, plate_quat, rotation, local_sponge_center):
+    plate = model.body("wiping_plate").id
+    plate_qpos = model.jnt_qposadr[model.body_jntadr[plate]]
+    data.qpos[plate_qpos:plate_qpos + 7] = [*plate_position, *plate_quat]
+    corners = [
+        body for body in range(model.nbody)
+        if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, body) or "").startswith("wiping_sponge_")
+    ]
+    reference = model.body_pos[corners]
+    offsets = reference - reference.mean(axis=0)
+    center = plate_position + rotation @ local_sponge_center
+    for body, offset in zip(corners, offsets):
+        target = center + rotation @ offset
+        joint = model.body_jntadr[body]
+        for axis in range(3):
+            data.qpos[model.jnt_qposadr[joint + axis]] = target[axis] - model.body_pos[body, axis]
+    data.qvel[:] = 0
+    mujoco.mj_forward(model, data)
+
+
+class MujocoWipingTest(unittest.TestCase):
+    def test_scene_uses_measured_plate_profile_and_requested_placements(self):
+        object_xy = np.array([[0.61, -0.08], [0.49, 0.17]])
+        spec = base_spec()
+        add_wiping_scene(spec, object_xy)
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+
+        plate = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "wiping_plate")
+        np.testing.assert_allclose(data.xpos[plate, :2], object_xy[0], atol=1e-12)
+        flex = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_FLEX, "wiping_sponge")
+        start = model.flex_vertadr[flex]
+        vertices = data.flexvert_xpos[start:start + model.flex_vertnum[flex]]
+        np.testing.assert_allclose(vertices.mean(axis=0)[:2], object_xy[1], atol=1e-12)
+
+        heights = []
+        for radius in (0.0, 0.115):
+            geom = np.array([-1], dtype=np.int32)
+            distance = mujoco.mj_ray(
+                model, data, np.array([object_xy[0, 0] + radius, object_xy[0, 1], 0.1]),
+                np.array([0.0, 0.0, -1.0]), None, 1, -1, geom,
+            )
+            self.assertTrue(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom[0]).startswith("wiping_plate_"))
+            heights.append(0.1 - distance)
+        self.assertAlmostEqual(heights[1] - heights[0], 0.0175, delta=0.0015)
+
+    def test_sponge_compresses_and_recovers_after_load_is_removed(self):
+        spec = base_spec()
+        add_wiping_scene(spec, DEMO_OBJECT_XY)
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        compressor = model.body("compressor").mocapid[0]
+        sponge_xy = DEMO_OBJECT_XY[1]
+
+        for _ in range(1000):
+            mujoco.mj_step(model, data)
+        resting = flex_thickness(model, data)
+        for height in np.linspace(0.08, -0.005, 1200):
+            data.mocap_pos[compressor] = [*sponge_xy, height]
+            mujoco.mj_step(model, data)
+        compressed = flex_thickness(model, data)
+        data.mocap_pos[compressor] = [*sponge_xy, 0.15]
+        for _ in range(3000):
+            mujoco.mj_step(model, data)
+        recovered = flex_thickness(model, data)
+
+        self.assertLess(compressed, resting - 0.008)
+        self.assertAlmostEqual(recovered, resting, delta=0.002)
+
+    def test_metrics_preserve_summary_contract_and_count_physical_interior_contact(self):
+        spec = base_spec()
+        same_center = np.array([[0.54, -0.15], [0.54, -0.15]])
+        add_wiping_scene(spec, same_center)
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        metrics = WipingMetrics(model)
+
+        result = None
+        for step in range(2500):
+            mujoco.mj_step(model, data)
+            if step % 50 == 49:
+                result = metrics.update(data)
+
+        self.assertEqual(set(result), set(SUMMARY_KEYS))
+        self.assertGreater(result["sponge_plate_contact_steps"], 0)
+        self.assertGreater(result["wipe_surface_contact_steps"], 0)
+        self.assertGreater(result["peak_contact_force"], 0)
+        self.assertFalse(result["plate_grasped"])
+        self.assertFalse(result["sponge_grasped"])
+
+    def test_wipes_are_measured_in_a_vertical_plate_frame(self):
+        spec = base_spec()
+        spec.option.gravity = [0, 0, 0]
+        add_wiping_scene(spec, np.array([[0.54, -0.15], [0.54, -0.15]]))
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        metrics = WipingMetrics(model)
+        plate_position = np.array([0.5, 0.0, 0.3])
+        rotation = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0.0]])
+        half_sqrt = np.sqrt(0.5)
+
+        result = None
+        stroke = np.linspace(-0.035, 0.035, 36)
+        for y in np.concatenate((stroke, stroke[::-1])):
+            set_free_plate_and_flex_pose(
+                model, data, plate_position, [half_sqrt, half_sqrt, 0, 0], rotation,
+                np.array([0.0, y, 0.019]),
+            )
+            result = metrics.update(data)
+
+        self.assertGreater(result["wipe_surface_contact_steps"], 60)
+        self.assertEqual(result["wipe_passes"], 2)
+        self.assertGreater(result["wipe_distance"], 0.12)
+
+    def test_sampler_matches_paper_areas_and_keeps_objects_apart(self):
+        rng = np.random.default_rng(4)
+        for _ in range(100):
+            xy = sample_object_xy(rng)
+            self.assertTrue(np.all(np.abs(xy - DEMO_OBJECT_XY) <= [0.20, 0.15]))
+            self.assertGreater(np.linalg.norm(xy[0] - xy[1]), 0.20)
+
+
+if __name__ == "__main__":
+    unittest.main()

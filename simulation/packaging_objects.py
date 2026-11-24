@@ -3,8 +3,11 @@
 from typing import NamedTuple
 
 import numpy as np
-import pybullet as p
 from scipy.spatial.transform import Rotation
+
+
+BULLET_GEOM_BOX = 3
+BULLET_GEOM_CYLINDER = 4
 
 
 class Part(NamedTuple):
@@ -16,11 +19,11 @@ class Part(NamedTuple):
 
 
 def box(size, center, color):
-    return Part(p.GEOM_BOX, tuple(length / 2 for length in size), center, color)
+    return Part(BULLET_GEOM_BOX, tuple(length / 2 for length in size), center, color)
 
 
 def cylinder(radius, height, center, color, orientation=(0, 0, 0, 1)):
-    return Part(p.GEOM_CYLINDER, (radius, radius, height / 2), center, color, orientation)
+    return Part(BULLET_GEOM_CYLINDER, (radius, radius, height / 2), center, color, orientation)
 
 
 def tube(start, end, radius, color):
@@ -37,8 +40,8 @@ def ring(outer, inner, height, center, color):
     tangent = radius * np.tan(np.pi / sides)
     half_size = ((outer - inner) / 2, tangent, height / 2)
     return tuple(
-        Part(p.GEOM_BOX, half_size, tuple(np.add(center, [radius * np.cos(yaw), radius * np.sin(yaw), 0])),
-             color, p.getQuaternionFromEuler([0, 0, yaw]))
+        Part(BULLET_GEOM_BOX, half_size, tuple(np.add(center, [radius * np.cos(yaw), radius * np.sin(yaw), 0])),
+             color, tuple(Rotation.from_euler("z", yaw).as_quat()))
         for yaw in np.arange(sides) * 2 * np.pi / sides
     )
 
@@ -54,6 +57,21 @@ DARK = (0.22, 0.12, 0.06, 1)
 BLACK = (0.04, 0.04, 0.04, 1)
 ORANGE = (0.90, 0.25, 0.05, 1)
 
+DEMO_OBJECT_XY = np.array([[0.482, 0.115], [0.517, -0.223]])
+PACKAGING_OBJECTS = {
+    "red-box": ("box", (0.060, 0.015, 0.0435), (0.60, 0.59, 0.55, 1), "demo_0"),
+    "blue-block": ("box", (0.055, 0.0275, 0.018), (0.04, 0.45, 0.72, 1), "demo_50"),
+    "green-pear": ("ellipsoid", (0.029, 0.025, 0.027), (0.31, 0.47, 0.09, 1), "demo_100"),
+    "green-can": ("cylinder", (0.0405, 0.0405, 0.034), (0.17, 0.45, 0.12, 1), "demo_150"),
+    "tape-measure": ("cylinder", (0.038, 0.038, 0.017), (0.78, 0.60, 0.08, 1), "demo_175"),
+    "yellow-cloth": ("box", (0.075, 0.065, 0.020), (0.91, 0.75, 0.09, 1), "demo_250"),
+}
+UNSEEN_PRIMITIVES = {
+    "red-apple": ("ellipsoid", (0.0395, 0.0395, 0.0435), (0.68, 0.035, 0.035, 1), VIDEO_1),
+    "earplug-jar": ("cylinder", (0.035, 0.035, 0.059), (0.72, 0.70, 0.64, 1), VIDEO_1),
+    "golden-curry": ("box", (0.09, 0.015, 0.0575), (0.67, 0.39, 0.10, 1), VIDEO_1),
+}
+
 
 UNSEEN_COMPOUNDS = {
     "tape-dispenser": (VIDEO_1, (
@@ -63,7 +81,8 @@ UNSEEN_COMPOUNDS = {
         box((0.042, 0.024, 0.008), (0.034, 0.033, -0.024), RED),
     )),
     "stacked-bricks": (VIDEO_2, (
-        cylinder(0.012, 0.015, (-0.081, -0.015, 0), YELLOW, p.getQuaternionFromEuler([0, np.pi / 2, 0])),
+        cylinder(0.012, 0.015, (-0.081, -0.015, 0), YELLOW,
+                 tuple(Rotation.from_euler("y", np.pi / 2).as_quat())),
         box((0.046, 0.061, 0.047), (-0.053, 0, 0), YELLOW),
         box((0.040, 0.061, 0.047), (-0.010, 0, 0), RED),
         box((0.046, 0.061, 0.047), (0.033, 0, 0), YELLOW),
@@ -121,9 +140,18 @@ UNSEEN_COMPOUNDS = {
         ),
     )),
 }
+PACKAGING_UNSEEN_OBJECTS = (*UNSEEN_PRIMITIVES, *UNSEEN_COMPOUNDS)
+
+
+def sample_object_xy(rng):
+    """Sample the published 10 x 10 cm box and 40 x 30 cm object areas."""
+    half_area = np.array([[0.05, 0.05], [0.20, 0.15]])
+    return DEMO_OBJECT_XY + rng.uniform(-half_area, half_area)
 
 
 def create_compound_shapes(parts, client):
+    import pybullet as p
+
     common = dict(
         shapeTypes=[part.shape for part in parts],
         halfExtents=[part.half_size for part in parts],
@@ -153,7 +181,7 @@ def compound_bounds(parts, rotation):
     for part in parts:
         axes = rotation @ Rotation.from_quat(part.orientation).as_matrix()
         center = rotation @ part.center
-        if part.shape == p.GEOM_CYLINDER:
+        if part.shape == BULLET_GEOM_CYLINDER:
             extent = cylinder_extent(axes, part.half_size)
         else:
             extent = np.abs(axes) @ part.half_size

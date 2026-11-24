@@ -4,93 +4,101 @@ import json
 from pathlib import Path
 
 import h5py
+import mujoco
 import numpy as np
 
-from simulation.camera import capture_pointcloud, sample_hand_surfaces
-from simulation.frames import ActionFrames, BULLET_FROM_MOCAP
-from simulation.packaging import (
-    DEFAULT_OBJECT, PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJECTS, PackagingSimulation,
-    TABLE_HEIGHT as PACKAGING_TABLE_HEIGHT,
-    sample_object_xy as sample_packaging_xy,
-)
-from simulation.wiping import PlateWipingSimulation, sample_object_xy as sample_wiping_xy
+from simulation.frames import ActionFrames
+from simulation import mujoco_packaging, mujoco_wiping
+from simulation.mujoco_control import CONTROL_INTERVAL
+from simulation.mujoco_scene import MAX_CONTROL_CYCLES, MujocoScene, PHYSICS_STEP, rig_base_positions
 
 
 PROPRIOCEPTION = ("robot0_eef_pos", "robot0_eef_quat", "robot0_eef_hand")
+ASSET_ROOT = Path(__file__).resolve().parents[1] / "data/mujoco_menagerie"
 
 
-def rollout(args):
-    with h5py.File(args.dataset, "r") as dataset:
-        demo = dataset["data/demo_0"]
+def load_demo(dataset):
+    with h5py.File(dataset, "r") as source:
+        demo = source["data/demo_0"]
         frames = ActionFrames(demo.attrs["frame_0_eef_quat"])
         initial = np.concatenate([demo[f"obs/{key}"][0] for key in PROPRIOCEPTION])
         camera = demo["states"][0].reshape(4, 4)
-        actions = demo["actions"][:] if args.checkpoint is None else None
+        return frames, initial, camera, demo["actions"][:]
+
+
+def observe(scene, frames, rng):
+    robot = frames.from_bullet(scene.control.observed_action())
+    result = dict(zip(PROPRIOCEPTION, np.split(robot, [6, 14])))
+    result["pointcloud"] = scene.camera.capture(scene.data, rng)
+    return result
+
+
+def rollout(args):
+    frames, initial, camera, actions = load_demo(args.dataset)
 
     policy = None
     if args.checkpoint is not None:
         import torch
         from robomimic.utils.file_utils import policy_from_checkpoint
 
-        policy, _ = policy_from_checkpoint(ckpt_path=args.checkpoint, device=torch.device("cuda:0"))
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        policy, _ = policy_from_checkpoint(ckpt_path=args.checkpoint, device=device)
 
-    if args.task == "packaging":
-        sim = PackagingSimulation(args.object or DEFAULT_OBJECT)
-        sample_object_xy = sample_packaging_xy
-        position_keys = ("box_xy", "object_xy")
-        table_height = PACKAGING_TABLE_HEIGHT
-    else:
-        sim = PlateWipingSimulation()
-        sample_object_xy = sample_wiping_xy
-        position_keys = ("plate_xy", "sponge_xy")
-        table_height = None
+    packaging = args.task == "packaging"
+    task = mujoco_packaging if packaging else mujoco_wiping
+    object_name = (args.object or mujoco_packaging.DEFAULT_OBJECT) if packaging else None
+    position_keys = ("box_xy", "object_xy") if packaging else ("plate_xy", "sponge_xy")
     start = frames.to_bullet(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
 
-    def observe(state, rng, hand_bodies, hand_samples):
-        robot = frames.from_bullet(np.concatenate([state[key] for key in PROPRIOCEPTION]))
-        result = dict(zip(PROPRIOCEPTION, np.split(robot, [6, 14])))
-        result["pointcloud"] = capture_pointcloud(
-            sim.client, camera, BULLET_FROM_MOCAP, rng,
-            hand_bodies=hand_bodies, hand_samples=hand_samples, table_height=table_height,
-        )
-        return result
-
-    def episode(seed, object_xy=None):
-        state = sim.reset(start) if object_xy is None else sim.reset(start, object_xy)
+    def episode(seed, object_xy):
         rng = np.random.default_rng(seed)
-        hand_bodies = (sim.right_hand, sim.left_hand)
-        hand_samples = sample_hand_surfaces(sim.client, hand_bodies)
-        observation = observe(state, rng, hand_bodies, hand_samples)
-        if policy is not None:
-            torch.manual_seed(seed)
-            policy.start_episode()
-            history = deque([observation] * 3, maxlen=3)
+        scene = MujocoScene(args.assets, frames, camera, args.task, object_xy, object_name)
+        try:
+            scene.reset(start)
+            initial_error, initial_angle = scene.control.tracking_error(start)
+            observation = observe(scene, frames, rng)
+            max_position_error = initial_error.copy()
+            max_angle_error = initial_angle.copy()
+            position_errors = []
+            if policy is not None:
+                torch.manual_seed(seed)
+                policy.start_episode()
+                history = deque([observation] * 3, maxlen=3)
+            for i in range(steps):
+                if policy is None:
+                    action = actions[i]
+                else:
+                    batch = {key: np.stack([frame[key] for frame in history]) for key in observation}
+                    with torch.inference_mode():
+                        action = policy(batch)
+                info, position_error, angle_error = scene.step(frames.to_bullet(action))
+                position_errors.append(position_error)
+                max_position_error = np.maximum(max_position_error, position_error)
+                max_angle_error = np.maximum(max_angle_error, angle_error)
+                if policy is not None and i + 1 < steps:
+                    history.append(observe(scene, frames, rng))
+            return {
+                "pointcloud_shape": list(observation["pointcloud"].shape),
+                "initial_wrist_error_m": initial_error.tolist(),
+                "median_wrist_error_m": np.median(position_errors, axis=0).tolist(),
+                "max_wrist_error_m": max_position_error.tolist(),
+                "max_wrist_error_rad": max_angle_error.tolist(),
+                "arm_contact_steps": scene.arm_contact_steps,
+                "simulation_time_s": float(scene.data.time),
+                **info,
+            }
+        finally:
+            scene.close()
 
-        for i in range(steps):
-            if policy is None:
-                action = actions[i]
-            else:
-                batch = {key: np.stack([frame[key] for frame in history]) for key in observation}
-                with torch.inference_mode():
-                    action = policy(batch)
-            state, info = sim.step(frames.to_bullet(action))
-            if policy is not None and i + 1 < steps:
-                history.append(observe(state, rng, hand_bodies, hand_samples))
-        return {"pointcloud_shape": list(observation["pointcloud"].shape), **info}
-
-    try:
-        results = []
-        for seed in range(1, args.trials + 1):
-            if args.trials == 1:
-                results.append(episode(seed))
-            else:
-                positions = sample_object_xy(np.random.default_rng(seed))
-                metrics = episode(seed, positions)
-                placements = dict(zip(position_keys, positions.tolist()))
-                results.append({"seed": seed, **placements, **metrics})
-    finally:
-        sim.close()
+    results = []
+    for seed in range(1, args.trials + 1):
+        if args.trials == 1:
+            results.append(episode(seed, task.DEMO_OBJECT_XY))
+        else:
+            positions = task.sample_object_xy(np.random.default_rng(seed))
+            placements = dict(zip(position_keys, positions.tolist()))
+            results.append({"seed": seed, **placements, **episode(seed, positions)})
 
     result = {
         "task": args.task,
@@ -98,14 +106,21 @@ def rollout(args):
         "demo": "demo_0",
         "checkpoint": args.checkpoint,
         "steps": steps,
+        "engine": "mujoco",
+        "engine_version": mujoco.__version__,
+        "arm_base_positions_m": rig_base_positions(frames).tolist(),
+        "physics_step_s": PHYSICS_STEP,
+        "control_interval_s": CONTROL_INTERVAL,
+        "max_control_cycles": MAX_CONTROL_CYCLES,
     }
-    if args.task == "packaging":
-        result.update(object=sim.object_name, object_group=sim.object_group)
-        reference_key = "object_reference_demo" if sim.object_group == "trained" else "object_reference"
-        result[reference_key] = sim.object_reference
+    if packaging:
+        seen = object_name in mujoco_packaging.PACKAGING_OBJECTS
+        result.update(object=object_name, object_group="trained" if seen else "unseen")
+        reference_key = "object_reference_demo" if seen else "object_reference"
+        result[reference_key] = task.object_reference(object_name)
     if args.trials == 1:
         return {**result, **results[0]}
-    if args.task == "packaging":
+    if packaging:
         placements = sum(trial["object_in_box"] for trial in results)
         result["placement_count"] = placements
         result["placement_rate"] = placements / args.trials
@@ -115,11 +130,13 @@ def rollout(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run a headless DexCap episode")
+    parser = argparse.ArgumentParser(description="Run a dual-arm DexCap MuJoCo episode")
     parser.add_argument("dataset", type=Path)
     parser.add_argument("--task", choices=("wiping", "packaging"), default="wiping")
-    parser.add_argument("--object", choices=(*PACKAGING_OBJECTS, *PACKAGING_UNSEEN_OBJECTS),
+    parser.add_argument("--object", choices=(*mujoco_packaging.PACKAGING_OBJECTS,
+                                           *mujoco_packaging.PACKAGING_UNSEEN_OBJECTS),
                         help="Select the Packaging policy-evaluation object")
+    parser.add_argument("--assets", type=Path, default=ASSET_ROOT, help="Pinned Menagerie assets directory")
     parser.add_argument("--checkpoint", help="Use a policy checkpoint instead of recorded actions")
     parser.add_argument("--steps", type=int)
     parser.add_argument("--trials", type=int, default=1, help="Sample placements for policy evaluation")

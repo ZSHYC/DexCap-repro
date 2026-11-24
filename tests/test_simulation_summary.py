@@ -3,7 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from simulation.packaging import PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJECTS
+from simulation.packaging_objects import PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJECTS
 from simulation.summarize_results import summarize
 
 
@@ -66,6 +66,12 @@ class SimulationSummaryTest(unittest.TestCase):
             self.assertEqual(result["packaging"]["unseen"]["trial_count"], 45)
             self.assertEqual(result["packaging"]["unseen"]["lid_closed_count"], 18)
             self.assertEqual(result["packaging"]["unseen"]["success_count"], 9)
+
+            report = json.loads(wiping_paths[0].read_text())
+            wiping_paths[0].write_text(json.dumps({**report, "engine": "mujoco"}))
+            with self.assertRaisesRegex(ValueError, "same physics engine"):
+                summarize(*wiping_paths, run)
+            wiping_paths[0].write_text(json.dumps(report))
 
             path = unseen / f"{PACKAGING_UNSEEN_OBJECTS[-1]}.json"
             unpaired = json.loads(path.read_text())

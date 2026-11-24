@@ -64,9 +64,15 @@ if [[ "$task" == wiping ]]; then
     "$python" -m simulation.rollout "$dataset" --task "$task" --checkpoint "$checkpoint" \
         --trials 20 --output "$runs/$name.final-sim.json"
 else
-    objects=$("$python" -c 'from simulation.packaging import PACKAGING_OBJECTS; print(*PACKAGING_OBJECTS)')
+    objects=$("$python" -c 'from simulation.mujoco_packaging import PACKAGING_OBJECTS; print(*PACKAGING_OBJECTS)')
     for object in $objects; do
         "$python" -m simulation.rollout "$dataset" --task "$task" --checkpoint "$checkpoint" \
             --object "$object" --trials 5 --output "$runs/$name-$object.final-sim.json"
+    done
+    unseen=$("$python" -c 'from simulation.mujoco_packaging import PACKAGING_UNSEEN_OBJECTS; print(*PACKAGING_UNSEEN_OBJECTS)')
+    mkdir -p "$runs/$name-unseen-final"
+    for object in $unseen; do
+        "$python" -m simulation.rollout "$dataset" --task "$task" --checkpoint "$checkpoint" \
+            --object "$object" --trials 5 --output "$runs/$name-unseen-final/$object.json"
     done
 fi

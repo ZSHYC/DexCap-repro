@@ -5,9 +5,9 @@ from xml.etree import ElementTree
 import numpy as np
 import pybullet as p
 
+from simulation.hand_joints import decode_leap_joints as _decode_leap_joints
+from simulation.hand_joints import encode_leap_joints as _encode_leap_joints
 
-LEAP_SWAP = [1, 0, 2, 3, 5, 4, 6, 7, 9, 8, 10, 11, 12, 13, 14, 15]
-LEFT_MIRRORED = [0, 4, 8, 12, 13]
 LINKS_PER_FINGER = 5  # Four actuated joints and one fixed fingertip.
 MESH_DIR = Path(__file__).resolve().parents[1] / "DexCap/STEP2_build_dataset/leap_hand_mesh"
 GRASP_FORCE = 200
@@ -22,20 +22,6 @@ def _xyzw(quaternion):
     if norm < 1e-8:
         raise ValueError("action contains a zero quaternion")
     return quaternion[[1, 2, 3, 0]] / norm
-
-
-def _decode_leap_joints(scaled, left):
-    joints = 2.0 * scaled
-    if left:
-        joints[LEFT_MIRRORED] *= -1
-    return joints[LEAP_SWAP]
-
-
-def _encode_leap_joints(joints, left):
-    scaled = 0.5 * joints[LEAP_SWAP]
-    if left:
-        scaled[LEFT_MIRRORED] *= -1
-    return scaled
 
 
 def _write_mirrored_hand(source, target):

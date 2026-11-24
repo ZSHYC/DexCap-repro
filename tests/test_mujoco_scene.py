@@ -1,0 +1,32 @@
+from types import SimpleNamespace
+import unittest
+from unittest.mock import Mock
+
+import numpy as np
+
+from simulation.mujoco_scene import MujocoScene, rig_base_positions
+
+
+class RigCalibrationTest(unittest.TestCase):
+    def test_arm_origins_follow_published_retargeting_offsets(self):
+        frames = SimpleNamespace(offsets=[(np.array([-0.25, 0.50, 0.15]), None, None),
+                                          (np.array([-0.06, -0.46, 0.20]), None, None)])
+        np.testing.assert_allclose(rig_base_positions(frames),
+                                   [[0.25, -0.50, 0.085], [0.06, 0.46, 0.035]])
+
+    def test_a_wrist_target_advances_after_reaching_pose_or_ten_cycles(self):
+        scene = MujocoScene.__new__(MujocoScene)
+        scene.control = Mock()
+        scene.data = SimpleNamespace(contact=SimpleNamespace(geom=np.empty((0, 2), dtype=int)), ncon=0)
+        scene.metrics = Mock()
+        scene.arm_geoms = np.zeros(1, dtype=bool)
+        scene.arm_contact_steps = 0
+        pose = np.zeros(2)
+        scene.control.step.return_value = pose, pose
+        scene.step("reachable")
+        scene.control.step.assert_called_once_with("reachable")
+
+        scene.control.step.reset_mock()
+        scene.control.step.return_value = np.full(2, 0.10), pose
+        scene.step("obstructed")
+        self.assertEqual(scene.control.step.call_count, 10)
