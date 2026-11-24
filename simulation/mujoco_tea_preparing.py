@@ -54,6 +54,16 @@ SUMMARY_KEYS = (
 )
 
 
+
+def sample_object_xy(rng):
+    positions = DEMO_OBJECT_XY.copy()
+    # Keep the bottle clear of the rim and the tweezers seated in their fixed placement.
+    vessel_offsets = rng.uniform([[0, -.014], [-.012, -.012]],
+                                 [[.018, 0], [.012, .012]])
+    positions[1:3] += vessel_offsets @ TRAY_ROTATION.T
+    return positions
+
+
 def _yaw(angle):
     return [math.cos(angle / 2), 0, 0, math.sin(angle / 2)]
 

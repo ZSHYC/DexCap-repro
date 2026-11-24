@@ -60,6 +60,13 @@ CUT_CONTACT_RADIUS_M = 0.006
 SUCCESS_CUT_M = 0.003
 
 
+def sample_object_xy(rng):
+    positions = DEMO_OBJECT_XY.copy()
+    # Shift along the supports so the scissors and upright tape keep their seating.
+    positions[:, 0] += rng.uniform([-.008, -.035], [.008, .035])
+    return positions
+
+
 def _box(body, name, size, pos, rgba, *, density=500, quat=(1, 0, 0, 0)):
     return body.add_geom(
         name=name, type=mujoco.mjtGeom.mjGEOM_BOX, size=size, pos=pos,

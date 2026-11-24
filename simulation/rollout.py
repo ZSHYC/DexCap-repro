@@ -159,10 +159,7 @@ def rollout(args):
         if not randomized:
             results.append(episode(seed, reference_xy))
         else:
-            if args.task in ("scissor-cutting", "tea-preparing"):
-                positions = reference_xy
-            else:
-                positions = task.sample_object_xy(np.random.default_rng(seed))
+            positions = task.sample_object_xy(np.random.default_rng(seed))
             placements = dict(zip(position_keys, positions.tolist()))
             results.append({"seed": seed, **placements, **episode(seed, positions)})
             label = object_name if packaging else args.task

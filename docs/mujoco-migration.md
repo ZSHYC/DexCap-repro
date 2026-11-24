@@ -84,6 +84,8 @@ python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
 
 用 `--first-seed` 可以把多个摆放拆给独立进程。每块按固定种子生成，按种子合并后使用与单进程评估相同的配对。用 `MUJOCO_EGL_DEVICE_ID` 设置渲染卡，用 `CUDA_VISIBLE_DEVICES` 设置策略推理卡。 已完成的配对评估使用 GPU 0–3。
 
+剪纸和备茶的带种子回合也按种子生成场景。剪刀沿托盘支撑线移动 ±8 mm，靠墙纸带沿墙移动 ±35 mm。备茶在托盘坐标下让茶瓶沿 x 移动 0–18 mm、沿 y 移动 −14–0 mm，茶壶两轴各移动 ±12 mm。托盘朝向、镊子和木托架摆放固定。上述范围依据现有模型的物理支撑选取，原文没有公布这两项的具体采样范围。标准评估入口的种子 1、2 已实测生成不同坐标。正式场景在采样边界沉降 0.6 s 后，刀片仍有原支撑，纸带上端高度保持约 82 mm，备茶仍保留 108 颗茶叶且镊子由木托承载。记录位于 `/data/dexcap-repro/benchmarks/seeded-tool-scenes/`。 [论文评估与摆放定义](https://arxiv.org/html/2403.07788v2#S5.SS1)
+
 历史 PyBullet 仿真代码和入口保存在基线提交。当前分支的 `simulation.rollout`、示范图和策略动作诊断均运行 MuJoCo。官方数据重建仍沿用作者的 PyBullet 指尖 IK。 [基线提交](https://github.com/ZSHYC/DexCap-repro/tree/0ee5418)
 
 
