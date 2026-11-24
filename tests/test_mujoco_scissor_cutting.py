@@ -30,7 +30,10 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         return model, data, ScissorCuttingMetrics(model)
 
     def test_scene_has_divided_tray_passive_scissors_and_cohesive_paper(self):
-        from simulation.mujoco_scissor_cutting import BOND_COUNT, PAPER_HALF_LENGTH
+        from simulation.mujoco_scissor_cutting import (
+            BOND_COUNT, HANDLE_BAR_HALF_WIDTH, PAPER_HALF_LENGTH,
+            THUMB_OPENING_XY, TWO_FINGER_OPENING_XY,
+        )
 
         model, data, metrics = self.make_scene()
         self.assertEqual(model.joint("scissor_free").type[0], mujoco.mjtJoint.mjJNT_FREE)
@@ -72,12 +75,28 @@ class MujocoScissorCuttingTest(unittest.TestCase):
                 )
                 np.testing.assert_allclose(first_anchor, second_anchor, atol=1e-12)
 
-        # Four collidable bars around each opening leave actual empty handle space.
-        for prefix in ("scissor_fixed_handle_", "scissor_moving_handle_"):
+        # Four bars leave measured free apertures, and each loop connects to its pivot link.
+        for prefix, opening in (
+            ("scissor_fixed_handle_", TWO_FINGER_OPENING_XY),
+            ("scissor_moving_handle_", THUMB_OPENING_XY),
+        ):
             self.assertEqual(
                 sum(model.geom(index).name.startswith(prefix) for index in range(model.ngeom)),
                 4,
             )
+            left = model.geom(f"{prefix}left").id
+            right = model.geom(f"{prefix}right").id
+            top = model.geom(f"{prefix}top").id
+            bottom = model.geom(f"{prefix}bottom").id
+            measured = np.array([
+                model.geom_pos[right, 0] - model.geom_pos[left, 0]
+                - 2 * HANDLE_BAR_HALF_WIDTH,
+                model.geom_pos[top, 1] - model.geom_pos[bottom, 1]
+                - 2 * HANDLE_BAR_HALF_WIDTH,
+            ])
+            np.testing.assert_allclose(measured, opening, atol=1e-12)
+        self.assertGreaterEqual(model.geom("scissor_fixed_shank").id, 0)
+        self.assertGreaterEqual(model.geom("scissor_moving_shank").id, 0)
 
         fixed = model.geom("scissor_fixed_blade").id
         moving = model.geom("scissor_moving_blade").id
@@ -97,6 +116,30 @@ class MujocoScissorCuttingTest(unittest.TestCase):
             - np.arctan2(fixed_axis[1], fixed_axis[0]),
             hinge.range[0], places=6,
         )
+
+        fixed_handles = [model.geom(f"scissor_fixed_handle_{part}").id
+                         for part in ("top", "bottom", "left", "right")]
+        moving_handles = [model.geom(f"scissor_moving_handle_{part}").id
+                          for part in ("top", "bottom", "left", "right")]
+        fromto = np.zeros(6)
+        for angle in (hinge.range[0], hinge.qpos0[0], hinge.range[1]):
+            data.qpos[hinge.qposadr[0]] = angle
+            mujoco.mj_forward(model, data)
+            clearance = min(
+                mujoco.mj_geomDistance(model, data, fixed_geom, moving_geom, 0.2, fromto)
+                for fixed_geom in fixed_handles for moving_geom in moving_handles
+            )
+            self.assertGreater(clearance, 0.005)
+
+        settled = mujoco.MjData(model)
+        for _ in range(1000):
+            mujoco.mj_step(model, settled)
+        scissor = model.body("scissor_base").id
+        self.assertTrue(np.isfinite(settled.qpos).all())
+        self.assertTrue(np.isfinite(settled.qvel).all())
+        self.assertGreater(settled.xpos[scissor, 2], -0.03)
+        self.assertLess(settled.xpos[scissor, 2], -0.01)
+        self.assertTrue(hinge.range[0] <= settled.qpos[hinge.qposadr[0]] <= hinge.range[1])
 
     def _close_scissors(self, model, data, metrics, steps=1200):
         hinge = model.joint("scissor_hinge")

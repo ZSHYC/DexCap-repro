@@ -21,6 +21,14 @@ TRAY_HALF_XY = (0.20, 0.18)
 TRAY_WALL_HEIGHT = 0.035
 TRAY_THICKNESS = 0.003
 SCISSOR_OPEN_ANGLE = 0.45
+# LEAP mesh AABBs measured from the released collision assets are
+# 34.7 x 36.3 mm for the thumb and 21.6 x 34.6 mm per fingertip.
+THUMB_OPENING_XY = np.array([0.040, 0.042])
+TWO_FINGER_OPENING_XY = np.array([0.050, 0.040])
+HANDLE_BAR_HALF_WIDTH = 0.004
+HANDLE_HALF_HEIGHT = 0.001
+FIXED_HANDLE_CENTER = np.array([-0.105, 0.035])
+MOVING_HANDLE_CENTER = np.array([-0.100, -0.035])
 PAPER_HALF_LENGTH = 0.030
 PAPER_HALF_THICKNESS = 0.0004
 BOND_COUNT = 5
@@ -30,10 +38,10 @@ CUT_CONTACT_RADIUS_M = 0.006
 SUCCESS_CUT_M = 0.003
 
 
-def _box(body, name, size, pos, rgba, *, density=500):
+def _box(body, name, size, pos, rgba, *, density=500, quat=(1, 0, 0, 0)):
     return body.add_geom(
         name=name, type=mujoco.mjtGeom.mjGEOM_BOX, size=size, pos=pos,
-        rgba=rgba, density=density, friction=[0.8, 0.01, 0.001],
+        quat=quat, rgba=rgba, density=density, friction=[0.8, 0.01, 0.001],
         solref=[0.004, 1], solimp=[0.9, 0.98, 0.001, 0.5, 2],
     )
 
@@ -55,15 +63,36 @@ def _add_tray(spec):
         _box(tray, f"cutting_tray_{name}", size, pos, color)
 
 
-def _add_handle(body, prefix, z):
+def _add_handle(body, prefix, z, center, opening):
     color = [0.02, 0.60, 0.62, 1]
+    x, y = center
+    half_x, half_y = opening / 2
+    bar = HANDLE_BAR_HALF_WIDTH
     for suffix, size, pos in (
-        ("top", [0.025, 0.003, 0.002], [-0.048, 0.014, z]),
-        ("bottom", [0.025, 0.003, 0.002], [-0.048, -0.014, z]),
-        ("left", [0.003, 0.011, 0.002], [-0.073, 0, z]),
-        ("right", [0.003, 0.011, 0.002], [-0.023, 0, z]),
+        ("top", [half_x + bar, bar, HANDLE_HALF_HEIGHT],
+         [x, y + half_y + bar, z]),
+        ("bottom", [half_x + bar, bar, HANDLE_HALF_HEIGHT],
+         [x, y - half_y - bar, z]),
+        ("left", [bar, half_y + bar, HANDLE_HALF_HEIGHT],
+         [x - half_x - bar, y, z]),
+        ("right", [bar, half_y + bar, HANDLE_HALF_HEIGHT],
+         [x + half_x + bar, y, z]),
     ):
         _box(body, f"{prefix}_{suffix}", size, pos, color, density=720)
+
+
+def _add_shank(body, name, z, center, opening):
+    start = np.array([-0.004, center[1] * 0.12])
+    end = np.array([center[0] + opening[0] / 2 + HANDLE_BAR_HALF_WIDTH, center[1]])
+    delta = end - start
+    angle = np.arctan2(delta[1], delta[0])
+    _box(
+        body, name,
+        [np.linalg.norm(delta) / 2 + HANDLE_BAR_HALF_WIDTH,
+         HANDLE_BAR_HALF_WIDTH, HANDLE_HALF_HEIGHT],
+        [*((start + end) / 2), z], [0.02, 0.60, 0.62, 1], density=720,
+        quat=[np.cos(angle / 2), 0, 0, np.sin(angle / 2)],
+    )
 
 
 def _add_scissors(spec, xy):
@@ -74,7 +103,10 @@ def _add_scissors(spec, xy):
     teal = [0.02, 0.60, 0.62, 1]
     _box(base, "scissor_fixed_blade", [0.060, 0.0025, 0.0008],
          [0.060, 0, -0.0006], teal, density=7800)
-    _add_handle(base, "scissor_fixed_handle", -0.0006)
+    _add_handle(base, "scissor_fixed_handle", -0.0015,
+                FIXED_HANDLE_CENTER, TWO_FINGER_OPENING_XY)
+    _add_shank(base, "scissor_fixed_shank", -0.0015,
+               FIXED_HANDLE_CENTER, TWO_FINGER_OPENING_XY)
     base.add_geom(
         name="scissor_pivot", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
         size=[0.006, 0.002], rgba=[0.65, 0.65, 0.68, 1], density=7800,
@@ -92,7 +124,10 @@ def _add_scissors(spec, xy):
     )
     _box(moving, "scissor_moving_blade", [0.060, 0.0025, 0.0008],
          [0.060, 0, 0.0006], teal, density=7800)
-    _add_handle(moving, "scissor_moving_handle", 0.0006)
+    _add_handle(moving, "scissor_moving_handle", 0.0015,
+                MOVING_HANDLE_CENTER, THUMB_OPENING_XY)
+    _add_shank(moving, "scissor_moving_shank", 0.0015,
+               MOVING_HANDLE_CENTER, THUMB_OPENING_XY)
 
 
 def _add_paper(spec, xy):
