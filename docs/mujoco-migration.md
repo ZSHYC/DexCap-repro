@@ -730,15 +730,31 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 逐级加强拇指预载后，1,665 步动作的末态保持约 1.358 N 食指力和 0.612 N 拇指力，无新增碰撞或物理警告。从该状态继续保持左手撑盘并尝试竖直抬腕。右腕实际升高约 5.87 mm 时，盘心仅上移约 1.24 mm，仍与桌面接触。下一个目标拇指力降到 0.194 N，触发该试验的保持门限。在整个采样中，右手对盘面的局部向上合力峰值约 1.80 N。记录见 `/data/dexcap-repro/benchmarks/wiping-index-wedge53-c9-loaded-opposed-prefix.npz` 与 `wiping-index-wedge53-live-c9-preload-extension-trace.json`。
 
+用真实接触点雅可比闭环调节拇指并跟随盘面转动，右腕上抬命令从 7 mm 延长至 26 mm。实测腕上升 24.93 mm、盘心上升 7.39 mm，桌面仍有三个支撑接触，其竖直反力约 9.58 N。此时左手竖直向下分量约 9.28 N。独立左手沿接触反法线减载试验使桌面反力从约 8.51 N 降至 5.38 N，右食指、拇指仍保持约 1.47/0.78 N 相向接触。1,806 步动作已从初始场景复放，最终接触力与盘位姿一致。记录见 `/data/dexcap-repro/benchmarks/wiping-c9-thumb-feedback-lift-trace.json` 和 `wiping-c9-left-support-retreat-b-prefix.npz`。另一次双臂调整盘倾角的物理回放维持支撑，将左侧盘下净空增至 14.01 mm，仍低于该指尖原网格的最小厚度 21.03 mm。记录见 `wiping-c9-bilateral-flatten-trace.json`。
+
+对实测接触点做摩擦与力矩平衡估计后，改用食指接触较内侧的平盘底、拇指接触外圈上表面。沿着两个预期触点的连线把腕部滚转 8°，重新生成机械臂路线，留出腕部最后一轴余量。从默认场景重放 1,451 步后，食指在盘底实际产生约 1.005 N 向盘面局部上方的载荷，峰值腕位误差约 4.47 mm，无机械臂或双手碰撞。按实测食指位置重新拟合拇指后，静态估计要达到约 5.10/2.92 N 法向力才可平衡盘重及力矩，计算最大指关节力矩约 0.71 N·m，低于模型限值 0.95 N·m。实际轨迹和静态拟合分别见 `wiping-index-flat-base-c6-roll8-physical-trace.json` 与 `wiping-c6-thumb-measured-balance-fit.json`。
+
+实际预载达到食指 4.95 N、拇指 2.70 N，并在设定范围内连续维持 14 个控制周期。保持右手对夹，左腕按实测接触法向退让后，左手与盘脱开，桌面竖直反力由约 6.22 N 降到 0.95 N。此时右食指、拇指法向力分别约 4.15、2.83 N。2,485 步原生动作见 `data/derived/wiping-plate-c6-handoff-reference.hdf5`，标准入口完整复放时无碰撞或物理警告，输出 `10000 × 6` 点云。结果见 `runs/wiping-plate-c6-handoff-reference-rollout.json`，完整力记录见 `/data/dexcap-repro/benchmarks/wiping-c6-two-hand-transfer-trace.json`。
+
+独立右腕上抬及双指闭环续段有少量采样没有桌面或左手接触，按盘沿最低点估计的最大净空仅约 0.031 mm，之后重新受桌面支撑。食指接触从平底附近滑到坡段，基于实际接触点的静态平衡估计随后也失效。闭环控制测到约 5.45/3.00 N 的峰值附近对夹，未稳定悬空。数据见 `wiping-c6-both-pad-feedback-lift-trace.json`、`wiping-c6-contact-anchor-lift-trace.json` 和 `wiping-c6-measured-wrench-history.json`。
+
+单独重放 Wiping 的左手海绵拾取时，海绵由左中指和拇指相向夹持，从默认桌面抬升 39.64 mm。抬升超过 30 mm、对夹且无桌面接触的连续观测跨度为 3.5 s。标准入口重放前 162 步时 `sponge_grasped=true`，无碰撞或警告。右臂停在远处，盘位移约 0.007 mm。这段证据覆盖海绵拾取。数据见 `data/derived/wiping-left-sponge-isolated-current-reference.hdf5`，结果见 `runs/wiping-left-sponge-isolated-current-rollout.json`。
+
 剪刀 334 步参考在紧邻分块提交前后的相同布局分别抬升 4.00 和 4.04 mm，未形成双手柄自由夹持，均无碰撞或物理警告。历史抬升 117.25 mm 的实验使用了 y 方向相差约 18.3 mm 的初始剪刀位置。现行布局需要重新规划接近开孔的手腕和指形。对照见 `runs/scissor-e941e61-matched-334.json` 和 `runs/leap-finger-parts-scissor-carry-rollout.json`。
 
 用现行剪刀位姿直接穿固定环，12 个腕部滚转方向均可把食指完整截面送入开孔。最少干涉的 330° 方案仍使无名指尖最深穿桌约 43.87 mm。以实测固定刀刃与托盘底的接触点为支点，静态转动约 21° 后开孔中心抬高约 57.05 mm，手部通过完整截面且无干涉，剪刀仍有真实几何支撑。对应的剪刀枢轴下侧需跟随上移约 32.2 mm。下一阶段需要执行器实际触碰枢轴并建立该转动。证据见 `runs/scissor_current_roll330_blade_floor_pivot_feasibility.json`。
+
+右食指接近枢轴下侧时，刀片和刀柄挡在前面。改用托盘外的固定环第 10 段，指腹刚触及该段时，食指近端与第 13、14 段相交约 1.64 和 2.71 mm。该方案的腕部逆运动学可达，完整手部仍需换入手方向。证据见 `runs/scissor_current_right_outer_handle_lift_search_tangent.json`。
 
 红银包装的旧接触模型在第 125 步左右靠食指和拇指的相向法向夹住包装物。现行模型同一阶段仅食指接触，物体随后被推开。拇指微闭合和腕部补偿两种尝试都未恢复抓取或入盒。另一条旧参考在前 463 步使用同一动作，差分发生在撤手关盖阶段。对照及补偿回放在 `/data/dexcap-repro/benchmarks/runs/red-610-*-grasp-trace.json` 和同目录的 `red-610-triangle-*-retune-*-rollout.json`。
 
 另用 60 mm 高位路径到达新的打开手形，接近阶段包装仅移动约 0.108 mm。首次触碰时食指尖离包装还有约 18.22 mm。把固定腕姿倾转约 23.6° 可在静态把两指配到相向，但食指近端和中指网格会侵入包装约 3.9–6.4 mm。这种姿态未执行动态回放。实际高位接近与倾角几何记录见 `/data/dexcap-repro/benchmarks/runs/red-live-4-16-high-approach-trace.json` 和 `red-tilted-4-16-pregrasp-fit.json`。
 
+中指与拇指替代抓法仍让多段指节穿入包装。左臂的桌面滚转尝试在接触前失去腕位跟踪。红银包装的挂耳槽几何为 12 × 28 mm，当前指尖横截面无法按测试姿态穿槽。对于挂耳外缘的上拉方案，在对侧长边为支点的静态估计中约需 0.57 N 向上载荷。对应数据见 `/data/dexcap-repro/benchmarks/runs/red-left-supported-roll-trace.json` 和 `red-hanger-hook-geometry.json`。
+
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
+
+对现有工具另试中指与拇指夹持，在动力学回放中有 296 个 2 ms 子步出现相向接触，最佳同时法向力约 0.103 和 0.030 N，托架仍承重，随后拇指脱开。在默认镊子上从侧面尝试滚动未建立手部接触，工具仍由原托架支撑。证据见 `runs/tea-convex47-alt-digit-physical.json` 和 `runs/tea-tweezers-top-tangent-production-cradle-roll-a.json`。
 
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
