@@ -1,6 +1,6 @@
 # DexCap MuJoCo 迁移
 
-将 Wiping 和 Packaging 的示范回放与策略评估迁到同一套双 Franka、双 LEAP 的 MuJoCo 环境。Packaging 保留六个训练物体、九个未见物体和五组配对摆放。论文还描述了 Sponge Picking、Ball Collecting、Scissor Cutting 和 Tea Preparing。公开数据仓库提供 Wiping 和 Packaging 的示范，另外四项的官方轨迹与训练权重仍需要数据来源。 [论文任务](https://arxiv.org/html/2403.07788v2#A1.SS6) · [作者数据发布](https://huggingface.co/datasets/chenwangj/DexCap-Data)
+六项任务共用双 Franka、双 LEAP 的 MuJoCo 环境。Wiping 和 Packaging 可加载公开示范以及本项目已训练的权重。Packaging 保留六个训练物体、九个未见物体和五组配对摆放。Sponge Picking、Ball Collecting、Scissor Cutting 和 Tea Preparing 使用本项目在仿真中生成的参考动作验证，另外四项的官方轨迹与训练权重仍需要数据来源。 [论文任务](https://arxiv.org/html/2403.07788v2#A1.SS6) · [作者数据发布](https://huggingface.co/datasets/chenwangj/DexCap-Data)
 
 ## 模型与控制
 
@@ -94,6 +94,21 @@ SetXF 的种子 9 触发了 MuJoCo `mjWARN_BADQACC`，原始日志记录于模�
 
 种子 9 的独立复盘把异常定位到盘子自由关节的旋转自由度。第 60 个策略动作中，仿真报告海绵贯入盘底约 68 mm，盘子被异常接触力抛离桌面。第 73 个动作盘子撞到房间地面后触发数值警告。以上是失稳轨迹的数值记录。逐物理步诊断见 `/data/dexcap-repro/benchmarks/wiping-setxf-seed9-badqacc-diagnostic.json`。
 
+
+## 115 回合闭环复测
+
+在 `pro1` 上固定 `3fb7ef3` 的源码、机器人和任务模型，用 GPU 0、1、2、3、4、6、7 并行运行。复用第 3000 轮权重、发布的 HDF5、各组原有的配对种子及 400 步上限。全部 115 个回合执行完毕，未触发物理警告或手指越限终止。
+
+| 权重及任务 | 回合 | 抓持或入盒 | 接触内盘或合盖 | 完整成功 |
+| --- | ---: | --- | --- | ---: |
+| PointNet Wiping | 20 | 盘 1，海绵 0 | 内盘面接触 1 | 0 |
+| SetXF Wiping | 20 | 盘 0，海绵 1 | 内盘面接触 1 | 0 |
+| SetXF Packaging 训练物体 | 30 | 入盒 0 | 合盖 7 | 0 |
+| SetXF Packaging 未见物体 | 45 | 入盒 0 | 合盖 14 | 0 |
+
+完整数据、启动参数和汇总在 `/data/dexcap-repro/runs/mujoco/palm-oval-closed-loop-3fb7ef3/`。原始内盘面接触包含未同时夹持盘和海绵的样本。该批次以两凸块掌部模型为准，后续十凸块模型与右手抬盘参考另有记录。
+
+对两凸块批次中实际抓起物体的两个 Wiping 回合，用十凸块模型 `dd14a48` 和原种子复跑。PointNet 种子 12 仍抓起盘子，SetXF 种子 13 原先抓起海绵，新模型未抓起。两个回合均执行 400 步，无物理警告、手指越限或完整任务成功。这两个种子用于观察掌部几何改变后的抓持差异。结果在 `/data/dexcap-repro/runs/mujoco/palm-x10-paired-contact-dd14a48/`。
 
 ## 115 回合闭环结果
 
@@ -758,6 +773,8 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 右食指接近枢轴下侧时，刀片和刀柄挡在前面。改用托盘外的固定环第 10 段，指腹刚触及该段时，食指近端与第 13、14 段相交约 1.64 和 2.71 mm。该方案的腕部逆运动学可达，完整手部仍需换入手方向。证据见 `runs/scissor_current_right_outer_handle_lift_search_tangent.json`。
 
+在最新托盘布局试验中，旧侧向路线先撞隔板，未到达剪刀柄。改由上方收拢手指后，右食指在固定柄上方连续施力约 0.288 s，峰值 0.701 N，过程中无其他机器人接触。固定环向托盘内侧约移动 0.205 mm，结束时离邻墙仍约 0.915 mm。此段验证了合法的顶部接触，刀柄孔仍未套入手指。记录见 `runs/scissor_1ccb0a2_overhead_shank_recovery/dynamic_top_drag.json`。
+
 固定和活动椭圆柄环的碰撞体使用共享边界的 24 和 20 块凸楔体。内侧边与标称椭圆相切，保留 4 mm 厚度以及现有被动铰链。原矩形分段按每个柄 1,440 个角度测量，固定环和活动环最多向开孔内侵入约 0.57 和 0.30 mm。在标称内半径的 99% 位置，原版分别误挡 838 和 912 个采样，改后均为 0。新版的多边形顶点相对标称椭圆往外约 0–0.34 mm。标准动作回放完成 334 步，剪刀仍只抬升约 4.08 mm，无物理警告。托盘支撑、两环位置与纸带稳定性现有回归通过，51 项 MuJoCo 测试通过。证据见 `/data/dexcap-repro/benchmarks/scissor-handle-box-ray-measurement.json` 与 `scissor-continuous-oval/`。
 
 红银包装的旧接触模型在第 125 步左右靠食指和拇指的相向法向夹住包装物。现行模型同一阶段仅食指接触，物体随后被推开。拇指微闭合和腕部补偿两种尝试都未恢复抓取或入盒。另一条旧参考在前 463 步使用同一动作，差分发生在撤手关盖阶段。对照及补偿回放在 `/data/dexcap-repro/benchmarks/runs/red-610-*-grasp-trace.json` 和同目录的 `red-610-triangle-*-retune-*-rollout.json`。
@@ -767,6 +784,8 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 中指与拇指替代抓法仍让多段指节穿入包装。左臂的桌面滚转尝试在接触前失去腕位跟踪。红银包装的挂耳槽几何为 12 × 28 mm，当前指尖横截面无法按测试姿态穿槽。对于挂耳外缘的上拉方案，在对侧长边为支点的静态估计中约需 0.57 N 向上载荷。对应数据见 `/data/dexcap-repro/benchmarks/runs/red-left-supported-roll-trace.json` 和 `red-hanger-hook-geometry.json`。
 
 红银包装的挂耳路线在静态关节路径上保留约 0.198 rad 的腕部第七轴余量。换算为腕位目标并实际执行后，第六轴先碰硬止挡，随后第七轴也逼近限位。停止时腕位误差约 14.1 mm，尚未碰到挂耳。当前笛卡尔控制器的冗余自由度回归默认姿态，这次执行偏离了静态逆解的关节分支。证据见 `/data/dexcap-repro/benchmarks/runs/red-hanger-branch-detour-plan.json` 和同目录的 `red-hanger-branch-detour-trace.json`。
+
+用真实力矩边界下的关节跟踪重放包装挂耳高位路线，前 99 段无接触，腕部第六、第七轴保留约 0.16、0.24 rad 余量。继续保持近挂耳姿态后，无名指末端同时接触纸盒两侧壁，尚未触到包装挂耳。最终腕位误差约 5.62 mm，两轴力矩均未到限值。证据见 `/data/dexcap-repro/benchmarks/runs/red-hanger-joint-detour-dynamics-trace.json`。
 
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
