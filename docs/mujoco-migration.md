@@ -359,6 +359,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 先用左手横推瓶身，再让瓶底与托盘边沿真实接触。经过翻转和撤手，瓶子由托盘底板与边沿共同承托，连续 0.90 s 没有机器人手接触，最终瓶身相对竖直方向倾斜约 89.45°。瓶盖仍贴近桌面。试验脚本和接触记录见 `runs/tea-leap-midtilt-stowed-support-probe.{py,json}`。
 
 
+从上述支撑阶段用受力矩限制的关节空间控制驱动右拇指，在瓶体仍与托盘接触时推到瓶身。实测推力约 0.526 N，瓶盖底部与桌面的间隙由 0 增至约 5.94 mm。随后拇指保持接触约 0.25 s，间隙经历起伏，第六个周期失去接触。瓶盖仍有螺纹约束，且手指没有接触瓶盖。结果与控制脚本见 `runs/tea-leap-rim-stage-thumb-jointpd-{probe.py,result.json}`。
+
+
 ## 六个场景的渲染与接入验证
 
 六个场景均以同一套双 Franka、双 LEAP、OSC 和 RGB-D 入口在 `pro1` 加载，执行实际控制并输出 `10000 × 6` 点云。35 项 MuJoCo 专测和汇总测试通过。场景总览图与接入记录保存于数据盘 `runs/task-scene-overview-grasp-physics/six-mujoco-scenes.png` 和 `runs/task-scene-overview-grasp-physics/smoke.json`。Scissor Cutting 和 Tea Preparing 已验证关键机构的物理响应，仍缺整段双臂任务动作。
