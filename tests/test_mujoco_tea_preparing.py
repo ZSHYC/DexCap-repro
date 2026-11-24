@@ -119,6 +119,25 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         self.assertTrue(info["tea_deposited"])
         self.assertFalse(info["sim_success"])
 
+    def test_released_cap_can_rest_on_table_next_to_right_rim(self):
+        model, data, metrics = self.make_scene()
+        data.eq_active[metrics.thread_weld] = 0
+        cap_qpos = model.jnt_qposadr[metrics.cap_joint]
+        cap_dof = model.jnt_dofadr[metrics.cap_joint]
+        tray_rotation = data.xmat[metrics.tray_body].reshape(3, 3).copy()
+        tray_position = data.xpos[metrics.tray_body].copy()
+
+        for local_y, on_right in ((-.21, True), (-.075, True), (.21, False), (-.35, False)):
+            with self.subTest(local_y=local_y):
+                pos = tray_position + tray_rotation @ [-.07, local_y, .05]
+                data.qpos[cap_qpos:cap_qpos + 7] = [*pos, 1, 0, 0, 0]
+                data.qvel[cap_dof:cap_dof + 6] = 0
+                mujoco.mj_forward(model, data)
+                for _ in range(500):
+                    mujoco.mj_step(model, data)
+                info = metrics.update(data)
+                self.assertEqual(info["cap_on_right"], on_right)
+
     def test_fixture_motion_without_grasp_does_not_count_as_use(self):
         model, data, metrics = self.make_scene()
         data.eq_active[metrics.thread_weld] = 0

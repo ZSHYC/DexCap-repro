@@ -32,7 +32,7 @@ DEMO_OBJECT_XY = np.array([
     [0.52, 0.00], [0.47, 0.015], [0.60, -0.065], [0.57, 0.095],
 ])
 SUMMARY_KEYS = (
-    "cap_turns", "cap_unthreaded", "cap_on_tray", "tea_deposited_count",
+    "cap_turns", "cap_unthreaded", "cap_on_right", "tea_deposited_count",
     "tea_deposited", "bottle_used", "bottle_returned", "tweezers_used",
     "tweezers_returned", "left_hand_released", "sim_success",
 )
@@ -245,8 +245,11 @@ class TeaPreparingMetrics:
         self.tweezers_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_tweezers_")}
         self.left_hand_geoms = {g for g in geoms if model.geom(g).name.startswith("left_hand_")}
         self.right_hand_geoms = {g for g in geoms if model.geom(g).name.startswith("right_hand_")}
-        self.support_geoms = self.tray_geoms | {
-            g for g in geoms if model.geom(g).name in ("table", "room_floor_surface")
+        self.cap_support_geoms = self.tray_geoms | {
+            g for g in geoms if model.geom(g).name == "table"
+        }
+        self.support_geoms = self.cap_support_geoms | {
+            g for g in geoms if model.geom(g).name == "room_floor_surface"
         }
         self.tea_geoms = [model.geom(f"tea_particle_geom_{i}").id for i in range(TEA_PARTICLES)]
         self.tea_bodies = [model.body(f"tea_particle_{i}").id for i in range(TEA_PARTICLES)]
@@ -344,20 +347,25 @@ class TeaPreparingMetrics:
             self.bottle_used and not self._contact(data, self.left_hand_geoms, self.bottle_geoms)
         )
         tray_rotation = data.xmat[self.tray_body].reshape(3, 3)
-        cap_in_tray = tray_rotation.T @ (
+        cap_from_tray = tray_rotation.T @ (
             data.xpos[self.cap_body] - data.xpos[self.tray_body]
         )
-        cap_on_tray = bool(
-            cap_unthreaded and self._contact(data, self.cap_geoms, self.tray_geoms)
+        # The official rollout places the free cap on the table beside the right rim.
+        cap_on_right = bool(
+            cap_unthreaded and self._contact(data, self.cap_geoms, self.cap_support_geoms)
+            and not self._contact(
+                data, self.cap_geoms, self.left_hand_geoms | self.right_hand_geoms,
+            )
             and self._settled(data, self.cap_joint)
-            and abs(cap_in_tray[0]) < TRAY_HALF_XY[0] and cap_in_tray[1] < -.02
+            and abs(cap_from_tray[0]) < TRAY_HALF_XY[0]
+            and -TRAY_HALF_XY[1] - .12 < cap_from_tray[1] < -.02
         )
         deposited = self._tea_deposited_count(data)
         tea_deposited = deposited >= 1
         return {
             "cap_turns": cap_turns,
             "cap_unthreaded": cap_unthreaded,
-            "cap_on_tray": cap_on_tray,
+            "cap_on_right": cap_on_right,
             "tea_deposited_count": deposited,
             "tea_deposited": bool(tea_deposited),
             "bottle_used": bool(self.bottle_used),
@@ -366,7 +374,7 @@ class TeaPreparingMetrics:
             "tweezers_returned": tweezers_returned,
             "left_hand_released": left_released,
             "sim_success": bool(
-                cap_unthreaded and cap_on_tray and tea_deposited
+                cap_unthreaded and cap_on_right and tea_deposited
                 and bottle_returned and tweezers_returned and left_released
             ),
         }
