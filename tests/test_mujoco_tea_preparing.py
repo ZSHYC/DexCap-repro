@@ -115,27 +115,56 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         self.assertGreater(separation, start_separation + 0.003)
         self.assertEqual(model.joint("tea_cap_free").type[0], mujoco.mjtJoint.mjJNT_FREE)
 
-    def test_cap_skirt_clears_bottle_neck_at_every_relative_angle(self):
+    def ring_radii(self, model, data, prefix, origin):
+        model.geom_group[:] = [
+            0 if model.geom(g).name.startswith(prefix) else 5 for g in range(model.ngeom)
+        ]
+        selector = np.array([1, 0, 0, 0, 0, 0], dtype=np.uint8)
+        hit = np.empty(1, dtype=np.int32)
+        inside, outside = [], []
+        for angle in np.linspace(0, 2 * np.pi, 720, endpoint=False):
+            radial = np.array([np.cos(angle), np.sin(angle), 0.])
+            distance_in = mujoco.mj_ray(model, data, origin, radial, selector, 1, -1, hit)
+            distance_out = mujoco.mj_ray(model, data, origin + .10 * radial, -radial, selector, 1, -1, hit)
+            self.assertGreater(distance_in, 0)
+            self.assertGreater(distance_out, 0)
+            inside.append(distance_in)
+            outside.append(.10 - distance_out)
+        return np.array(inside), np.array(outside)
+
+    def test_vessel_shells_keep_radial_thickness_through_the_segment_joints(self):
+        from simulation import mujoco_tea_preparing as tea
+
         model, _, metrics = self.make_scene()
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
-        skirt = [geom for geom in metrics.cap_geoms if model.geom(geom).name.startswith("tea_cap_wall_")]
-        skirt_bottom = min(data.geom_xpos[geom, 2] - model.geom_size[geom, 2] for geom in skirt)
-        axis_xy = data.xpos[metrics.bottle_body, :2]
-        skirt_radius = min(
-            np.linalg.norm(data.geom_xpos[geom, :2] - axis_xy) - model.geom_size[geom, 0]
-            for geom in skirt
+        rings = (
+            ("tea_bottle_wall_", metrics.bottle_body, .02,
+             tea.BOTTLE_RADIUS - tea.BOTTLE_WALL_THICKNESS, tea.BOTTLE_RADIUS),
+            ("tea_bottle_neck_", metrics.bottle_body, tea.BOTTLE_HEIGHT - .005,
+             tea.BOTTLE_INNER_RADIUS, tea.BOTTLE_NECK_RADIUS),
+            ("tea_cap_wall_", metrics.cap_body, 0, tea.CAP_RADIUS - .004, tea.CAP_RADIUS),
+            ("tea_teapot_wall_", metrics.pot_body, .03, tea.POT_INNER_RADIUS, tea.POT_INNER_RADIUS + .006),
         )
-        # Bound every bottle-wall corner that overlaps the lowest skirt position.
-        neck_radius = max(
-            np.hypot(
-                np.linalg.norm(data.geom_xpos[geom, :2] - axis_xy) + model.geom_size[geom, 0],
-                model.geom_size[geom, 1],
-            )
-            for geom in metrics.bottle_geoms
-            if data.geom_xpos[geom, 2] + model.geom_size[geom, 2] >= skirt_bottom
-        )
-        self.assertGreater(skirt_radius - neck_radius, .002)
+        for prefix, body, z, inner, outer in rings:
+            with self.subTest(ring=prefix):
+                inside, outside = self.ring_radii(model, data, prefix, data.xpos[body] + [0, 0, z])
+                thickness = outside - inside
+                self.assertGreaterEqual(thickness.min(), .99 * (outer - inner))
+                self.assertLessEqual(thickness.max(), 1.01 * (outer - inner))
+                self.assertLess(max(abs(inside - inner).max(), abs(outside - outer).max()), .0004)
+
+    def test_cap_skirt_clears_bottle_neck_at_every_relative_angle(self):
+        from simulation.mujoco_tea_preparing import BOTTLE_HEIGHT
+
+        model, _, metrics = self.make_scene()
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        # The rays include each sector midpoint and apex, which bound the two prisms at any angle.
+        skirt_in, _ = self.ring_radii(model, data, "tea_cap_wall_", data.xpos[metrics.cap_body])
+        neck_origin = data.xpos[metrics.bottle_body] + [0., 0., BOTTLE_HEIGHT - .005]
+        _, neck_out = self.ring_radii(model, data, "tea_bottle_neck_", neck_origin)
+        self.assertGreater(skirt_in.min() - neck_out.max(), .002)
 
     def test_partially_unscrewed_cap_holds_without_hand_torque(self):
         model, data, metrics = self.make_scene(fix_bottle=True)

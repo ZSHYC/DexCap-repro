@@ -18,6 +18,8 @@ import numpy as np
 
 
 TABLE_HEIGHT = -0.030
+VESSEL_SECTORS = 24
+VESSEL_INNER_APEX_SCALE = 1 / np.cos(np.pi / VESSEL_SECTORS)
 TRAY_YAW = np.deg2rad(-8)
 TRAY_HALF_XY = (0.180, 0.140)
 TRAY_ROTATION = np.array([
@@ -56,15 +58,31 @@ def _yaw(angle):
     return [math.cos(angle / 2), 0, 0, math.sin(angle / 2)]
 
 
-def _ring(body, prefix, radius, height, thickness, color, density, *, z_center=None):
+def _ring(spec, body, prefix, radius, height, thickness, color, density, *, z_center=None):
+    segments = VESSEL_SECTORS
+    inner, outer = radius - thickness / 2, radius + thickness / 2
+    # A few micrometers of overlap cover mesh rounding at the shared radial faces.
+    tangent = np.tan(np.pi / segments + .0001)
+    xy = np.array([
+        [inner, -inner * tangent], [outer, -outer * tangent],
+        [outer, outer * tangent], [inner, inner * tangent],
+    ])
+    # Common radial faces meet at each seam while both wall chords remain tangent.
+    top = np.column_stack((xy, np.full(4, height / 2)))
+    bottom = top - [0, 0, height]
+    faces = np.array([
+        (0, 1, 2), (0, 2, 3), (4, 6, 5), (4, 7, 6),
+        (0, 4, 5), (0, 5, 1), (1, 5, 6), (1, 6, 2),
+        (2, 6, 7), (2, 7, 3), (3, 7, 4), (3, 4, 0),
+    ]).ravel()
+    mesh = spec.add_mesh(
+        name=f"{prefix}_sector", uservert=np.concatenate((top, bottom)).ravel(), userface=faces,
+    )
     z_center = height / 2 if z_center is None else z_center
-    for index in range(12):
-        angle = 2 * np.pi * index / 12
+    for index in range(segments):
         body.add_geom(
-            name=f"{prefix}_{index}", type=mujoco.mjtGeom.mjGEOM_BOX,
-            pos=[radius * np.cos(angle), radius * np.sin(angle), z_center],
-            quat=_yaw(angle),
-            size=[thickness / 2, radius * np.tan(np.pi / 12), height / 2],
+            name=f"{prefix}_{index}", type=mujoco.mjtGeom.mjGEOM_MESH, meshname=mesh.name,
+            pos=[0, 0, z_center], quat=_yaw(2 * np.pi * index / segments),
             rgba=color, density=density, friction=[0.8, 0.01, 0.001], condim=4,
         )
 
@@ -100,30 +118,30 @@ def _add_bottle_cap_and_tea(spec, xy):
     wall_inner_radius = BOTTLE_RADIUS - BOTTLE_WALL_THICKNESS
     bottle.add_geom(
         name="tea_bottle_floor", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-        pos=[0, 0, -.001], size=[wall_inner_radius, .002, 0],
+        pos=[0, 0, -.001], size=[wall_inner_radius * VESSEL_INNER_APEX_SCALE, .002, 0],
         rgba=[.10, .15, .14, 1], density=BOTTLE_DENSITY, friction=[.8, .01, .001],
     )
     bottle_color = [.10, .22, .19, 1]
     shoulder_height = BOTTLE_HEIGHT - BOTTLE_NECK_HEIGHT
     shoulder_thickness = .003
     _ring(
-        bottle, "tea_bottle_wall", (BOTTLE_RADIUS + wall_inner_radius) / 2,
+        spec, bottle, "tea_bottle_wall", (BOTTLE_RADIUS + wall_inner_radius) / 2,
         shoulder_height - shoulder_thickness, BOTTLE_WALL_THICKNESS,
         bottle_color, BOTTLE_DENSITY,
     )
     _ring(
-        bottle, "tea_bottle_neck", (BOTTLE_NECK_RADIUS + BOTTLE_INNER_RADIUS) / 2,
+        spec, bottle, "tea_bottle_neck", (BOTTLE_NECK_RADIUS + BOTTLE_INNER_RADIUS) / 2,
         BOTTLE_NECK_HEIGHT, BOTTLE_NECK_RADIUS - BOTTLE_INNER_RADIUS,
         bottle_color, BOTTLE_DENSITY, z_center=shoulder_height + BOTTLE_NECK_HEIGHT / 2,
     )
     _ring(
-        bottle, "tea_bottle_shoulder", (BOTTLE_RADIUS + BOTTLE_INNER_RADIUS) / 2,
+        spec, bottle, "tea_bottle_shoulder", (BOTTLE_RADIUS + BOTTLE_INNER_RADIUS) / 2,
         shoulder_thickness, BOTTLE_RADIUS - BOTTLE_INNER_RADIUS,
         bottle_color, BOTTLE_DENSITY, z_center=shoulder_height - shoulder_thickness / 2,
     )
     for index, height in enumerate((.024, .047, .070)):
         _ring(
-            bottle, f"tea_bottle_rib_{index}", BOTTLE_RADIUS + .00035,
+            spec, bottle, f"tea_bottle_rib_{index}", BOTTLE_RADIUS + .00035,
             .0025, .0015, bottle_color, BOTTLE_DENSITY, z_center=height,
         )
 
@@ -156,7 +174,7 @@ def _add_bottle_cap_and_tea(spec, xy):
         rgba=[.35, .78, .20, 1], density=650, friction=[1, .01, .001],
     )
     _ring(
-        cap, "tea_cap_wall", CAP_RADIUS - .002, 2 * CAP_HALF_HEIGHT, .004,
+        spec, cap, "tea_cap_wall", CAP_RADIUS - .002, 2 * CAP_HALF_HEIGHT, .004,
         [.35, .78, .20, 1], 650, z_center=0,
     )
     coupling = [0, 2 * np.pi / THREAD_PITCH, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -193,12 +211,12 @@ def _add_teapot(spec, xy):
     pot.add_freejoint(name="tea_teapot_free")
     pot.add_geom(
         name="tea_teapot_floor", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-        pos=[0, 0, .003], size=[POT_INNER_RADIUS, .006, 0], rgba=[.20, .62, .58, 1],
+        pos=[0, 0, .003], size=[POT_INNER_RADIUS * VESSEL_INNER_APEX_SCALE, .006, 0], rgba=[.20, .62, .58, 1],
         solref=[.004, 1], solimp=[.95, .99, .001, .5, 2],
         density=1100, friction=[.85, .01, .001],
     )
     _ring(
-        pot, "tea_teapot_wall", POT_INNER_RADIUS + .003, POT_HEIGHT, .006,
+        spec, pot, "tea_teapot_wall", POT_INNER_RADIUS + .003, POT_HEIGHT, .006,
         [.20, .62, .58, 1], 1100,
     )
     for name, fromto, radius in (
