@@ -130,6 +130,31 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         self.assertTrue(np.isfinite(data.qpos).all())
         self.assertTrue(np.isfinite(data.qvel).all())
 
+    def test_finger_section_must_pass_inside_the_handle_opening(self):
+        from simulation.mujoco_scissor_cutting import _mesh_section_fits_opening
+
+        vertices = np.array([
+            [-.006, -.005, -.008], [.006, -.005, -.008],
+            [.006, .005, -.008], [-.006, .005, -.008],
+            [-.006, -.005, .008], [.006, -.005, .008],
+            [.006, .005, .008], [-.006, .005, .008],
+        ])
+        faces = np.array([
+            [0, 1, 4], [1, 5, 4], [1, 2, 5], [2, 6, 5],
+            [2, 3, 6], [3, 7, 6], [3, 0, 7], [0, 4, 7],
+        ])
+        half_opening = np.array([.025, .020])
+        self.assertTrue(_mesh_section_fits_opening(vertices, faces, half_opening))
+        self.assertFalse(_mesh_section_fits_opening(
+            vertices + [.040, 0, 0], faces, half_opening,
+        ))
+        self.assertFalse(_mesh_section_fits_opening(
+            vertices + [.024, 0, 0], faces, half_opening,
+        ))
+        self.assertFalse(_mesh_section_fits_opening(
+            vertices + [0, 0, .008], faces, half_opening,
+        ))
+
     def test_scene_has_divided_tray_passive_scissors_and_cohesive_paper(self):
         from simulation.mujoco_scissor_cutting import (
             BOND_COUNT, HANDLE_BAR_HALF_WIDTH, PAPER_HALF_LENGTH,

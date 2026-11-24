@@ -215,6 +215,22 @@ def add_scissor_cutting_scene(spec: mujoco.MjSpec, object_xy=DEMO_OBJECT_XY):
     _add_paper(spec, positions[1])
 
 
+def _mesh_section_fits_opening(vertices, faces, half_opening):
+    height = vertices[:, 2]
+    if not height.min() < 0 < height.max():
+        return False
+
+    triangles = vertices[faces]
+    start = triangles.reshape(-1, 3)
+    end = triangles[:, [1, 2, 0], :].reshape(-1, 3)
+    crossing = (start[:, 2] * end[:, 2]) < 0
+    first, second = start[crossing], end[crossing]
+    fraction = first[:, 2] / (first[:, 2] - second[:, 2])
+    section = first[:, :2] + fraction[:, None] * (second[:, :2] - first[:, :2])
+    section = np.concatenate((section, vertices[height == 0, :2]))
+    return bool(len(section) and np.all(np.abs(section) <= half_opening))
+
+
 class ScissorCuttingMetrics:
     """Release seam bonds from local opposing-blade contact and report progress."""
 
@@ -252,8 +268,24 @@ class ScissorCuttingMetrics:
             geom for geom in range(model.ngeom)
             if model.geom(geom).name in ("table", "room_floor_surface")
         }
-        self.left_thumb = self._geoms("left_hand_collision_16")
-        self.left_fingers = self._geoms("left_hand_collision_4") | self._geoms("left_hand_collision_8")
+        left_links = {
+            int(model.geom(geom).name.rsplit("_", 1)[1]): geom
+            for geom in self._geoms("left_hand_collision_")
+        }
+        self.left_index = [left_links[i] for i in range(1, 5) if i in left_links]
+        self.left_middle = [left_links[i] for i in range(5, 9) if i in left_links]
+        self.left_thumb = {left_links[i] for i in range(13, 17) if i in left_links}
+        self.left_fingers = set(self.left_index + self.left_middle)
+        self.fixed_opening = (
+            model.geom("scissor_fixed_handle_top").id,
+            model.geom("scissor_fixed_handle_bottom").id,
+            TWO_FINGER_OPENING_XY / 2,
+        )
+        self.moving_opening = (
+            model.geom("scissor_moving_handle_top").id,
+            model.geom("scissor_moving_handle_bottom").id,
+            THUMB_OPENING_XY / 2,
+        )
         self.right_pads = {
             geom: int(model.geom(geom).name.rsplit("_", 1)[1]) >= 13
             for geom in self._geoms("right_hand_collision_")
@@ -267,6 +299,27 @@ class ScissorCuttingMetrics:
 
     def _geoms(self, prefix):
         return {geom for geom in range(self.model.ngeom) if self.model.geom(geom).name.startswith(prefix)}
+
+    def _finger_in_opening(self, data, links, opening):
+        top, bottom, half_opening = opening
+        center = (data.geom_xpos[top] + data.geom_xpos[bottom]) / 2
+        handle_rotation = data.geom_xmat[top].reshape(3, 3)
+        for geom in links:
+            mesh = self.model.geom_dataid[geom]
+            vertex_start = self.model.mesh_vertadr[mesh]
+            face_start = self.model.mesh_faceadr[mesh]
+            vertices = self.model.mesh_vert[
+                vertex_start:vertex_start + self.model.mesh_vertnum[mesh]
+            ]
+            faces = self.model.mesh_face[
+                face_start:face_start + self.model.mesh_facenum[mesh]
+            ]
+            link_rotation = data.geom_xmat[geom].reshape(3, 3)
+            relative = data.geom_xpos[geom] - center
+            local = (relative + vertices @ link_rotation.T) @ handle_rotation
+            if _mesh_section_fits_opening(local, faces, half_opening):
+                return True
+        return False
 
     def _held_for_cut(self, data):
         thumb_engaged = fixed_engaged = False
@@ -288,8 +341,13 @@ class ScissorCuttingMetrics:
                 if force[0] > GRASP_CONTACT_FORCE_N:
                     normal = contact.frame[:3] if contact.geom1 == pad else -contact.frame[:3]
                     paper_normals[self.right_pads[pad]].append(normal.copy())
-        return (thumb_engaged and fixed_engaged
-                and any(a @ b < -.25 for a in paper_normals[0] for b in paper_normals[1]))
+        return (
+            thumb_engaged and fixed_engaged
+            and any(a @ b < -.25 for a in paper_normals[0] for b in paper_normals[1])
+            and self._finger_in_opening(data, self.left_thumb, self.moving_opening)
+            and self._finger_in_opening(data, self.left_index, self.fixed_opening)
+            and self._finger_in_opening(data, self.left_middle, self.fixed_opening)
+        )
 
     def physics_step(self, data: mujoco.MjData) -> None:
         """Apply cohesive failure from contacts produced by the latest substep."""
