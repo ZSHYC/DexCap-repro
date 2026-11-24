@@ -1,6 +1,5 @@
 """MuJoCo objects and physical metrics for DexCap plate wiping."""
 
-import math
 from itertools import combinations
 from pathlib import Path
 
@@ -51,54 +50,47 @@ def sample_object_xy(rng):
             return xy
 
 
-def _quat_for_ring(yaw, slope):
-    """Quaternion for a radial box whose x axis follows the measured slope."""
-    cy, sy = math.cos(yaw / 2), math.sin(yaw / 2)
-    cp, sp = math.cos(-slope / 2), math.sin(-slope / 2)
-    return cy * cp, -sy * sp, cy * sp, sy * cp
-
-
-def _plate_geoms():
-    color = "0.88 0.90 0.96 1"
-    geoms = [
-        f'<geom name="wiping_plate_base" type="cylinder" '
-        f'size="{PLATE_INNER_RADIUS} {PLATE_BASE_THICKNESS / 2}" '
-        f'rgba="{color}" friction="0.8 0.01 0.001" condim="4"/>'
-    ]
-    segments = 32
-    shell_half_thickness = PLATE_BASE_THICKNESS / 2
-    for band, ((r0, z0), (r1, z1)) in enumerate(zip(PLATE_PROFILE, PLATE_PROFILE[1:])):
-        dr, dz = r1 - r0, z1 - z0
-        slope = math.atan2(dz, dr)
-        radial_half = math.hypot(dr, dz) / 2
-        normal_r, normal_z = -math.sin(slope), math.cos(slope)
-        radius = (r0 + r1) / 2 - shell_half_thickness * normal_r
-        z = (z0 + z1) / 2 - shell_half_thickness * normal_z
-        tangent_half = radius * math.tan(math.pi / segments)
-        for sector in range(segments):
-            yaw = sector * 2 * math.pi / segments
-            quat = _quat_for_ring(yaw, slope)
-            geoms.append(
-                f'<geom name="wiping_plate_rim_{band}_{sector}" type="box" '
-                f'pos="{radius * math.cos(yaw)} {radius * math.sin(yaw)} {z}" '
-                f'quat="{quat[0]} {quat[1]} {quat[2]} {quat[3]}" '
-                f'size="{radial_half} {tangent_half} {shell_half_thickness}" '
-                f'group="3" rgba="{color}" friction="0.8 0.01 0.001" condim="4"/>'
-            )
-    return "\n".join(geoms)
-
-
-def _add_plate_rim_visual(spec):
-    profile = (*PLATE_PROFILE, *((r, z - PLATE_BASE_THICKNESS) for r, z in reversed(PLATE_PROFILE)))
-    radii, height = np.asarray(profile).T
-    sectors = 64
-    theta = np.arange(sectors) * (2 * np.pi / sectors)
-    vertices = np.stack((
+def _plate_top_rings():
+    radii, heights = np.asarray(PLATE_PROFILE).T
+    theta = np.arange(64) * (2 * np.pi / 64)
+    return np.stack((
         radii[:, None] * np.cos(theta),
         radii[:, None] * np.sin(theta),
-        np.broadcast_to(height[:, None], (len(profile), sectors)),
-    ), axis=-1).reshape(-1, 3)
-    rings = np.arange(len(vertices)).reshape(len(profile), sectors)
+        np.broadcast_to(heights[:, None], (len(radii), len(theta))),
+    ), axis=-1)
+
+
+def _add_plate_collision_rim(spec, top_rings):
+    plate = spec.body("wiping_plate")
+    faces = np.array([
+        (0, 1, 2), (0, 2, 3), (4, 6, 5), (4, 7, 6),
+        (0, 4, 5), (0, 5, 1), (1, 5, 6), (1, 6, 2),
+        (2, 6, 7), (2, 7, 3), (3, 7, 4), (3, 4, 0),
+    ]).ravel()
+    sectors = top_rings.shape[1]
+    for band, (inner, outer) in enumerate(zip(top_rings, top_rings[1:])):
+        for sector in range(sectors):
+            next_sector = (sector + 1) % sectors
+            top = np.array([inner[sector], outer[sector], outer[next_sector], inner[next_sector]])
+            bottom = top - [0, 0, PLATE_BASE_THICKNESS]
+            name = f"wiping_plate_rim_{band}_{sector}"
+            mesh = spec.add_mesh(
+                name=name, uservert=np.concatenate((top, bottom)).ravel(),
+                userface=faces,
+            )
+            plate.add_geom(
+                name=name, type=mujoco.mjtGeom.mjGEOM_MESH, meshname=mesh.name,
+                group=3, rgba=(0.88, 0.90, 0.96, 1), mass=0, condim=4,
+                friction=(0.8, 0.01, 0.001),
+            )
+
+
+def _add_plate_rim_visual(spec, top_rings):
+    sectors = top_rings.shape[1]
+    vertices = np.concatenate((top_rings, top_rings[::-1] - [0, 0, PLATE_BASE_THICKNESS]))
+    profile_len = len(vertices)
+    vertices = vertices.reshape(-1, 3)
+    rings = np.arange(len(vertices)).reshape(profile_len, sectors)
     inner, outer = rings, np.roll(rings, -1, axis=0)
     next_inner, next_outer = np.roll(inner, -1, axis=1), np.roll(outer, -1, axis=1)
     faces = np.stack((inner, outer, next_outer, inner, next_outer, next_inner), axis=-1)
@@ -131,14 +123,18 @@ def add_wiping_scene(spec, object_xy=DEMO_OBJECT_XY):
             <body name="wiping_plate" pos="{plate_xy[0]} {plate_xy[1]} {TABLE_HEIGHT + PLATE_BASE_THICKNESS / 2}">
               <freejoint name="wiping_plate_free"/>
               <inertial pos="0 0 0" mass="0.25" diaginertia="0.001 0.001 0.002"/>
-              {_plate_geoms()}
+              <geom name="wiping_plate_base" type="cylinder"
+                    size="{PLATE_INNER_RADIUS} {PLATE_BASE_THICKNESS / 2}"
+                    rgba="0.88 0.90 0.96 1" friction="0.8 0.01 0.001" condim="4"/>
             </body>
             {sponge_flexcomp(sponge_xy)}
           </worldbody>
         </mujoco>
         """
     )
-    _add_plate_rim_visual(child)
+    top_rings = _plate_top_rings()
+    _add_plate_collision_rim(child, top_rings)
+    _add_plate_rim_visual(child, top_rings)
     texture_sponge(child)
     mount = spec.worldbody.add_frame(name="wiping_scene")
     spec.attach(child, frame=mount, prefix="")

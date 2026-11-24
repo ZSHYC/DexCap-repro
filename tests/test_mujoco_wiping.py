@@ -8,6 +8,7 @@ import numpy as np
 from simulation.mujoco_sponge import SPONGE_FRICTION_IMPEDANCE
 from simulation.mujoco_wiping import (
     DEMO_OBJECT_XY,
+    PLATE_BASE_THICKNESS,
     SUMMARY_KEYS,
     WipingMetrics,
     add_wiping_scene,
@@ -83,10 +84,11 @@ class MujocoWipingTest(unittest.TestCase):
         self.assertGreater(v[vertices[:, 2].argmax()], v[vertices[:, 2].argmin()])
 
         heights = []
+        radial_direction = np.array([np.cos(0.04), np.sin(0.04)])
         for radius in (0.0, 0.115, 0.131):
             geom = np.array([-1], dtype=np.int32)
             distance = mujoco.mj_ray(
-                model, data, np.array([object_xy[0, 0] + radius, object_xy[0, 1], 0.1]),
+                model, data, np.r_[object_xy[0] + radius * radial_direction, 0.1],
                 np.array([0.0, 0.0, -1.0]), None, 1, -1, geom,
             )
             self.assertTrue(mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom[0]).startswith("wiping_plate_"))
@@ -98,6 +100,29 @@ class MujocoWipingTest(unittest.TestCase):
         self.assertEqual(tuple(rim.conaffinity), (0,))
         material = int(rim.matid[0])
         self.assertGreaterEqual(model.mat_texid[material, mujoco.mjtTextureRole.mjTEXROLE_RGB], 0)
+
+    def test_plate_collision_has_no_open_seams_through_the_rim(self):
+        spec = base_spec()
+        add_wiping_scene(spec)
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        center = data.xpos[model.body("wiping_plate").id]
+        geom = np.empty(1, dtype=np.int32)
+        collision_group = np.array([0, 0, 0, 1, 0, 0], dtype=np.uint8)
+        for radius, height in ((0.0965, 0.007175), (0.105, 0.019), (0.131, 0.0195)):
+            for degrees in (5.55, 5.625, 5.7):
+                with self.subTest(radius=radius, degrees=degrees):
+                    theta = np.deg2rad(degrees)
+                    xy = radius * np.array([np.cos(theta), np.sin(theta)])
+                    top = mujoco.mj_ray(model, data, center + np.r_[xy, 0.1],
+                                        np.array([0., 0., -1.]), collision_group, True, -1, geom)
+                    bottom = mujoco.mj_ray(model, data, center + np.r_[xy, -0.1],
+                                           np.array([0., 0., 1.]), collision_group, True, -1, geom)
+                    self.assertGreater(top, 0)
+                    self.assertGreater(bottom, 0)
+                    self.assertAlmostEqual(0.1 - top, height, delta=0.0003)
+                    self.assertAlmostEqual(0.2 - top - bottom, PLATE_BASE_THICKNESS, delta=0.00001)
 
     def test_sponge_compresses_and_recovers_after_load_is_removed(self):
         spec = base_spec()
