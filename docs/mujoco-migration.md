@@ -218,6 +218,8 @@ python -m simulation.rollout data/derived/packaging-blue-block-apex-grasp-native
 
 用 `demo_100` 的参考摆放对绿梨做椭球短轴两侧接近。受力前两指垫的纵向位置仍偏高约 19 mm，实际下降时两侧没形成对向夹持。绿梨向盒壁移动，始终由桌面支撑。见 `runs/packaging-green-pear-fit-66b7507.json`。
 
+改用高位预抓，下降中首次检测到手与梨接触时，拇指垫最近间隙约 1.49 mm，中指垫仍约 49.3 mm。停在该处单独合拢中指仍未抓起，梨从初始位置移动约 97.7 mm。记录见 `runs/packaging-green-pear-signed-gap-close-b6d8e6d.json`。
+
 绿罐的官方 `demo_150` 参考有 143 个右手接触周期。减少折叠预抓姿态的自碰撞后实际执行下探和抬升，仍未建立持续的相向抓持。记录见 `runs/packaging-green-can-official-contact-trace.json` 和 `runs/packaging-green-can-neutral-pregrasp-lift-probe.json`。
 
 分块掌心模型上，红银包装仍落入盒底。旧收尾的 115 个左手接触周期把盖子沿开盖方向拨动，最低到约 −4.2°。重选实际折舌接触位置后，左手可通过接触把自由盖子带到约 64.2°，峰值约 71.5°，期间包装始终在盒内。这条动作依赖施加目标时的控制周期数，撤手时盖子重新打开。用标准回放时序重放也没有保持折舌接触。记录见 `runs/leap-palm-packaging-lid-hook-continuation.json` 和 `runs/leap-palm-packaging-lid-arc-finish.json`。
@@ -393,6 +395,12 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 按指尖与活动环的实际接触 Jacobian 作局部调整，先解除该接触，并在固定环接触保留时再推进 4 mm，活动环顶部随后再次接触。利用同一位置的实际接触力打开被动铰链，撤手并静置后开角保持增加 0.0103 rad，柄环中心偏开约 0.71 mm。由这个实际状态重新插入，初始活动环净空为 0.252 mm，食指后来与活动环分离，但在固定环持续受力时把剪刀整体推移约 20.46 mm，仍未形成完整穿环。数据见 `runs/scissor_current_assets_{index_tip_jacobian_detour,passive_handle_open,open_handle_insert}.json`。
 
+尝试让右食指压住剪刀固定柄再由左食指穿环。右手下降路径的完整碰撞网格预计与托盘隔板相交约 4–5 mm，物理执行在该段之前停止。此前 120 条实际控制命令中，剪刀位移约 0.12 mm，右食指尚未接触固定柄。记录见 `runs/scissor_current_assets_bimanual_shank_brace_insert.json`。
+
+左食指随后改从外露柄环推动，把剪刀压向托盘侧壁。撤手后剪刀沿之前的滑移方向保留约 6.77 mm 位移，固定柄和活动柄各有一处托盘支撑接触。侧壁沿原滑移方向的阻力峰值约 0.151 N，撤手后约 0.020 N。记录见 `runs/scissor_current_assets_ring_seat_against_tray.json`。
+
+从撤手后的实际就位状态再插入，剪刀位移由约 20.46 mm 降至 9.18 mm，托盘反向承载峰值约 0.558 N。插入执行到约 77% 时，食指与活动环接触达到约 2.02 N，触发试验的 2 N 停止条件。未完成穿环。记录见 `runs/scissor_current_assets_seated_insert.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的木质托槽、空心瓶和茶壶、弹簧镊子以及可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际茶盘或木槽接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -480,7 +488,7 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 在同一默认满载固定瓶身夹具上，最后一轮先保持指形，向外撤 20 mm 再沿瓶轴抬高 70 mm，瓶盖从 1.742 圈微退到 1.715 圈。随后张手时拇指末端再次触到盖沿，以正向转矩把盖子带过两圈，螺纹连接在子步中解除，峰值轴向行程 4.021 mm。用上一段实际积分保存的状态单独重放，得到同一退丝阶段和峰值，无物理警告。脱离后的盖子落回瓶颈附近，取走并放至茶盘右侧仍需执行。记录见 `runs/tea-live-cap-loaded-clear-then-open.json` 和 `runs/tea-live-cap-loaded-retreat-from-checkpoint.json`。
 
-这两份轨迹使用旧止挡。保存状态的逐关节复核证实，退丝前个别指尖关节已偏出 URDF 范围 3.45 rad，退丝后还有关节偏出约 1.81 rad。当前模型仍需重新取得两圈退丝证据。泡茶的握持计分现在按 LEAP 的实际手指区分接触，避免把一根手指的两个连杆算作有效对握。
+这两份轨迹使用旧止挡。保存状态的逐关节复核证实，退丝前个别指尖关节已偏出 URDF 范围 3.45 rad，退丝后还有关节偏出约 1.81 rad。该旧轨迹的退丝行程不计入现行止挡模型的结果。泡茶的握持计分现在按 LEAP 的实际手指区分接触，避免把一根手指的两个连杆算作有效对握。
 
 在现行止挡模型上单独验证取盖。夹具固定满载瓶身，起始声明盖子已脱扣并停在瓶颈，左臂在停放位。右手食指和拇指实际相向夹持，使盖子完全脱离瓶颈并上升 56.3 mm，连续 0.44 s 的采样同时满足对向受力与不接触瓶身。增加合拢预载后，盖子在同样条件下横移 56.3 mm，之后滑脱，尚未放置到托盘右侧。取盖与搬运试验所记录的两个手的关节均未越出 URDF 范围。记录见 `runs/tea-detached-cap-home-fixture-pinch.json` 和 `runs/tea-detached-cap-home-fixture-place-preload.json`。
 
@@ -490,7 +498,15 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 从盖子仍在螺纹上的同一满载夹具独立起步，右拇指和食指取得相向受力。腕部转动在约 10° 命令时失去食指接触。保持腕姿、利用接触点 Jacobian 驱动手指时，两个相反的切向指令分别测到约 -0.00078 和 -0.00471 N·m 的平均轴向力矩，方向均为拧紧，未完成松盖。记录见 `runs/tea-loaded-threaded-cap-modern-pinch.json` 和 `runs/tea-loaded-threaded-cap-twist-{torque,reversed-torque}.json`。
 
+现行止挡下，用同一 108 片填充物的满载固定瓶身夹具，从盖子仍上螺纹的状态连续积分。右食指在帽壁侧面偏心处向内施力，沿实测盖姿跟进。首段转过 0.613 圈，轴向升起 1.226 mm，峰值接触力约 5.93 N。四次撤手并按实时盖姿重新选择施力位置后，瓶盖达到退丝阈值，约 1.998 圈，轴向行程 3.996 mm，`cap_unthreaded=true`。全程未出现 MuJoCo 警告或 LEAP 关节越限。记录见 `runs/tea-thread-offset-facet-{drive,regrasp}.json`。
+
+从第五段的实际积分状态继续，右手先撤开，再以食指与拇指对夹，实测抬盖 64.5 mm 且瓶身接触消失。连续搬运和依次松指后，盖子脱手并静置在托盘，世界坐标约 `[0.4811, 0.0496, 0.0289] m`。自由茶壶较默认起点水平移动约 31.5 mm。该段无物理警告，LEAP 关节均在 URDF 范围内。记录见 `runs/tea-threaded-to-cap-lift.json` 和 `runs/tea-threaded-to-tray-release.json`。
+
+放盖后减慢右手接近并在高位停稳，沿托盘把盖子水平推移约 16.8 mm 后再次撤手。盖子仍获托盘支撑，`cap_on_right=false`。继续沿该方向的候选会让食指接触茶壶外壁。改沿茶壶外侧接近，推程采样没有形成有效施力，盖子仍在托盘中段。记录见 `runs/tea-threaded-tray-push-slow.json` 和 `runs/tea-threaded-tray-push-pot-arc.json`。
+
 左臂以真实接触把默认满载自由瓶推到托盘壁，最大支撑倾角约 101.43°，壁面峰值约 9.46 N。现行手部参数下，进一步合拢只让拇指碰到瓶身，未建立相向夹持。两手每个 2 ms 物理子步的实测关节均在 URDF 范围内。试验及腕部中点再推进 10 mm 的对照见 `runs/tea-loaded-xneg-rim-ab24e72{-telemetry,-midpoint40-telemetry}.json`。
+
+左手食指改对准托盘内的上半瓶壁，目标接触位置高约 44.5 mm。先垂直抬腕 50 mm 再旋转的完整路径仍使食指网格穿入托盘底面约 47.9 mm，该路线未送进物理控制。记录见 `runs/tea-loaded-b6d8e6d-upperwall-lift-then-rotate.json`。
 
 ## 六个场景的渲染与接入验证
 
@@ -617,5 +633,7 @@ python -m simulation.rollout data/derived/wiping-palm-search-return-a.hdf5 \
 
 
 在现行止挡模型上，左手改变外缘支点后，对侧盘底间隙可稳定保持约 11.2 mm。撤开右食指并先让右拇指接触后，接触可维持约 1.75 s。把食指在接近前预先合拢到约八成、仍留有净空时，最终获得连续约 5.35 s 的双指相向受力，并覆盖左手完整撤离。盘仍由桌面承托。绕盘沿调整腕姿约 8° 后，拇指接触法向仍主要朝下，腕部上抬时两指脱开，未形成自由抬盘。记录见 `/data/dexcap-repro/benchmarks/wiping-right-plate-lift-stop-{opposed-refit,thumb-first-settle,thumb-first-preshape,oriented-lift}-trace.json`。
+
+继续从盘沿下方接近时，完整拇指侧面先撞到外侧盘壁。最终实测法向力约 11.1 N，竖直分量约为向下 1.3 N，盘仍由桌面承托。在这次左支撑姿态，半径 115–125 mm 处的盘下净空约 30 mm。搜索 800 个腕姿与接触位置后，候选里拇指网格的最小竖直投影厚度约 38.6 mm。出现向上法向的候选同时与盘体穿入约 11.6 mm 或更多。物理轨迹见 `/data/dexcap-repro/benchmarks/wiping-right-plate-lift-stop-lower-rim-route-v2-trace.json`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
