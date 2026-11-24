@@ -296,6 +296,11 @@ class TeaPreparingMetrics:
         self.tweezers_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_tweezers_")}
         self.left_hand_geoms = {g for g in geoms if model.geom(g).name.startswith("left_hand_")}
         self.right_hand_geoms = {g for g in geoms if model.geom(g).name.startswith("right_hand_")}
+        self.hand_digits = {}
+        for geom in self.left_hand_geoms | self.right_hand_geoms:
+            link = model.geom(geom).name.partition("_hand_collision_")[2]
+            # LEAP numbers four collision links per finger after the palm.
+            self.hand_digits[geom] = (int(link) - 1) // 4 if link else -1
         self.cap_support_geoms = self.tray_geoms | {
             g for g in geoms if model.geom(g).name == "table"
         }
@@ -338,7 +343,7 @@ class TeaPreparingMetrics:
             if other in hand_geoms:
                 mujoco.mj_contactForce(self.model, data, index, wrench)
                 if wrench[0] > 0:
-                    contacts.append((self.model.geom_bodyid[other], normal))
+                    contacts.append((self.hand_digits[other], normal))
         return any(
             first != second and np.dot(a, b) < -0.25
             for (first, a), (second, b) in combinations(contacts, 2)

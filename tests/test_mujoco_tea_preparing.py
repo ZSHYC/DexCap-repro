@@ -234,6 +234,30 @@ class MujocoTeaPreparingTest(unittest.TestCase):
                 info = metrics.update(data)
                 self.assertEqual(info["cap_on_right"], on_right)
 
+    def test_opposing_links_of_one_digit_do_not_count_as_tool_grip(self):
+        from simulation.mujoco_tea_preparing import TeaPreparingMetrics, add_tea_preparing_scene
+
+        for other_link, expected_grip in ((15, False), (4, True)):
+            with self.subTest(other_link=other_link):
+                spec = mujoco.MjSpec()
+                add_tea_preparing_scene(spec)
+                tool = spec.worldbody.add_body(name="tool_grip_probe", pos=[0, 0, .35])
+                tool.add_freejoint()
+                tool.add_geom(name="tool_grip_probe_geom", type=mujoco.mjtGeom.mjGEOM_SPHERE,
+                              size=[.010, 0, 0], mass=.01)
+                for link, x in ((16, -.014), (other_link, .014)):
+                    pad = spec.worldbody.add_body(name=f"finger_link_{link}", pos=[x, 0, .35])
+                    pad.add_geom(name=f"right_hand_collision_{link}",
+                                 type=mujoco.mjtGeom.mjGEOM_SPHERE, size=[.005, 0, 0])
+                model = spec.compile()
+                data = mujoco.MjData(model)
+                mujoco.mj_forward(model, data)
+                metrics = TeaPreparingMetrics(model)
+                tool_geoms = {model.geom("tool_grip_probe_geom").id}
+
+                self.assertEqual(metrics._held(data, tool_geoms, metrics.right_hand_geoms),
+                                 expected_grip)
+
     def test_fixture_motion_without_grasp_does_not_count_as_use(self):
         model, data, metrics = self.make_scene()
         data.eq_active[metrics.thread_weld] = 0
