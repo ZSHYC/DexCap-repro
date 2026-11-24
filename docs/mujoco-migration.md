@@ -783,6 +783,8 @@ Sponge Picking 的原 305 步轨迹最高抬升 299.4 mm。在右腕末段平滑
 
 逐接触测得，原路径的海绵先压住远侧盘沿。右拇指受力点从距盘心约 125 mm 滑到约 134 mm，随后卸载。单独保持左腕时，右无名指可从盘下提供约 1.89 N 的额外向上载荷，但该分支在 1.75 s 时失去左侧海绵夹持。改为保留原右手执行器序列、保持左腕世界朝向，并先将海绵移到内盘面上方。3,266 步标准回放在默认摆放完成第一笔，记录 48 个有效内盘面接触周期，累计距离 64.66 mm，峰值接触力 0.653 N，两手在计分时仍分别相向持有离桌物体。全程无求解器警告、机械臂碰撞或双手碰撞。回程试验中右拇指沿盘沿向外滑并卸载。提高往返速度或增加辅助支撑的分支能延长右手持盘，但左手中指可能先失去海绵接触。仍未达到第二笔。右手保持住盘的一个分支中，左腕目标单步由约 2 mm 跳至 11.21、20.63 mm。随后海绵和盘面约 1.20 N 的接触伴随左中指卸载。海绵倾角在后三个动作从约 37° 变到 78°，拇指也卸载。保留接触力、关节和位姿实测数据于同目录的 `left-return-contact-audit.json`。回放和逐周期记录在 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/stroke-support/`。 接续把左腕单步平移限至 2 mm 后，双持仍只维持 0.60 s。按实测接触法向做双腕反馈，发现盘上两组接触斑块相距约 130 mm，法向速度方向相反。同步调整保持双持约 0.65 s，盘体仍产生约 20° 滚转误差。绕外侧接触转动海绵后，内侧斑块卸载，单斑块维持 0.45 s，峰值法向力约 2.56 N，实测接触力矩峰值约 0.202 N·m。后续盘体下沉，未形成第二笔。逐步结果见同目录的 `left-return-{bounded-continuation,coordinated-contact-axis,single-patch-pivot}.json`。
 
+按实测外侧接触力矩轴分配右手接触，最佳短段中食指、无名指和拇指分别提供约 −0.235、−0.083、+0.239 N·m，海绵约 +0.076 N·m，50 ms 端点轴向残差约 −0.0024 N·m。2 ms 子步也测得约 −0.0013 N·m 的残差。无名指接触力矩改变方向，双持约 0.40 s 后拇指仍卸载。沿半径最大约 81 mm 的盘内路线拟合 60 mm 回程时，三种右手支撑方案在海绵只内移约 4 mm 时均失去左手夹持。失效前后海绵接触点跳动约 46 mm，当时右手仍持盘，盘底净空约 50.7 mm。下一阶段需要调整左手夹持海绵的受力位置。数据见同目录 `left-return-right-contact-redistribution.json` 和 `left-return-stable-native-inner-route.json`。
+
 ```bash
 python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference.hdf5 \
   --task wiping --output runs/wiping-first-physical-stroke-rollout.json
@@ -807,6 +809,8 @@ python -m simulation.rollout data/derived/wiping-first-physical-stroke-reference
 每 50 ms 取一次受限关节控制的实测腕位和手形，转换为标准 46 维动作后，从默认摆放完成 214 步腕位控制回放。剪刀基座最高抬升 16.87 mm，无物理警告、机械臂或双手碰撞。剪刀仍未完全离盘，纸张未抬起，未切开纸张。逐步数据和标准结果位于同目录的 `scissor-move40-standard-source.json` 和 `scissor-move40-standard-rollout.json`。
 
 进一步加大抬升目标后，生产场景的活动柄实际峰值为 42.68 mm，固定环约 22.75 mm。腕位误差扩大到约 47 mm 后，右食指与活动柄失去接触。2 ms 动力学状态和执行目标保存在同目录 `production_middle_joint5_minus020_lift60_peak_{checkpoint,targets}.npz`。峰值时固定环下缘高出托盘外壁约 23.74 mm，可供指尖截面的毛余量约 2.11 mm。完整左手和机械臂的进孔拟合仍有约 8.68 mm 的掌部桌面侵入和约 1.30 mm 的食指近端与固定环侵入。以真实活动刀片支撑点为枢轴，静态转动 5.75° 可让开掌部，近端与环仍侵入约 3.74 mm。两次执行器试验中剪刀沿相反方向转动后脱开。证据见同目录的 `dual-ring-fullmesh-allpair-fit.json` 和 `dual-ring-pivot-*`。这些结果用于定位左手接取所需的额外净空。
+
+在无状态改写的抬柄中段，实际活动柄抬升约 20 mm。尝试在固定柄杆下方增加左手支点，该表面法向可提供约 0.133 N·m/N 的正向力臂。联合调整双 Panda 和两个接触手指后，保留有效触点的较好解仍有约 14.55 mm 的双臂重叠。继续让右肘让位约 39 mm 的解，两个接触点均已离开目标。证据在同目录的 `dual-ring-two-contact-summary.json`、`dual-ring-left-press-summary.json` 和 `dual-ring-coupled-summary.json`。
 
 ```bash
 python -m simulation.rollout data/derived/scissor-cutting-moving-handle-reference.hdf5 \
@@ -845,6 +849,22 @@ python -m simulation.rollout data/derived/packaging-red-carton-left-reposition-r
   --task packaging --object red-box --output runs/packaging-red-carton-left-reposition-rollout.json
 ```
 
+复核两侧力方向发现，先抬红银包装的旧分支中，左中指曾对包装施加约 1.48 N 的向下分力，同时挂耳被压在桌面。改为右手建立相向夹持后先让左手退出，再开始右腕上提。受限关节控制的 2 ms 记录确认右手独立承托连续 935 个子步，即 1.87 s，包装中心抬升约 54.94 mm。把实测腕位转换为标准 46 维动作后，从默认摆放重放 793 步，连续独立夹持 740 个子步，即 1.48 s，末端包装最低点离桌约 7.44 mm。更快的腕位上提接续共 857 步，独立夹持最长 2,340 个子步，即 4.68 s，末端包装最低点比纸盒上沿高约 35.7 mm。两条标准回放均无机械臂碰撞、双手碰撞或物理警告。实测标准积分状态和载荷位于 `/data/dexcap-repro/benchmarks/runs/` 的 `carton-standard-lift-state.npz`、`carton-default-rim-state.npz` 和对应的 `*-substep-audit.json`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-red-carton-above-rim-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-red-carton-above-rim-rollout.json
+```
+
+保持上提的同时让左臂退开后，横移开始时双指切向力达到摩擦极限，手指实际电机力矩仍有余量。提前预紧后，在相向夹持且包装底高于盒沿时，标准腕位控制曾向盒方向运输约 157 mm。加入手指沿包装面的锚点反馈后，向盒方向约 169 mm 后仍失夹。失效前右食指的接触点到达包装长边末端。证据见同目录的 `carton-preloaded-slip-audit.json`、`carton-standard-carry-face-anchors.json`。
+
+另外从开放纸盒上方进入，左手通过内侧壁把盒体推向工作区中心。标准回放 1,282 步，盒体平移约 31.85 mm，距工作区中心的最小距离减少约 28.78 mm。盖板保持打开，无手到盖板接触、机械臂碰撞、双手碰撞或物理警告。原始盒坐标接触力和动作位于同目录 `box-centering-wall3-following-loaded-prefix.json`，单独重放保留该接触阶段。随后失去内壁接触的试验见 `box-centering-wall3-following-to70-extended.json`。
+
+```bash
+python -m simulation.rollout data/derived/packaging-box-centerward-push-reference.hdf5 \
+  --task packaging --object red-box --output runs/packaging-box-centerward-push-rollout.json
+```
+
 在备茶的独立渐缩镊子试验中，现有手部网格用接触力反馈获得食指约 0.190 N、拇指约 0.220 N 的相向预载。抬升阶段维持相向接触 465 个物理子步，托架法向力始终至少 0.149 N，实际最大上移约 0.272 mm，仍未离架。记录见 `runs/tea-convex47-tapered-feedback-lift-v2.json`。
 
 对现有工具另试中指与拇指夹持，在动力学回放中有 296 个 2 ms 子步出现相向接触，最佳同时法向力约 0.103 和 0.030 N，托架仍承重，随后拇指脱开。在默认镊子上从侧面尝试滚动未建立手部接触，工具仍由原托架支撑。证据见 `runs/tea-convex47-alt-digit-physical.json` 和 `runs/tea-tweezers-top-tangent-production-cradle-roll-a.json`。
@@ -856,6 +876,6 @@ python -m simulation.rollout data/derived/packaging-red-carton-left-reposition-r
 
 将原工具接触腕位变换到实测倾转约 38° 的镊子末态后，沿托盘外侧的 55 个候选腕位可达。加入原推指所需的 8 mm 下压后，中指先与木托外端和侧壁分别侵入约 1.97、1.50 mm。只重调中指可避开木托，但会触及其他指链。保留当时托盘、木托和工具的真实几何，未在该路线执行动态推送。见 `runs/tea-ed8bba8-outward-static.json` 与 `runs/tea-ed8bba8-link8-retune.json`。
 
-保留右食指接触点，以腕工具轴旋转约 −15° 后，在该镊子摆放上得到 3 条完整手部静态无干涉路径。筛选覆盖高位预姿、下降和沿 −Y 移动约 25 mm 的 51 个位置。备茶木托、托盘和镊子支撑未在该静态试验中移除。物理回放用于确认负载下的接触和离架。静态数据见 `runs/tea-89a2f80-index-pivot-static.json`。 两次真实推移后衔接这条腕位路线，标准 OSC 的预抓和下降末端误差分别约 17.18 和 18.15 mm。手与镊子接触力为 0，后续外推未执行，木托仍承担约 0.0923 N。记录见 `runs/tea-89a2f80-index-pivot-physical.json`。受限关节力矩接续首先保存从默认摆放所得的第一段工具状态，供复用的积分状态见 `runs/tea-pivot-joint-pd-stage1-first-slide-settled.npz`。
+保留右食指接触点，以腕工具轴旋转约 −15° 后，在该镊子摆放上得到 3 条完整手部静态无干涉路径。筛选覆盖高位预姿、下降和沿 −Y 移动约 25 mm 的 51 个位置。备茶木托、托盘和镊子支撑未在该静态试验中移除。物理回放用于确认负载下的接触和离架。静态数据见 `runs/tea-89a2f80-index-pivot-static.json`。 两次真实推移后衔接这条腕位路线，标准 OSC 的预抓和下降末端误差分别约 17.18 和 18.15 mm。手与镊子接触力为 0，后续外推未执行，木托仍承担约 0.0923 N。记录见 `runs/tea-89a2f80-index-pivot-physical.json`。受限关节力矩接续首先保存从默认摆放所得的第一段工具状态，供复用的积分状态见 `runs/tea-pivot-joint-pd-stage1-first-slide-settled.npz`。 第二次推移的全场景积分状态也已保存为 `runs/tea-pivot-joint-pd-stage2-second-slide-settled.npz`。在该实际姿态上，原 −15° 路线的拇指末端与桌面静态侵入约 3.40 mm。调整拇指后静态扫掠通过，实际接近出现约 0.423 rad 的最大关节跟踪差，右食指没有给镊子施力。记录见 `runs/tea-pivot-joint-thumb-clear.json`。
 
 海绵接触参数更新后的 40 个 Wiping 回合中，旧判据给出 PointNet 0/20、SetXF 2/20 成功。两条被判成功的 SetXF 回合的峰值接触力约 15–16 kN，原判据还允许未同时持物的盘面接触累计为有效笔画。两条种子的单独复跑均未重现成功。现在只在右手相向夹持已离桌的盘子、左手相向夹持已离桌的海绵，并发生内盘面接触时累计擦拭笔画。保留原始内盘面接触次数供诊断。原始汇总和复跑记录在 `runs/sponge-contact-benchmark/`。
