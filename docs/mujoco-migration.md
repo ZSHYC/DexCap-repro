@@ -83,6 +83,9 @@ python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
 SetXF 的种子 9 触发了 MuJoCo `mjWARN_BADQACC`，原始日志记录于模拟时间 23.02 s。分析时按物理异常回合计为失败。现在标准入口遇到 MuJoCo 警告会终止该回合，并记录 `executed_steps` 和 `physics_warnings`。异常回合计入总尝试次数，其任务指标在汇总中不记为通过。
 
 
+种子 9 的独立复盘把异常定位到盘子自由关节的旋转自由度。第 60 个策略动作中，仿真报告海绵贯入盘底约 68 mm，盘子被异常接触力抛离桌面。第 73 个动作盘子撞到房间地面后触发数值警告。以上是失稳轨迹的数值记录。逐物理步诊断见 `/data/dexcap-repro/benchmarks/wiping-setxf-seed9-badqacc-diagnostic.json`。
+
+
 ## 115 回合闭环结果
 
 | 权重及任务 | 回合 | 抓取或入盒 | 内盘面接触或合盖 | 完整成功 |
@@ -377,6 +380,13 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 
 使用默认器具摆放，从无接触的机器人预抓位开始，右食指由上方接触自由镊子。追踪真实接触点并调节下压力后，手与镊子接触连续覆盖 170 个 50 ms 周期，实测峰值接触力约 0.13 N，镊子整体最大转角约 8.37°。保持同一预抓位的无接触对照最大转角约 0.72°。两组的桥部离桌间隙均约 6–7 mm，镊子仍由托盘支撑，尚未夹起。机械臂碰撞计数均为 0。脚本、动作结果与自由沉降对照见 `runs/tea-tweezers-contact-follow-measured.py` 和 `runs/tea-tweezers-contact-follow-{e,control}.json`。
+
+
+持续跟随镊子的上表面接触点并沿器具长轴施力，右食指接触保持约 12.5 s，镊子最大转角约 18.97°，桥部离桌间隙约 6.91 mm。通过高位换腕后实际执行了接近和闭合，未形成相向夹持或抬升。记录见 `runs/tea-tweezers-axial-tip-a.json` 和 `runs/tea-tweezers-high-route-pinch-a.json`。
+
+在托盘角落的试验中采用明确声明的瓶子初始位置 `[0.43, -0.015] m`。左手物理调整并撤回后，瓶体连续 0.5 s 由现有托盘边沿承托，按瓶盖当前姿态计算的最低点离桌至少 28.68 mm。右手尚未建立瓶盖接触。记录见 `runs/tea-leap-sequential-pocket-cap-probe.json`。
+
+持瓶和取镊子的判据要求相应一侧机器人手的两个不同指节或掌部构件产生相向的正法向力，而且器具已经离开桌面和托盘支撑。镊子在开盖后才能记录为已使用，归位时必须由托盘承托并已松手。回归测试覆盖没有手接触的器具位移。 [论文任务顺序](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
 
 ## 六个场景的渲染与接入验证

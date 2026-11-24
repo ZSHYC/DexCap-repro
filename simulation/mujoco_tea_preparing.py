@@ -9,6 +9,7 @@ are assumed. The cap uses MuJoCo's hinge/slide equality as a 2 mm-pitch thread.
 from __future__ import annotations
 
 import math
+from itertools import combinations
 
 import mujoco
 import numpy as np
@@ -243,6 +244,10 @@ class TeaPreparingMetrics:
         self.pot_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_teapot_")}
         self.tweezers_geoms = {g for g in geoms if model.geom(g).name.startswith("tea_tweezers_")}
         self.left_hand_geoms = {g for g in geoms if model.geom(g).name.startswith("left_hand_")}
+        self.right_hand_geoms = {g for g in geoms if model.geom(g).name.startswith("right_hand_")}
+        self.support_geoms = self.tray_geoms | {
+            g for g in geoms if model.geom(g).name in ("table", "room_floor_surface")
+        }
         self.tea_geoms = [model.geom(f"tea_particle_geom_{i}").id for i in range(TEA_PARTICLES)]
         self.tea_bodies = [model.body(f"tea_particle_{i}").id for i in range(TEA_PARTICLES)]
         self.tea_joints = [model.joint(f"tea_particle_free_{i}").id for i in range(TEA_PARTICLES)]
@@ -257,6 +262,28 @@ class TeaPreparingMetrics:
             if pair & first and pair & second:
                 return True
         return False
+
+    def _held(self, data, object_geoms, hand_geoms):
+        contacts = []
+        wrench = np.zeros(6)
+        for index, contact in enumerate(data.contact[:data.ncon]):
+            first, second = contact.geom
+            if first in object_geoms:
+                other, normal = second, contact.frame[:3]
+            elif second in object_geoms:
+                other, normal = first, -contact.frame[:3]
+            else:
+                continue
+            if other in self.support_geoms:
+                return False
+            if other in hand_geoms:
+                mujoco.mj_contactForce(self.model, data, index, wrench)
+                if wrench[0] > 0:
+                    contacts.append((self.model.geom_bodyid[other], normal))
+        return any(
+            first != second and np.dot(a, b) < -0.25
+            for (first, a), (second, b) in combinations(contacts, 2)
+        )
 
     def _settled(self, data, joint):
         dof = self.model.jnt_dofadr[joint]
@@ -295,9 +322,11 @@ class TeaPreparingMetrics:
         cap_unthreaded = not bool(data.eq_active[self.thread_weld])
         bottle_tilted = data.xmat[self.bottle_body].reshape(3, 3)[2, 2] < np.cos(np.deg2rad(35))
         bottle_moved = np.linalg.norm(data.xpos[self.bottle_body] - self.initial_bottle_pos) > .035
-        self.bottle_used |= bool(bottle_tilted or bottle_moved)
+        if not self.bottle_used and (bottle_tilted or bottle_moved):
+            self.bottle_used = self._held(data, self.bottle_geoms, self.left_hand_geoms)
         tweezers_moved = np.linalg.norm(data.xpos[self.tweezers_body] - self.initial_tweezers_pos) > .035
-        self.tweezers_used |= bool(tweezers_moved)
+        if cap_unthreaded and not self.tweezers_used and tweezers_moved:
+            self.tweezers_used = self._held(data, self.tweezers_geoms, self.right_hand_geoms)
         bottle_returned = bool(
             self.bottle_used
             and np.linalg.norm(data.xpos[self.bottle_body, :2] - self.initial_bottle_pos[:2]) < .035
@@ -308,6 +337,7 @@ class TeaPreparingMetrics:
             self.tweezers_used
             and np.linalg.norm(data.xpos[self.tweezers_body, :2] - self.initial_tweezers_pos[:2]) < .035
             and self._contact(data, self.tweezers_geoms, self.tray_geoms)
+            and not self._contact(data, self.tweezers_geoms, self.right_hand_geoms)
             and self._settled(data, self.tweezers_joint)
         )
         left_released = bool(

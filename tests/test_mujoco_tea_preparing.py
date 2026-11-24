@@ -119,6 +119,17 @@ class MujocoTeaPreparingTest(unittest.TestCase):
         self.assertTrue(info["tea_deposited"])
         self.assertFalse(info["sim_success"])
 
+    def test_fixture_motion_without_grasp_does_not_count_as_use(self):
+        model, data, metrics = self.make_scene()
+        data.eq_active[metrics.thread_weld] = 0
+        for joint in (metrics.bottle_joint, metrics.tweezers_joint):
+            data.qpos[model.jnt_qposadr[joint] + 2] += 0.050
+        mujoco.mj_forward(model, data)
+
+        info = metrics.update(data)
+        self.assertFalse(info["bottle_used"])
+        self.assertFalse(info["tweezers_used"])
+
     def test_scene_contains_fixed_tray_hollow_vessels_and_spring_tweezers(self):
         model, _, metrics = self.make_scene()
         self.assertEqual(model.body("tea_tray").jntnum[0], 0)
