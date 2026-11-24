@@ -8,8 +8,6 @@ import mujoco
 import numpy as np
 
 from simulation.packaging_objects import (
-    BULLET_GEOM_BOX,
-    BULLET_GEOM_CYLINDER,
     DEMO_OBJECT_XY,
     PACKAGING_OBJECTS,
     PACKAGING_UNSEEN_OBJECTS,
@@ -22,10 +20,12 @@ from simulation.packaging_objects import (
 
 TABLE_HEIGHT = -0.030
 BOX_HALF_XY = (0.149, 0.095)
-BOX_PANEL_HALF_THICKNESS = 0.006
+BOX_PANEL_HALF_THICKNESS = 0.0015
 BOX_TOP = 0.078
 BOX_YAW = np.deg2rad(-62.8)
-LID_OPEN_ANGLE = 0.108
+LID_OPEN_ANGLE = np.deg2rad(3.35)
+LID_TAB_ANGLE = np.deg2rad(26)
+LID_TAB_HALF_XY = (0.145, 0.035)
 LID_CLOSED_TOLERANCE = np.deg2rad(6)
 DEFAULT_OBJECT = "red-box"
 RED_BOX_YAW = np.deg2rad(64)
@@ -61,16 +61,16 @@ def _yaw(angle):
     return [np.cos(angle / 2), 0, 0, np.sin(angle / 2)]
 
 
+def _roll(angle):
+    return [np.cos(angle / 2), np.sin(angle / 2), 0, 0]
+
+
 def _geom_volume(kind, size):
     if kind == "box":
         return 8 * np.prod(size)
     if kind == "cylinder":
         return 2 * np.pi * size[0] ** 2 * size[2]
     return 4 * np.pi * np.prod(size) / 3
-
-
-def _part_kind(shape):
-    return "box" if shape == BULLET_GEOM_BOX else "cylinder"
 
 
 def _add_geom(body, *, name, kind, size, pos=(0, 0, 0), quat=(1, 0, 0, 0),
@@ -122,7 +122,9 @@ def _add_box(spec, xy):
             density=density,
         )
 
-    lid = box.add_body(name="packaging_lid", pos=[0, half_y, BOX_TOP])
+    lid = box.add_body(
+        name="packaging_lid", pos=[0, half_y, BOX_TOP], quat=_roll(LID_OPEN_ANGLE),
+    )
     lid.add_joint(
         name="packaging_lid_hinge",
         type=mujoco.mjtJoint.mjJNT_HINGE,
@@ -143,6 +145,32 @@ def _add_box(spec, xy):
         density=lid_density,
     )
 
+
+    # The frame_2710 depth shows a 70 mm flap beyond the lid's second fold line.
+    tab = lid.add_body(
+        name="packaging_lid_tab", pos=[0, 2 * half_y, 0], quat=_roll(LID_TAB_ANGLE),
+    )
+    tab.add_joint(
+        name="packaging_tab_hinge",
+        type=mujoco.mjtJoint.mjJNT_HINGE,
+        axis=[1, 0, 0],
+        limited=True,
+        range=[0, np.deg2rad(110)],
+        ref=LID_TAB_ANGLE,
+        springref=LID_TAB_ANGLE,
+        stiffness=0.04,
+        damping=0.002,
+    )
+    tab_size = (*LID_TAB_HALF_XY, panel)
+    _add_geom(
+        tab,
+        name="packaging_tab_panel",
+        kind="box",
+        size=tab_size,
+        pos=[0, LID_TAB_HALF_XY[1], 0],
+        rgba=CARDBOARD,
+        density=0.008 / _geom_volume("box", tab_size),
+    )
 
 def _object_definition(object_name):
     if object_name in UNSEEN_COMPOUNDS:
@@ -192,13 +220,13 @@ def _add_object(spec, xy, object_name):
 
     if object_name in UNSEEN_COMPOUNDS:
         parts = definitions
-        volumes = [_geom_volume(_part_kind(part.shape), part.half_size) for part in parts]
+        volumes = [_geom_volume(part.kind, part.half_size) for part in parts]
         density = 0.12 / sum(volumes)
         for index, part in enumerate(parts):
             _add_geom(
                 body,
                 name=f"packaging_object_part_{index}",
-                kind=_part_kind(part.shape),
+                kind=part.kind,
                 size=part.half_size,
                 pos=part.center,
                 quat=_wxyz(part.orientation),
@@ -238,6 +266,7 @@ def add_packaging_scene(spec: mujoco.MjSpec, object_xy, object_name=DEFAULT_OBJE
     positions = np.asarray(object_xy, dtype=float)
     if positions.shape != (2, 2):
         raise ValueError("object_xy must contain box and object XY positions with shape (2, 2)")
+    spec.compiler.degree = False
     _add_box(spec, positions[0])
     _add_object(spec, positions[1], object_name)
 
@@ -278,6 +307,7 @@ class PackagingMetrics:
             self.object_dofs = None
         self.box_geoms = self._body_geoms(self.box_body, collidable_only=True)
         self.lid_geoms = self._body_geoms(self.lid_body, collidable_only=True)
+        self.lid_geoms.update(self._body_geoms(model.body("packaging_lid_tab").id, collidable_only=True))
         self.right_geoms = self._named_geoms("right")
         self.left_geoms = self._named_geoms("left")
         self.contact_counts = [0, 0, 0]

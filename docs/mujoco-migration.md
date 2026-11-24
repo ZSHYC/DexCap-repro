@@ -40,7 +40,9 @@ MUJOCO_GL=egl python -m simulation.rollout data/derived/packaging-demo-0-playbac
 | 回放 | 右腕误差中位数 | 左腕误差中位数 | 实际结果 |
 | --- | ---: | ---: | --- |
 | Wiping | 4.5 mm | 14.9 mm | 盘子和海绵都触发抓取指标。371 个控制周期接触盘体，内盘面擦拭为 0。 |
-| Packaging | 5.4 mm | 14.7 mm | 14.0 × 5.6 × 8.8 cm 的红银包装按原始深度建模。短时抬起后掉落，终点未入盒和合盖。 |
+| Packaging | 5.8 mm | 14.8 mm | 红银包装短时抬起后掉落。左手完成合盖，物体未入盒。 |
+
+Packaging 红银包装使用原始深度的 14.0 × 5.6 × 8.8 cm 包络。盒盖按首帧深度以约 3.35° 开始，并有实测约 70 mm 的独立折舌。主铰链在模型中按弧度编译，可实际转至 180°。纸板厚度近似 3 mm，折舌刚度与阻尼未做实物标定。黄色折叠布的 150 × 130 × 40 mm 包络来自发布点云，以三维柔性网格模拟受力、变形和入盒支撑。其有效弹性参数仍为估计。几何测量记录在 `runs/packaging-lid-tab-measurement.json`。
 
 两段回放在采样的控制周期均未出现机械臂碰撞接触，且能生成 `10000 × 6` 点云。当前泡棉材料、手指接触系数、纸盒铰链和物体表面参数仍需要用实测或录制行为标定。两段回放均未达成完整任务。
 
@@ -49,7 +51,7 @@ MUJOCO_GL=egl python -m simulation.rollout data/derived/packaging-demo-0-playbac
 逐步诊断位于数据盘。Wiping 的模型和录制手部表面中位距离约为 2.5–2.8 mm。抓取阶段有些目标姿态会把手指几何移入桌面约 3 cm。离桌后物体姿态也出现偏差，第 72 步盘面法向与录制估计相差约 59°。仿真海绵中心处在背面一侧约 53 mm。包装物抓取要求同时出现相向手指接触、质心抬升 1 cm 且不受桌面支撑。
 
 - 渲染关键帧位于 `runs/dexcap-mujoco-replay-keyframes.png`。
-- 回放指标位于 `runs/wiping-measured-sponge-demo0.json` 和 `runs/packaging-wrist-ramp-demo0.json`。
+- 回放指标位于 `runs/wiping-measured-sponge-demo0.json` 和 `runs/packaging-measured-hinge-demo0.json`。
 - 手部几何、持盘姿态和相机条件诊断位于 `runs/wiping-geometry-alignment.json`、`runs/wiping-demo0-plate-facing.json` 和 `runs/wiping-action-diagnostics-mujoco.json`。
 
 ## 复用权重评估

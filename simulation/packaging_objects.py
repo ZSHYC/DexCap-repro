@@ -6,12 +6,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 
-BULLET_GEOM_BOX = 3
-BULLET_GEOM_CYLINDER = 4
-
-
 class Part(NamedTuple):
-    shape: int
+    kind: str
     half_size: tuple
     center: tuple
     color: tuple
@@ -19,11 +15,11 @@ class Part(NamedTuple):
 
 
 def box(size, center, color):
-    return Part(BULLET_GEOM_BOX, tuple(length / 2 for length in size), center, color)
+    return Part("box", tuple(length / 2 for length in size), center, color)
 
 
 def cylinder(radius, height, center, color, orientation=(0, 0, 0, 1)):
-    return Part(BULLET_GEOM_CYLINDER, (radius, radius, height / 2), center, color, orientation)
+    return Part("cylinder", (radius, radius, height / 2), center, color, orientation)
 
 
 def tube(start, end, radius, color):
@@ -34,13 +30,12 @@ def tube(start, end, radius, color):
 
 
 def ring(outer, inner, height, center, color):
-    # Leave space for the base and handle within Bullet's 16-part limit.
     sides = 10
     radius = (outer + inner) / 2
     tangent = radius * np.tan(np.pi / sides)
     half_size = ((outer - inner) / 2, tangent, height / 2)
     return tuple(
-        Part(BULLET_GEOM_BOX, half_size, tuple(np.add(center, [radius * np.cos(yaw), radius * np.sin(yaw), 0])),
+        Part("box", half_size, tuple(np.add(center, [radius * np.cos(yaw), radius * np.sin(yaw), 0])),
              color, tuple(Rotation.from_euler("z", yaw).as_quat()))
         for yaw in np.arange(sides) * 2 * np.pi / sides
     )
@@ -159,7 +154,7 @@ def compound_bounds(parts, rotation):
     for part in parts:
         axes = rotation @ Rotation.from_quat(part.orientation).as_matrix()
         center = rotation @ part.center
-        if part.shape == BULLET_GEOM_CYLINDER:
+        if part.kind == "cylinder":
             extent = cylinder_extent(axes, part.half_size)
         else:
             extent = np.abs(axes) @ part.half_size

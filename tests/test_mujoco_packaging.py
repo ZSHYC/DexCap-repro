@@ -129,6 +129,24 @@ class MujocoPackagingTest(unittest.TestCase):
             "the hollow mug and handle must remain compound geometry",
         )
 
+    def test_lid_has_measured_open_pitch_and_a_free_fold_tab(self):
+        model, data, metrics = self.make_scene()
+        lid = model.geom("packaging_lid_panel").id
+        fold = model.joint("packaging_tab_hinge")
+        tab = model.geom("packaging_tab_panel").id
+        self.assertAlmostEqual(model.geom_size[tab, 1] * 2, 0.070)
+        self.assertAlmostEqual(data.qpos[fold.qposadr[0]], np.deg2rad(26))
+        self.assertAlmostEqual(
+            data.geom_xpos[lid, 2] - data.xpos[metrics.lid_body, 2],
+            model.geom_size[lid, 1] * np.sin(np.deg2rad(3.35)),
+        )
+
+        joint = model.joint("packaging_lid_hinge")
+        np.testing.assert_allclose(joint.range, [0, np.pi])
+        data.qpos[joint.qposadr[0]] = np.pi
+        mujoco.mj_forward(model, data)
+        self.assertAlmostEqual(data.geom_xpos[lid, 2], data.xpos[metrics.lid_body, 2])
+
     def test_grasp_requires_lifting_the_object_off_the_table(self):
         model, data, metrics = self.make_scene()
         opposed = [(None, np.array([1, 0, 0])), (None, np.array([-1, 0, 0]))]
