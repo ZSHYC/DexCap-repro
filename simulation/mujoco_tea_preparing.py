@@ -239,18 +239,35 @@ def _add_teapot(spec, xy):
         )
 
 
+_PRISM_FACES = (
+    (0, 3, 2), (0, 2, 1), (4, 5, 6), (4, 6, 7),
+    (0, 1, 5), (0, 5, 4), (3, 7, 6), (3, 6, 2),
+    (0, 4, 7), (0, 7, 3), (1, 2, 6), (1, 6, 5),
+)
+
+
 def _add_tweezers(spec, xy):
     # Start the bridge above the cradle lip so gravity seats the free tool.
     root = spec.worldbody.add_body(
-        name="tea_tweezers", pos=[*xy, TRAY_TOP + .025], quat=_yaw(TOOL_YAW)
+        name="tea_tweezers", pos=[*xy, TRAY_TOP + .0235], quat=_yaw(TOOL_YAW)
     )
     root.add_freejoint(name="tea_tweezers_free")
     root.add_geom(
         name="tea_tweezers_bridge", type=mujoco.mjtGeom.mjGEOM_BOX,
-        size=[.009, .012, .003], rgba=[.20, .12, .07, 1], density=1500,
+        size=[.009, .0155, .004], rgba=[.20, .12, .07, 1], density=1500,
         friction=[.8, .01, .001],
     )
-    for side, y, angle in (("upper", .009, -.075), ("lower", -.009, .075)):
+    # The official video shows broad wooden arms tapering toward the working tips.
+    vertices = [
+        [-.052, -.0098, -.0043], [-.052, .0098, -.0043],
+        [-.052, .0098, .0043], [-.052, -.0098, .0043],
+        [.052, -.002, -.002], [.052, .002, -.002],
+        [.052, .002, .002], [.052, -.002, .002],
+    ]
+    tapered_arm = spec.add_mesh(
+        name="tea_tweezers_taper", uservert=np.ravel(vertices), userface=np.ravel(_PRISM_FACES),
+    )
+    for side, y, angle in (("upper", .0115, -.085), ("lower", -.0115, .085)):
         arm = root.add_body(
             name=f"tea_tweezers_{side}_arm", pos=[.008, y, 0], quat=_yaw(angle)
         )
@@ -260,30 +277,50 @@ def _add_tweezers(spec, xy):
             springref=0, stiffness=.08, damping=.003,
         )
         arm.add_geom(
-            name=f"tea_tweezers_{side}_geom", type=mujoco.mjtGeom.mjGEOM_BOX,
-            pos=[.052, 0, 0], size=[.052, .002, .002],
+            name=f"tea_tweezers_{side}_geom", type=mujoco.mjtGeom.mjGEOM_MESH,
+            pos=[.052, 0, 0], meshname=tapered_arm.name,
             rgba=[.66, .38, .18, 1], density=1600,
             friction=[.9, .01, .001], condim=4,
         )
 
 
 def _add_tool_cradle(spec, tray_xy):
-    xy = tray_xy + TRAY_ROTATION @ [.087, -.094]
+    xy = tray_xy + TRAY_ROTATION @ [.1027, -.0872]
     cradle = spec.worldbody.add_body(
-        name="tea_tool_cradle", pos=[*xy, TRAY_TOP + .004], quat=_yaw(TOOL_YAW),
+        name="tea_tool_cradle", pos=[*xy, TRAY_TOP + .008], quat=_yaw(TOOL_YAW),
     )
     cradle.add_freejoint(name="tea_tool_cradle_free")
     for name, pos, size in (
-        ("base", [0, 0, 0], [.080, .025, .003]),
-        ("side_pos", [0, .018, .008], [.080, .006, .008]),
-        ("side_neg", [0, -.018, .008], [.080, .006, .008]),
-        ("outboard_end", [-.076, 0, .008], [.004, .025, .008]),
+        ("base", [0, 0, 0], [.060, .0475, .003]),
+        ("outboard_end", [-.058, 0, .00375], [.002, .0475, .00175]),
+        ("inboard_end", [.058, 0, .0065], [.002, .042, .004]),
     ):
         cradle.add_geom(
             name=f"tea_tool_cradle_{name}", type=mujoco.mjtGeom.mjGEOM_BOX,
             pos=pos, size=size, density=650, friction=[.9, .01, .001],
             rgba=[.72, .40, .16, 1],
         )
+    # The low mouth exposes the bridge-side grip while the sloped rails support the tool.
+    for side, sign in (("pos", 1), ("neg", -1)):
+        for part, bounds in (
+            ("mouth", ((-.060, .006), (-.024, .019))),
+            ("rail", ((-.024, .019), (.060, .019))),
+        ):
+            vertices = np.array([
+                [x, sign * y, z]
+                for x, top in bounds
+                for y, z in ((.0195, .0028), (.0475, .0028), (.043, top), (.038, top))
+            ])
+            winding = _PRISM_FACES if sign > 0 else np.asarray(_PRISM_FACES)[:, ::-1]
+            mesh = spec.add_mesh(
+                name=f"tea_tool_cradle_{side}_{part}",
+                uservert=vertices.ravel(), userface=np.ravel(winding),
+            )
+            cradle.add_geom(
+                name=f"tea_tool_cradle_side_{side}_{part}",
+                type=mujoco.mjtGeom.mjGEOM_MESH, meshname=mesh.name,
+                density=650, friction=[.9, .01, .001], rgba=[.72, .40, .16, 1],
+            )
 
 
 def add_tea_preparing_scene(spec: mujoco.MjSpec, object_xy=DEMO_OBJECT_XY):

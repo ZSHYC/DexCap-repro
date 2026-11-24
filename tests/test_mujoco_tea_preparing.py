@@ -22,7 +22,8 @@ class MujocoTeaPreparingTest(unittest.TestCase):
             name="table", type=mujoco.mjtGeom.mjGEOM_PLANE,
             pos=[0, 0, -0.03], size=[1, 1, 0.01], friction=[1, 0.01, 0.001],
         )
-        positions = np.array([[0, 0], [0, 0], [0.12, -0.05], [0.10, 0.09]])
+        # Isolate pot and particle contacts from the free wooden rest.
+        positions = np.array([[0, 0], [0, 0], [-0.12, 0.055], [0.10, 0.09]])
         add_tea_preparing_scene(spec, positions)
         # A few spherical probes make the isolated stack and edge contacts deterministic.
         for index in range(4, TEA_PARTICLES):

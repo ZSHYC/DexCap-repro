@@ -912,6 +912,12 @@ python -m simulation.rollout data/derived/packaging-red-carton-bimanual-closure-
 
 从同一实测退丝状态，左右两手先撤开后按当前盖姿重拟合。最初的右手夹持上升约 4.65 mm 即滑脱。使用两指载荷反馈继续试验后，盖子离开瓶身并在相向夹持下累计抬高约 29.18 mm，随后失去抓持。记录分别在 `tea-raised-layout-left-raised-cap-lift.json` 和 `tea-production-cap-tactile-lift.json`。直接把受限关节轨迹的实测腕位用于标准 OSC 时，前 375 步未产生有效旋转。加 3 mm 顶压补偿后，180 步从闭盖转约 0.0995 圈，无机械臂或双手碰撞及物理警告。该补偿只用于标准转换试验。
 
+在拓宽木托前的完整双臂模型上，从同一退丝和提盖状态继续真实转运。盖子沿托盘外侧搬运，期间一直由相向的两指承重。到右侧时夹持滑脱，盖子落在盘底。右手撤开后，盘框坐标约为 `[-20.7, -101.5, 58.8] mm`，标准持位控制下 `cap_on_right=true` 连续 1 s。这个末态附带原生积分状态，见数据盘 `benchmarks/tea-bottle-native/tea-current-cap-placed-right.{json,npz}`。此开盖及放盖证据来自下面的木托更新以前。
+
+官方视频显示右手在约 16.25–17.5 s 从上方夹住木臂靠近桥端的一段，提起后木托留在茶盘。按首帧托盘四角整正估计，木托外宽约 90–105 mm、净宽 35–42 mm，夹持端外悬约 25–33 mm。生产场景把原 4 mm 方截面木臂改为桥端约 19.6 × 8.6 mm、前端 4 × 4 mm 的渐缩网格，木托改为外宽约 95 mm 的自由浅口槽，内侧用向外倾斜的实体围缘。木托位置按夹持方向和座稳情况做小幅调整，尺寸仍为影像估计。两个弹簧铰链、物体自由度及原摩擦参数保留。帧、像素端点和尺度假设在 `runs/tea-source-dimension-estimate/`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
+
+新几何在独立 30 s 试验中落稳后持续由木托支撑，末端相对起点移动约 13.77 mm。完整双臂、茶粒和其余器具同时在场时，以已经放盖的声明式阶段起点运行 6 s，镊子仍由木托承托，后者由托盘支撑，位移约 6.07 mm。两组整臂预抓扫掠无干涉。物理接近后两指实际分别测到约 0.14 和 0.15 N 的相向载荷，继续合拢时法线改变并与木托口接触，尚未离托。备茶 12 项测试通过，标准入口另输出了 `10000 × 6` 点云。数据在 `/data/dexcap-repro/benchmarks/tea-tool-source-model/scaledTrough/`。
+
 剪刀重排试验中，在线跟随固定柄网格使右中指首次与原有食指托力同时出现，中指约 0.079 N、食指约 0.112 N。随后限制在同一段柄面反馈，该阶段中指载荷峰值约 0.034 N，末关节距上限约 0.014 rad。剪刀仍由托盘支撑，该右手试验用于寻找可重排的抓法。记录位于 `runs/scissor_89a2f80_moving_handle_underlift/dual-ring-samehand-middle-{online-servo,force-hold-continue}.json`。
 
 擦盘的第二笔试验先撤掉原先向下压住海绵的左无名指接触。17 个约 50 ms 周期内，左中指和拇指仍各约有 4.3 N，双手继续同时持盘和海绵，末段连续 5 个周期无名指载荷为零。随后按实测状态尝试让无名指从海绵下侧进入，扫掠仍接触柔性海绵或其他刚体，未执行该路径。记录位于 `/data/dexcap-repro/benchmarks/wiping-coordinated-grasp/stroke-support/left-return-ring-{release,under-from-release-plan}.json`。
