@@ -340,6 +340,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 默认剪纸布局按官方视频重新校准。闭合托盘墙由 35 mm 调至估计的 75 mm，剪刀初始自由位姿及开角取真实重力静置后的状态，纸带位置也随墙高重新计算。60 s 候选试验中剪刀平面约倾斜 30.65°，两柄中心平均越出短墙约 54.5 mm，高于墙沿约 34.7 mm。刀片和两侧柄臂由托盘底、隔板与短墙支撑，最后 1 s 剪刀轴位移小于 0.04 mm。纸带由另一端短墙和底板支撑，五个接缝完整。默认布局通过独立 25 s 静置测试，完整双臂入口也输出了 10000 × 6 点云。上文的 35 mm 托盘轨迹对应早期布局，新的插入和切割参考仍需在高墙布局上重做。试验见 `runs/scissor_official_rim_reset_candidate_recomputed_paper.{py,json}` 和 `runs/scissor-official-rim-entry.json`。 [官方剪纸视频](https://dex-cap.github.io/assets/normal_scissor.mp4)
 
+
+在高墙默认场景，以同一对环中心尝试正反两个入环方向。反向接近避开了前臂与隔板；735 个候选中有 33 个让左拇指和食指网格分别穿过两环平面。它们均存在其他手指或指节与柄环及柄臂的穿透，满足截面条件的最佳姿态还有约 16.3 mm 的拇指指节碰撞，未执行这些接近动作。记录见 `runs/scissor_left_rim_opposite_mesh_search.json`。
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -387,6 +390,10 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 持续跟随镊子的上表面接触点并沿器具长轴施力，右食指接触保持约 12.5 s，镊子最大转角约 18.97°，桥部离桌间隙约 6.91 mm。通过高位换腕后实际执行了接近和闭合，未形成相向夹持或抬升。记录见 `runs/tea-tweezers-axial-tip-a.json` 和 `runs/tea-tweezers-high-route-pinch-a.json`。
 
 在托盘角落的试验中采用明确声明的瓶子初始位置 `[0.43, -0.015] m`。左手物理调整并撤回后，瓶体连续 0.5 s 由现有托盘边沿承托，按瓶盖当前姿态计算的最低点离桌至少 28.68 mm。记录见 `runs/tea-leap-sequential-pocket-cap-probe.json`。沿此分阶段起点继续，右手拇指建立两处真实盖体接触，初次接触法向力峰值约 0.286 N。一次 0.5° 腕部绕轴动作后，两处接触仍在，终态法向力约 0.063 N，瓶盖相对螺纹前进约 0.000090 圈，离桌约 27.46 mm。109 个样本无物理警告。这段动作还未形成可持续的旋盖。记录见 `runs/tea-leap-topthumb-turnpulse-probe.{py,json}`。
+
+改用 10 ms 周期，根据实际瓶盖接触法向调节指垫压力。该分阶段试验让右拇指保持正法向接触 1.53 s，瓶盖螺纹在滑开之前前进约 0.04549 圈（16.38°），指垫峰值约 0.527 N，盖体距桌始终至少 26.23 mm。未计入滑开后的转动。手指之间另有约 42 N 的自碰撞，且这一段瓶身由托盘支撑。对非相邻指节的碰撞显式加约束后，最佳位姿仍有约 1.4–2.9 mm 的手部自穿透，且未找到可执行的接近路线。证据见 `runs/tea-leap-topthumb-contact-normal-long.{py,json}` 和 `runs/tea-leap-topthumb-weld-clear-roll-*.json`。执行原分阶段动作时使用 Conda 默认 BLAS 线程设置，单线程执行会得到不同的接触轨迹。
+
+官方视频首帧显示，机器人右侧有单独的木质浅槽，两臂镊子由浅槽托住，合拢一端伸至右沿外。现有镊子在茶盘另一侧，浅槽尚未建模。将现有镊子在试验中移到右侧边沿可让拇指和食指的目标间隙分别达到约 0.36 和 0.30 mm，但接近时食指与茶壶相交约 21.6 mm，闭合时仍与盘底相交约 26.6 mm。精确摆放和工具尺寸尚未定标，新的摆放只保存在试验中。布局首帧和试验见 `runs/official-tea-layout/{tea-t0.jpg,tea-official-tool-layout-comparison.json}`。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
 
 官方视频把旋下的盖子松手放在茶盘右侧的桌面。`cap_on_right` 因此接受右侧盘内或紧邻右沿的主桌面支撑，同时要求盖子已脱离螺纹、静止并且没有手部接触。盘外区域宽度为估计值。测试覆盖盘内、右沿外、左侧和远离茶盘四种静置位置。 [官方备茶视频](https://dex-cap.github.io/assets/normal_tea.mp4)
 
