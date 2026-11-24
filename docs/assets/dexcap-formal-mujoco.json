@@ -7,12 +7,12 @@
     "pointnet": {
       "checkpoint": "../../runs/wiping-pointnet-seed1-full-20261119T102945Z/20261119182948/models/model_epoch_3000.pth",
       "trial_count": 20,
-      "plate_grasped_count": 3,
-      "plate_grasped_rate": 0.15,
-      "sponge_grasped_count": 1,
-      "sponge_grasped_rate": 0.05,
-      "both_grasped_count": 0,
-      "both_grasped_rate": 0.0,
+      "plate_grasped_count": 5,
+      "plate_grasped_rate": 0.25,
+      "sponge_grasped_count": 2,
+      "sponge_grasped_rate": 0.1,
+      "both_grasped_count": 1,
+      "both_grasped_rate": 0.05,
       "interior_contact_count": 1,
       "interior_contact_rate": 0.05,
       "success_count": 0,
@@ -21,10 +21,10 @@
     "setxf": {
       "checkpoint": "../../runs/wiping-setxf-seed1-full-20261119T103025Z/20261119183028/models/model_epoch_3000.pth",
       "trial_count": 20,
-      "plate_grasped_count": 4,
-      "plate_grasped_rate": 0.2,
-      "sponge_grasped_count": 1,
-      "sponge_grasped_rate": 0.05,
+      "plate_grasped_count": 1,
+      "plate_grasped_rate": 0.05,
+      "sponge_grasped_count": 2,
+      "sponge_grasped_rate": 0.1,
       "both_grasped_count": 1,
       "both_grasped_rate": 0.05,
       "interior_contact_count": 1,
@@ -39,48 +39,12 @@
       "trial_count": 30,
       "placement_count": 0,
       "placement_rate": 0.0,
-      "lid_closed_count": 21,
-      "lid_closed_rate": 0.7,
+      "lid_closed_count": 7,
+      "lid_closed_rate": 0.23333333333333334,
       "success_count": 0,
       "success_rate": 0.0,
       "objects": {
         "red-box": {
-          "trial_count": 5,
-          "placement_count": 0,
-          "placement_rate": 0.0,
-          "lid_closed_count": 4,
-          "lid_closed_rate": 0.8,
-          "success_count": 0,
-          "success_rate": 0.0
-        },
-        "blue-block": {
-          "trial_count": 5,
-          "placement_count": 0,
-          "placement_rate": 0.0,
-          "lid_closed_count": 4,
-          "lid_closed_rate": 0.8,
-          "success_count": 0,
-          "success_rate": 0.0
-        },
-        "green-pear": {
-          "trial_count": 5,
-          "placement_count": 0,
-          "placement_rate": 0.0,
-          "lid_closed_count": 4,
-          "lid_closed_rate": 0.8,
-          "success_count": 0,
-          "success_rate": 0.0
-        },
-        "green-can": {
-          "trial_count": 5,
-          "placement_count": 0,
-          "placement_rate": 0.0,
-          "lid_closed_count": 4,
-          "lid_closed_rate": 0.8,
-          "success_count": 0,
-          "success_rate": 0.0
-        },
-        "tape-measure": {
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
@@ -89,12 +53,48 @@
           "success_count": 0,
           "success_rate": 0.0
         },
+        "blue-block": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "green-pear": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 2,
+          "lid_closed_rate": 0.4,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "green-can": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 0,
+          "lid_closed_rate": 0.0,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
+        "tape-measure": {
+          "trial_count": 5,
+          "placement_count": 0,
+          "placement_rate": 0.0,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
+          "success_count": 0,
+          "success_rate": 0.0
+        },
         "yellow-cloth": {
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 3,
-          "lid_closed_rate": 0.6,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
           "success_count": 0,
           "success_rate": 0.0
         }
@@ -104,8 +104,8 @@
       "trial_count": 45,
       "placement_count": 0,
       "placement_rate": 0.0,
-      "lid_closed_count": 22,
-      "lid_closed_rate": 0.4888888888888889,
+      "lid_closed_count": 6,
+      "lid_closed_rate": 0.13333333333333333,
       "success_count": 0,
       "success_rate": 0.0,
       "objects": {
@@ -113,8 +113,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 3,
-          "lid_closed_rate": 0.6,
+          "lid_closed_count": 0,
+          "lid_closed_rate": 0.0,
           "success_count": 0,
           "success_rate": 0.0
         },
@@ -122,8 +122,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 2,
-          "lid_closed_rate": 0.4,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
           "success_count": 0,
           "success_rate": 0.0
         },
@@ -131,8 +131,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 2,
-          "lid_closed_rate": 0.4,
+          "lid_closed_count": 0,
+          "lid_closed_rate": 0.0,
           "success_count": 0,
           "success_rate": 0.0
         },
@@ -140,8 +140,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 2,
-          "lid_closed_rate": 0.4,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
           "success_count": 0,
           "success_rate": 0.0
         },
@@ -149,8 +149,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 2,
-          "lid_closed_rate": 0.4,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
           "success_count": 0,
           "success_rate": 0.0
         },
@@ -158,8 +158,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 4,
-          "lid_closed_rate": 0.8,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
           "success_count": 0,
           "success_rate": 0.0
         },
@@ -167,8 +167,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 3,
-          "lid_closed_rate": 0.6,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
           "success_count": 0,
           "success_rate": 0.0
         },
@@ -176,8 +176,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 2,
-          "lid_closed_rate": 0.4,
+          "lid_closed_count": 1,
+          "lid_closed_rate": 0.2,
           "success_count": 0,
           "success_rate": 0.0
         },
@@ -185,8 +185,8 @@
           "trial_count": 5,
           "placement_count": 0,
           "placement_rate": 0.0,
-          "lid_closed_count": 2,
-          "lid_closed_rate": 0.4,
+          "lid_closed_count": 0,
+          "lid_closed_rate": 0.0,
           "success_count": 0,
           "success_rate": 0.0
         }

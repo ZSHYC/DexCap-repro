@@ -39,8 +39,8 @@ MUJOCO_GL=egl python -m simulation.rollout data/derived/packaging-demo-0-playbac
 
 | 回放 | 右腕误差中位数 | 左腕误差中位数 | 实际结果 |
 | --- | ---: | ---: | --- |
-| Wiping | 4.5 mm | 14.9 mm | 盘子和海绵都触发抓取指标。371 个控制周期接触盘体，内盘面擦拭为 0。 |
-| Packaging | 5.8 mm | 14.8 mm | 红银包装短时抬起后掉落。左手完成合盖，物体未入盒。 |
+| Wiping | 2.3 mm | 4.6 mm | 盘子、海绵均未抓起，52 个控制周期接触盘体，内盘面擦拭为 0。 |
+| Packaging | 4.8 mm | 5.6 mm | 红银包装未抓起或入盒，纸盒未合盖。 |
 
 Packaging 红银包装使用原始深度的 14.0 × 5.6 × 8.8 cm 包络。盒盖按首帧深度以约 3.35° 开始，并有实测约 70 mm 的独立折舌。主铰链在模型中按弧度编译，可实际转至 180°。纸板厚度近似 3 mm，折舌刚度与阻尼未做实物标定。黄色折叠布的 150 × 130 × 40 mm 包络来自发布点云，以三维柔性网格模拟受力、变形和入盒支撑。其有效弹性参数仍为估计。几何测量记录在 `runs/packaging-lid-tab-measurement.json`。
 
@@ -48,16 +48,16 @@ Packaging 红银包装使用原始深度的 14.0 × 5.6 × 8.8 cm 包络。盒�
 
 在 `pro1` 的同一个 Conda 环境验证了 EGL 渲染和三份现有第 3000 轮权重。PointNet Wiping、SetXF Wiping 和 SetXF Packaging 分别在 GPU 0、1、2 完成两步策略闭环，均输出 `10000 × 6` 点云。记录位于数据盘的 `runs/*-policy-smoke.json`。
 
-逐步诊断位于数据盘。Wiping 的模型和录制手部表面中位距离约为 2.5–2.8 mm。抓取阶段有些目标姿态会把手指几何移入桌面约 3 cm。离桌后物体姿态也出现偏差，第 72 步盘面法向与录制估计相差约 59°。仿真海绵中心处在背面一侧约 53 mm。包装物抓取要求同时出现相向手指接触、质心抬升 1 cm 且不受桌面支撑。
+早期手模型的逐步诊断位于数据盘。该版本 Wiping 的模型和录制手部表面中位距离约为 2.5–2.8 mm。抓取阶段有些目标姿态会把手指几何移入桌面约 3 cm。离桌后物体姿态也出现偏差，第 72 步盘面法向与录制估计相差约 59°。仿真海绵中心处在背面一侧约 53 mm。包装物抓取要求同时出现相向手指接触、质心抬升 1 cm 且不受桌面支撑。
 
-- 渲染关键帧位于 `runs/dexcap-mujoco-replay-keyframes.png`。
+- 校正前的渲染关键帧位于 `runs/dexcap-mujoco-replay-keyframes.png`。
 - 回放指标位于 `runs/wiping-measured-sponge-demo0.json` 和 `runs/packaging-measured-hinge-demo0.json`。
 - Packaging 的抓取、掉落和合盖最早见于第 21、26、123 步。包装物始终未接触盒底。每步的物体位置和盒口边界见 `runs/packaging-measured-hinge-contact-trace.json`。
 - 手部几何、持盘姿态和相机条件诊断位于 `runs/wiping-geometry-alignment.json`、`runs/wiping-demo0-plate-facing.json` 和 `runs/wiping-action-diagnostics-mujoco.json`。
 
 ## 复用权重评估
 
-沿用已训练的第 3000 轮权重。PointNet 使用当前分支的训练代码，SetXF 使用 `worktrees/setxf`。每次仿真最多执行 400 个策略动作。Wiping 使用相同的种子 1–20 比较两份权重。Packaging 对训练和未见物体各使用同一组种子 1–5。结果写入数据盘 `runs/formal-mujoco/`。
+沿用已训练的第 3000 轮权重。PointNet 使用当前分支的训练代码，SetXF 使用 `worktrees/setxf`。每次仿真最多执行 400 个策略动作。Wiping 使用相同的种子 1–20 比较两份权重。Packaging 对训练和未见物体各使用同一组种子 1–5。本轮完整结果位于数据盘 `runs/leap-physical-benchmark/`。
 
 ```bash
 export MUJOCO_GL=egl MUJOCO_EGL_DEVICE_ID=0 CUDA_VISIBLE_DEVICES=0
@@ -65,9 +65,9 @@ export PYTHONPATH="$PWD/DexCap/STEP3_train_policy"
 release=data/official/e468f07000de0f8d3234a9c60a9d8208344675e0
 dataset="$release/hand_wiping_1-14_5actiongap_10000points.hdf5"
 checkpoint=../../runs/wiping-pointnet-seed1-full-20261119T102945Z/20261119182948/models/model_epoch_3000.pth
-mkdir -p runs/formal-mujoco
+mkdir -p runs/replay-evaluation
 python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
-  --output runs/formal-mujoco/wiping-pointnet.json
+  --output runs/replay-evaluation/wiping-pointnet.json
 ```
 
 用 `--first-seed` 可以把多个摆放拆给独立进程。每块按固定种子生成，按种子合并后使用与单进程评估相同的配对。用 `MUJOCO_EGL_DEVICE_ID` 设置渲染卡，用 `CUDA_VISIBLE_DEVICES` 设置策略推理卡。 `pro1` 评估分配在 GPU 0–3。
@@ -79,20 +79,19 @@ python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
 
 | 权重及任务 | 回合 | 抓取或入盒 | 内盘面接触或合盖 | 完整成功 |
 | --- | ---: | ---: | ---: | ---: |
-| PointNet Wiping | 20 | 两件均抓取 0 | 内盘面接触 1 | 0 |
+| PointNet Wiping | 20 | 两件均抓取 1 | 内盘面接触 1 | 0 |
 | SetXF Wiping | 20 | 两件均抓取 1 | 内盘面接触 1 | 0 |
-| SetXF Packaging 训练物体 | 30 | 入盒 0 | 合盖 21 | 0 |
-| SetXF Packaging 未见物体 | 45 | 入盒 0 | 合盖 22 | 0 |
+| SetXF Packaging 训练物体 | 30 | 入盒 0 | 合盖 7 | 0 |
+| SetXF Packaging 未见物体 | 45 | 入盒 0 | 合盖 6 | 0 |
 
-当前汇总使用带盘沿纹理的 40 个 Wiping 回合、分件红盒的 5 个新回合，以及其他 14 个场景的 70 个原回合。Wiping PointNet 分别有 3 个回合抓起盘子、1 个回合抓起海绵。SetXF 分别为 4 和 1。原版 115 回合及其诊断仍在数据盘的 `runs/formal-mujoco/`。所有结果均由 MuJoCo 3.6.0 生成。论文中的成功率来自实体机器人。 [逐物体汇总](assets/dexcap-formal-mujoco.json) · [论文评估](https://arxiv.org/html/2403.07788v2#S5.SS1)
+115 个回合均使用 MuJoCo 3.6.0 和校正后的 LEAP 实体网格。逐回合核对确认数据、检查点和摆放种子与上一版一致。Wiping PointNet 有 5 个回合抓起盘子、2 个回合抓起海绵，SetXF 分别为 1 和 2。校正前的 Packaging 训练和未见物体分别合盖 21/30 和 22/45，历史汇总在数据盘的 `runs/fidelity-measurement/summary.json`。论文中的成功率来自实体机器人。 [逐物体汇总](assets/dexcap-formal-mujoco.json) · [论文评估](https://arxiv.org/html/2403.07788v2#S5.SS1)
 
 在 `pro1` 上复算已保存的汇总。
 
 ```bash
-folder=runs/fidelity-measurement
-wiping=runs/wiping-rim-measurement
-python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
-  "$wiping/wiping-setxf.json" "$folder/packaging-setxf-seed1-full-20261119T111945Z" \
+folder=runs/leap-physical-benchmark
+python -m simulation.summarize_results "$folder/wiping-pointnet.json" \
+  "$folder/wiping-setxf.json" "$folder/packaging-setxf-seed1-full-20261119T111945Z" \
   --output "$folder/summary.json"
 ```
 
@@ -127,6 +126,9 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 旧手模型使用公开 Wiping 轨迹的接近段和按厘米递增的腕部目标，在单手接触中把海绵抬高 306.0 mm。该结果依赖包含指尖 IK 定位球的旧模型。校正 LEAP 后，复跑同一脚本只抬高约 80.1 mm，未过 30 cm 阈值。验证脚本和每步记录存于数据盘的 `runs/sponge-picking-physical-lift-probe.{py,json}` 和 `runs/sponge-picking-leap-mesh-lift.{py,json}`。
 
 `python -m simulation.rollout --task sponge-picking` 接受项目使用的 46 维动作 HDF5 与兼容策略权重。作者当前公开数据文件未包含 Sponge Picking 轨迹或权重。 [发布的文件列表](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/main)
+
+
+同一条分阶段夹持脚本的接触诊断显示，基线峰值采样时手部合计法向力约 265 N，最大接触穿透约 15.7 mm。单次对照把 flex 的 `solref` 时间常数设为 20 ms，总力峰值时的手部接触力约 4.2 N，最大穿透约 2.5 mm。两组都未建立持续的抬升夹持。该参数仅用于诊断，脚本和结果在 `/data/dexcap-repro/benchmarks/sponge-picking-flex-solref-ab.{py,json}`。 [MuJoCo 接触参数](https://mujoco.readthedocs.io/en/3.6.0/modeling.html#contact-parameters)
 
 
 ## Packaging 六类参考动作回放
@@ -183,7 +185,7 @@ python -m simulation.rollout data/derived/ball-collecting-scripted-reference.hdf
 
 DexCap 的重定向 URDF 比 LEAP V1 官方物理模型多四个 `realtip` 固定链接。它们各带半径 5 mm 的圆球和 0.1 kg 的惯量条目，用于表示指尖 IK 目标。现在构建 MuJoCo 手部时只加载官方物理模型对应的 17 个实体链接。原始 DexCap URDF 仍供发布数据的重建使用。编译后每只手质量由 0.909 kg 校正为 0.509 kg。 [LEAP V1 官方 URDF](https://github.com/leap-hand/LEAP_Hand_Sim/blob/master/assets/leap_hand/robot.urdf)
 
-两条参考动作使用原来的放置与控制参数重新回放。Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。上面的闭环基准与其他验证记录对应各自运行时的模型。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
+两条参考动作使用原来的放置与控制参数重新回放。Wiping 的右、左腕跟踪误差中位值约为 2.3/4.6 mm，未抓起盘子或海绵。Packaging 红盒的中位误差约为 4.8/5.6 mm，本次未持续抓起、入盒或合盖。校正后的回放见数据盘 `runs/{wiping,packaging}-physical-leap-replay.json`。
 
 另用 Wiping 和 Packaging 的 `demo_0` 分别对照 25 和 22 个录制观测。将已发布的腕姿和当前解码的手关节传给校正后的 LEAP 网格，距离手部 12 mm 内的录制黑点到网格采样点的中位距离均约 0.83 mm，逐帧的 2 mm 以内比例中位数约 98%。这验证了输入腕姿、当前手指顺序和作者预处理点云之间的对应。数据及脚本在 `runs/{wiping,packaging}-released-hand-observation-order.{py,json}`。
 

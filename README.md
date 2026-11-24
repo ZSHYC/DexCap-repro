@@ -1,6 +1,6 @@
 # DexCap 论文复现
 
-`repro/mujoco` 分支的 `simulation.rollout` 使用双 Franka、双 LEAP，提供 Wiping、Packaging、Sponge Picking、Ball Collecting、Scissor Cutting 和 Tea Preparing 的 MuJoCo 场景。Wiping 和 Packaging 使用已发布数据训练的权重完成了 115 回合闭环评估。 [MuJoCo 运行方式与当前验证](docs/mujoco-migration.md)
+`repro/mujoco` 分支的 `simulation.rollout` 使用双 Franka、双 LEAP，提供 Wiping、Packaging、Sponge Picking、Ball Collecting、Scissor Cutting 和 Tea Preparing 的 MuJoCo 场景。Wiping 和 Packaging 使用已发布数据训练的权重完成了 115 回合闭环评估。Ball Collecting 的默认摆放已通过脚本动作完成抓球到入篮。 [MuJoCo 运行方式与当前验证](docs/mujoco-migration.md)
 
 在 `pro1` 上复现 DexCap / DexIL 的点云策略训练，使用作者发布的 Wiping 和 Packaging 数据。当前阶段聚焦仿真，支持两项公开任务的无界面轨迹回放和策略闭环。公开源码位于 `DexCap/`，取自 [`j96w/DexCap@4b0bed0`](https://github.com/j96w/DexCap/tree/4b0bed0966c87368f3cde4476aadb7585c3b94b5)。原作者许可见 [DexCap/LICENSE](DexCap/LICENSE)。 [DexCap 论文](https://arxiv.org/html/2403.07788v2#S5) · [运行 MuJoCo](docs/mujoco-migration.md) · [与论文表格的对应关系](docs/reproduction.md#与论文表格的对应关系)
 
@@ -10,14 +10,14 @@
 
 ## MuJoCo 仿真结果
 
-在 `pro1` 上使用原有第 3000 轮权重、400 步回合和与基线配对的摆放种子。
+在 `pro1` 上用校正后的 LEAP 实体网格、原有第 3000 轮权重和与基线配对的摆放种子，完成每回合 400 步的评估。
 
 | 实验 | 分项结果 | 完整成功 |
 | --- | --- | ---: |
-| Wiping PointNet | 两件均抓取 0/20，内盘面接触 1/20 | 0/20 |
+| Wiping PointNet | 两件均抓取 1/20，内盘面接触 1/20 | 0/20 |
 | Wiping SetXF | 两件均抓取 1/20，内盘面接触 1/20 | 0/20 |
-| Packaging 训练物体 | 入盒 0/30，合盖 21/30 | 0/30 |
-| Packaging 未见物体 | 入盒 0/45，合盖 22/45 | 0/45 |
+| Packaging 训练物体 | 入盒 0/30，合盖 7/30 | 0/30 |
+| Packaging 未见物体 | 入盒 0/45，合盖 6/45 | 0/45 |
 
 [MuJoCo 汇总 JSON](docs/assets/dexcap-formal-mujoco.json) · [回放、动作诊断与服务器路径](docs/mujoco-migration.md)
 
