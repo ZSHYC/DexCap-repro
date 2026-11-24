@@ -324,6 +324,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 重新利用右手与剪刀柄及枢轴的实际接触，在托盘内将剪刀转向。转动阶段真实接触覆盖约 0.642 s，峰值法向力约 3.08 N，固定柄孔中心最高抬升约 12.8 mm。与托盘 +Y 外墙的间隙由约 58.7 mm 增至 69.2 mm，柄孔平面实测转动约 6.35°。这段动作提供了新的左手接近方向，尚未完成穿环。逐子步记录见 `runs/scissor_right_shank_roll_access_fine.{py,json}`。
 
 
+在这个支撑姿态，左食指和拇指到各自柄孔边界的静态净空约 2.55 和 4.59 mm。用碰撞网格包络计算，左手最低点仍离桌约 8.27 mm。顺序执行时右手在左腕抵达前已失去柄部支撑，左手尚未接触柄。把左手预抓提前到右手支撑采样的起点后，整机起始姿态的两臂碰撞网格重叠约 81.1 mm，因此该同步方案未执行。净空及物理接触证据见 `runs/scissor_left_baseline_aabb_diag.json` 和 `runs/scissor_bimanual_contact_sync.json`。
+
+
 ## Tea Preparing
 
 `python -m simulation.rollout --task tea-preparing` 使用固定茶盘、可移动的空心瓶与茶壶、弹簧镊子和可自由落下的茶粒。瓶盖有独立自由关节。螺纹通过 MuJoCo 的转角与轴向滑动约束表达，达到两圈并实际升到约 4 mm 的退丝位置后解除连接，瓶盖保留当时的位姿和速度。壶内茶粒必须由壶体实际支撑并低速稳定，工具归位依靠实际托盘接触。论文规定了两圈和任务顺序，螺距、器具尺寸、材料与归位容差为估计。 [论文任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -363,6 +366,9 @@ python -m simulation.rollout data/derived/scissor-left-closure-reference.hdf5 \
 
 
 从上述支撑阶段用受力矩限制的关节空间控制驱动右拇指，在瓶体仍与托盘接触时推到瓶身。实测推力约 0.526 N，瓶盖底部与桌面的间隙由 0 增至约 5.94 mm。随后拇指保持接触约 0.25 s，间隙经历起伏，第六个周期失去接触。瓶盖仍有螺纹约束，且手指没有接触瓶盖。结果与控制脚本见 `runs/tea-leap-rim-stage-thumb-jointpd-{probe.py,result.json}`。
+
+
+使用默认器具摆放，从无接触的机器人预抓位开始，右食指由上方接触自由镊子。追踪真实接触点并调节下压力后，手与镊子接触连续覆盖 170 个 50 ms 周期，实测峰值接触力约 0.13 N，镊子整体最大转角约 8.37°。保持同一预抓位的无接触对照最大转角约 0.72°。两组的桥部离桌间隙均约 6–7 mm，镊子仍由托盘支撑，尚未夹起。机械臂碰撞计数均为 0。脚本、动作结果与自由沉降对照见 `runs/tea-tweezers-contact-follow-measured.py` 和 `runs/tea-tweezers-contact-follow-{e,control}.json`。
 
 
 ## 六个场景的渲染与接入验证
