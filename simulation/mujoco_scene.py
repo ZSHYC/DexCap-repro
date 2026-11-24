@@ -20,7 +20,7 @@ def rig_base_positions(frames):
 
 
 class MujocoScene:
-    def __init__(self, asset_root, frames, camera, task, object_xy, object_name):
+    def __init__(self, asset_root, frames, camera, task, object_xy, object_name, *, object_yaw=None):
         from simulation.mujoco_assets import add_robots
         from simulation.mujoco_camera import DexCapCamera, add_camera
 
@@ -54,7 +54,7 @@ class MujocoScene:
         else:
             from simulation.mujoco_packaging import PackagingMetrics, add_packaging_scene
 
-            add_packaging_scene(spec, object_xy, object_name)
+            add_packaging_scene(spec, object_xy, object_name, object_yaw=object_yaw)
             metrics_type = PackagingMetrics
             metrics_args = (object_name,)
 

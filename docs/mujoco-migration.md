@@ -126,3 +126,21 @@ python -m simulation.summarize_results "$folder/wiping-pointnet.json" \
 在 `pro1` 的 MuJoCo 中，从公开 Wiping 轨迹取接近段。第 75 步建立了实际抓持，随后沿竖直方向以每步 1 cm 移动腕部目标。第 32 个抬升指令后，海绵在单手接触中累计上升 **306.0 mm**。轨迹通过双 Franka 与 LEAP 的力限控制执行。验证脚本和每步记录存于数据盘的 `runs/sponge-picking-physical-lift-probe.{py,json}`。
 
 `python -m simulation.rollout --task sponge-picking` 接受项目使用的 46 维动作 HDF5 与兼容策略权重。作者当前公开数据文件未包含 Sponge Picking 轨迹或权重，306.0 mm 的结果衡量场景中的物理拾取功能。论文的策略成功率仍缺少可配对数据。 [发布的文件列表](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/main)
+
+
+## Packaging 六类参考动作回放
+
+在官方 Packaging HDF5 上指定 `--task packaging --object blue-block` 可以读取该物体的原始参考动作。六类物体分别使用 `demo_0`、`demo_50`、`demo_100`、`demo_150`、`demo_175`、`demo_250`。起点使用各自首帧可见物体点的平面包络中心。长方体红盒、蓝积木还采用首帧点云估计的偏航角。其余形状缺少可靠朝向，纸盒仍用共同的参考起点。点云测量存于 `runs/packaging-reference-placement-fits.json`。
+
+| 物体 | 参考轨迹动作数 | 入盒 | 合盖 |
+| --- | ---: | ---: | ---: |
+| 红银包装 | 131 | 否 | 是 |
+| 蓝积木 | 119 | 否 | 是 |
+| 绿梨 | 141 | 否 | 否 |
+| 绿罐 | 199 | 否 | 否 |
+| 卷尺 | 91 | 否 | 是 |
+| 黄色折叠布 | 147 | 否 | 是 |
+
+六条带完整双臂和点云采集的回放均在 `pro1` 完成，结果位于 `runs/packaging-reference-replays/`。这是参考动作实验，闭环评估仍从相同的随机种子采样。
+
+红银包装的录制红色表面在第 37 步约位于 z = 223 mm。分件模型使用上一版参考起点时，同一步质心高 89 mm，右腕沿目标的位置误差约 4.4 mm，盒体高度滞后远超腕位差。相应录制轨迹在 `runs/packaging-official-red-surface-track.json`。六个原始 RGB-D 帧拟合出的台面倾角可辨，局部高度随帧变化约 12–15 mm。只把首帧倾斜桌面代入回放会提前失去抓持，暂作为标定诊断记录在 `runs/packaging-table-plane-multi-frame.json` 与 `runs/packaging-red-carton-tilted-table-probe.json`。

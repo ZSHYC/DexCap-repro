@@ -23,9 +23,9 @@ TASKS = {
 }
 
 
-def load_demo(dataset):
+def load_demo(dataset, name="demo_0"):
     with h5py.File(dataset, "r") as source:
-        demo = source["data/demo_0"]
+        demo = source[f"data/{name}"]
         frames = ActionFrames(demo.attrs["frame_0_eef_quat"])
         initial = np.concatenate([demo[f"obs/{key}"][0] for key in PROPRIOCEPTION])
         camera = demo["states"][0].reshape(4, 4)
@@ -40,7 +40,15 @@ def observe(scene, frames, rng):
 
 
 def rollout(args):
-    frames, initial, camera, actions = load_demo(args.dataset)
+    packaging = args.task == "packaging"
+    task, position_keys = TASKS[args.task]
+    object_name = (args.object or mujoco_packaging.DEFAULT_OBJECT) if packaging else None
+    demo_name = "demo_0"
+    reference_xy, object_yaw = task.DEMO_OBJECT_XY, None
+    if packaging and args.checkpoint is None:
+        demo_name = task.object_reference(object_name)
+        reference_xy, object_yaw = task.replay_placement(object_name)
+    frames, initial, camera, actions = load_demo(args.dataset, demo_name)
 
     policy = None
     if args.checkpoint is not None:
@@ -50,15 +58,14 @@ def rollout(args):
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         policy, _ = policy_from_checkpoint(ckpt_path=args.checkpoint, device=device)
 
-    packaging = args.task == "packaging"
-    task, position_keys = TASKS[args.task]
-    object_name = (args.object or mujoco_packaging.DEFAULT_OBJECT) if packaging else None
     start = frames.to_world(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
 
     def episode(seed, object_xy):
         rng = np.random.default_rng(seed)
-        scene = MujocoScene(args.assets, frames, camera, args.task, object_xy, object_name)
+        scene = MujocoScene(
+            args.assets, frames, camera, args.task, object_xy, object_name, object_yaw=object_yaw,
+        )
         try:
             scene.reset(start)
             initial_error, initial_angle = scene.control.tracking_error(start)
@@ -101,7 +108,7 @@ def rollout(args):
     first_seed = args.first_seed or 1
     for seed in range(first_seed, first_seed + args.trials):
         if not randomized:
-            results.append(episode(seed, task.DEMO_OBJECT_XY))
+            results.append(episode(seed, reference_xy))
         else:
             positions = task.sample_object_xy(np.random.default_rng(seed))
             placements = dict(zip(position_keys, positions.tolist()))
@@ -114,7 +121,7 @@ def rollout(args):
     result = {
         "task": args.task,
         "dataset": str(args.dataset),
-        "demo": "demo_0",
+        "demo": demo_name,
         "checkpoint": args.checkpoint,
         "steps": steps,
         "engine": "mujoco",
@@ -130,7 +137,8 @@ def rollout(args):
         reference_key = "object_reference_demo" if seen else "object_reference"
         result[reference_key] = task.object_reference(object_name)
     if not randomized:
-        return {**result, **results[0]}
+        placements = dict(zip(position_keys, reference_xy.tolist()))
+        return {**result, **placements, **results[0]}
     if packaging:
         placements = sum(trial["object_in_box"] for trial in results)
         result["placement_count"] = placements
@@ -146,7 +154,7 @@ def main():
     parser.add_argument("--task", choices=TASKS, default="wiping")
     parser.add_argument("--object", choices=(*mujoco_packaging.PACKAGING_OBJECTS,
                                            *mujoco_packaging.PACKAGING_UNSEEN_OBJECTS),
-                        help="Select the Packaging policy-evaluation object")
+                        help="Select a Packaging reference or evaluation object")
     parser.add_argument("--assets", type=Path, default=ASSET_ROOT, help="Pinned Menagerie assets directory")
     parser.add_argument("--checkpoint", help="Use a policy checkpoint instead of recorded actions")
     parser.add_argument("--steps", type=int)
@@ -162,8 +170,10 @@ def main():
         parser.error("--first-seed must be positive")
     if (args.trials > 1 or args.first_seed is not None) and args.checkpoint is None:
         parser.error("Seeded trials require a policy checkpoint")
-    if args.object is not None and (args.task != "packaging" or args.checkpoint is None):
-        parser.error("--object requires a Packaging policy checkpoint")
+    if args.object is not None and args.task != "packaging":
+        parser.error("--object applies to Packaging")
+    if args.object in mujoco_packaging.PACKAGING_UNSEEN_OBJECTS and args.checkpoint is None:
+        parser.error("Unseen objects require a Packaging policy checkpoint")
     result = json.dumps(rollout(args), indent=2)
     if args.output is not None:
         args.output.write_text(result + "\n")

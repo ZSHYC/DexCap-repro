@@ -41,6 +41,24 @@ CLOTH_POISSON_RATIO = 0.2
 CLOTH_DAMPING_S = 0.05
 
 
+# Centers of the visible object components in the six released reference frames.
+REFERENCE_OBJECT_XY = {
+    "red-box": (0.51791, -0.22465),
+    "blue-block": (0.58056, -0.25922),
+    "green-pear": (0.47753, -0.18266),
+    "green-can": (0.53101, -0.23900),
+    "tape-measure": (0.53260, -0.22439),
+    "yellow-cloth": (0.48688, -0.24359),
+}
+REFERENCE_OBJECT_YAW = {"red-box": np.deg2rad(61.19), "blue-block": np.deg2rad(61.47)}
+
+
+def replay_placement(name):
+    xy = DEMO_OBJECT_XY.copy()
+    xy[1] = REFERENCE_OBJECT_XY[name]
+    return xy, REFERENCE_OBJECT_YAW.get(name)
+
+
 def object_reference(name):
     """Return the demo/video evidence associated with an object geometry."""
     if name in UNSEEN_COMPOUNDS:
@@ -224,15 +242,17 @@ def _add_red_box_hanger(body, rgba):
         )
 
 
-def _add_object(spec, xy, object_name):
+def _add_object(spec, xy, object_name, object_yaw):
     if object_name == CLOTH_OBJECT:
         _add_cloth(spec, xy)
         return
     definitions, support_height = _object_definition(object_name)
+    if object_yaw is None:
+        object_yaw = RED_BOX_YAW if object_name == DEFAULT_OBJECT else 0
     body = spec.worldbody.add_body(
         name="packaging_object",
         pos=[*xy, TABLE_HEIGHT + support_height],
-        quat=_yaw(RED_BOX_YAW) if object_name == DEFAULT_OBJECT else [1, 0, 0, 0],
+        quat=_yaw(object_yaw),
     )
     body.add_freejoint(name="packaging_object_free")
 
@@ -279,7 +299,7 @@ def _add_object(spec, xy, object_name):
             )
 
 
-def add_packaging_scene(spec: mujoco.MjSpec, object_xy, object_name=DEFAULT_OBJECT):
+def add_packaging_scene(spec: mujoco.MjSpec, object_xy, object_name=DEFAULT_OBJECT, *, object_yaw=None):
     """Add the freely moving box, hinged lid, and selected free object to ``spec``."""
     if object_name not in PACKAGING_OBJECTS and object_name not in PACKAGING_UNSEEN_OBJECTS:
         raise ValueError(f"Unknown Packaging object: {object_name}")
@@ -288,7 +308,7 @@ def add_packaging_scene(spec: mujoco.MjSpec, object_xy, object_name=DEFAULT_OBJE
         raise ValueError("object_xy must contain box and object XY positions with shape (2, 2)")
     spec.compiler.degree = False
     _add_box(spec, positions[0])
-    _add_object(spec, positions[1], object_name)
+    _add_object(spec, positions[1], object_name, object_yaw)
 
 
 class PackagingMetrics:

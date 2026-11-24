@@ -17,7 +17,10 @@ def render_replay(dataset, task):
     packaging = task == "packaging"
     module = mujoco_packaging if packaging else mujoco_wiping
     object_name = module.DEFAULT_OBJECT if packaging else None
-    scene = MujocoScene(ASSET_ROOT, transform, calibrated_camera, task, module.DEMO_OBJECT_XY, object_name)
+    placement, object_yaw = module.replay_placement(object_name) if packaging else (module.DEMO_OBJECT_XY, None)
+    scene = MujocoScene(
+        ASSET_ROOT, transform, calibrated_camera, task, placement, object_name, object_yaw=object_yaw,
+    )
     camera = mujoco.MjvCamera()
     camera.lookat[:] = (0.45, 0, 0.22)
     camera.distance = 1.75
