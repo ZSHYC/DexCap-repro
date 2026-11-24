@@ -143,6 +143,7 @@ class WipingMetrics:
     def __init__(self, model):
         self.model = model
         self.plate_body = model.body("wiping_plate").id
+        self.table_geom = model.geom("table").id
         self.plate_geoms = {
             geom for geom in range(model.ngeom)
             if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom) or "").startswith("wiping_plate_")
@@ -214,11 +215,15 @@ class WipingMetrics:
         ]
         self._update_wipe(interior, data, plate_pos, plate_rotation)
 
-        plate_hands = self._hand_contacts(contacts, self.right_hand_geoms, "plate")
-        sponge_hands = self._hand_contacts(contacts, self.left_hand_geoms, "sponge")
-        sponge_center = self._sponge_center(data)
-        self.plate_grasped |= bool(len(plate_hands) >= 2 and plate_pos[2] > self.initial_plate_z + 0.01)
-        self.sponge_grasped |= bool(len(sponge_hands) >= 2 and sponge_center[2] > self.initial_sponge_z + 0.01)
+        table_contacts = [contact for contact in contacts if self.table_geom in contact.geom]
+        if not self.plate_grasped and plate_pos[2] > self.initial_plate_z + 0.01:
+            supported = any(self.plate_geoms.intersection(contact.geom) for contact in table_contacts)
+            fingers = self._hand_contacts(contacts, self.right_hand_geoms, "plate")
+            self.plate_grasped = len(fingers) >= 2 and not supported
+        if not self.sponge_grasped and self._sponge_center(data)[2] > self.initial_sponge_z + 0.01:
+            supported = any(self.sponge_flex in contact.flex for contact in table_contacts)
+            fingers = self._hand_contacts(contacts, self.left_hand_geoms, "sponge")
+            self.sponge_grasped = len(fingers) >= 2 and not supported
 
         return {
             "sponge_plate_contacts": len(plate_contacts),

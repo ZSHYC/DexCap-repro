@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import unittest
 
 import mujoco
@@ -133,6 +134,31 @@ class MujocoWipingTest(unittest.TestCase):
         self.assertGreater(result["peak_contact_force"], 0)
         self.assertFalse(result["plate_grasped"])
         self.assertFalse(result["sponge_grasped"])
+
+    def test_sponge_lift_requires_clearing_table_support(self):
+        spec = base_spec()
+        for finger in range(2):
+            spec.worldbody.add_geom(
+                name=f"left_hand_{finger}", type=mujoco.mjtGeom.mjGEOM_SPHERE,
+                pos=[0, 0, 1 + finger], size=[0.01],
+            )
+        add_wiping_scene(spec)
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        metrics = WipingMetrics(model)
+        hits = [
+            SimpleNamespace(geom=(geom, -1), flex=(-1, metrics.sponge_flex))
+            for geom in (*metrics.left_hand_geoms, model.geom("table").id)
+        ]
+        vertices = data.flexvert_xpos.copy()
+        vertices[:, 2] += 0.02
+        sample = SimpleNamespace(
+            ncon=len(hits), contact=hits, xpos=data.xpos, xmat=data.xmat, flexvert_xpos=vertices,
+        )
+        self.assertFalse(metrics.update(sample)["sponge_grasped"])
+        sample.ncon -= 1
+        self.assertTrue(metrics.update(sample)["sponge_grasped"])
 
     def test_wipes_are_measured_in_a_vertical_plate_frame(self):
         spec = base_spec()
