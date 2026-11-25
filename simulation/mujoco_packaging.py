@@ -29,6 +29,7 @@ LID_OPEN_ANGLE = np.deg2rad(3.35)
 LID_TAB_ANGLE = np.deg2rad(26)
 LID_TAB_HALF_XY = (0.145, 0.035)
 LID_CLOSED_TOLERANCE = np.deg2rad(6)
+LID_CLEARANCE_TOLERANCE_M = 0.001
 LID_CONTACT_FORCE_N = .05
 DEFAULT_OBJECT = "red-box"
 RED_BOX_YAW = np.deg2rad(61.5)
@@ -164,7 +165,7 @@ def _add_box(spec, xy):
         damping=0.003,
     )
     lid_density = 0.02 / _geom_volume("box", (half_x, half_y, panel))
-    _add_geom(
+    lid_panel = _add_geom(
         lid,
         name="packaging_lid_panel",
         kind="box",
@@ -173,7 +174,9 @@ def _add_box(spec, xy):
         rgba=CARDBOARD,
         density=lid_density,
     )
-
+    # A thin box can miss deep overlaps at zero margin. Equal gap preserves the force boundary.
+    lid_panel.margin = panel
+    lid_panel.gap = panel
 
     # The frame_2710 depth shows a 70 mm flap beyond the lid's second fold line.
     tab = lid.add_body(
@@ -398,6 +401,7 @@ class PackagingMetrics:
         self.box_body = model.body("packaging_box").id
         self.box_joint = model.joint("packaging_box_free").id
         self.lid_body = model.body("packaging_lid").id
+        self.lid_panel = model.geom("packaging_lid_panel").id
         self.lid_joint = model.joint("packaging_lid_hinge").id
         self.lid_qpos = model.jnt_qposadr[self.lid_joint]
         self.lid_dof = model.jnt_dofadr[self.lid_joint]
@@ -500,10 +504,9 @@ class PackagingMetrics:
         normals = [normal for _, normal in contacts]
         return any(np.dot(a, b) < -0.25 for a, b in itertools.combinations(normals, 2))
 
-    def _geom_extent_in_box(self, data, geom):
-        box_rotation = data.xmat[self.box_body].reshape(3, 3)
+    def _geom_extent_in_frame(self, data, geom, origin, frame_rotation):
         geom_rotation = data.geom_xmat[geom].reshape(3, 3)
-        rotation = box_rotation.T @ geom_rotation
+        rotation = frame_rotation.T @ geom_rotation
         size = self.model.geom_size[geom]
         geom_type = self.model.geom_type[geom]
         if geom_type == mujoco.mjtGeom.mjGEOM_CYLINDER:
@@ -513,15 +516,15 @@ class PackagingMetrics:
             extent = np.sqrt((rotation**2) @ (size**2))
         else:
             extent = np.abs(rotation) @ size
-        center = box_rotation.T @ (data.geom_xpos[geom] - data.xpos[self.box_body])
+        center = frame_rotation.T @ (data.geom_xpos[geom] - origin)
         return center - extent, center + extent
 
     def _object_in_box(self, data):
         # Settled soft contacts can overlap the inner wall by micrometers.
         inner_half = BOX_INNER_HALF_XY + BOX_CONTACT_TOLERANCE_M
+        box_position = data.xpos[self.box_body]
+        box_rotation = data.xmat[self.box_body].reshape(3, 3)
         if self.object_flex >= 0:
-            box_position = data.xpos[self.box_body]
-            box_rotation = data.xmat[self.box_body].reshape(3, 3)
             local = (self._flex_vertices(data) - box_position) @ box_rotation
             lower = np.min(local, axis=0) - self.flex_radius
             upper = np.max(local, axis=0) + self.flex_radius
@@ -530,13 +533,30 @@ class PackagingMetrics:
             settled = np.max(np.abs(data.qvel[self.object_dofs])) < 0.05
             return bool(inside and supported and settled)
 
-        bounds = [self._geom_extent_in_box(data, geom) for geom in self.object_geoms]
+        bounds = [
+            self._geom_extent_in_frame(data, geom, box_position, box_rotation)
+            for geom in self.object_geoms
+        ]
         lower = np.min([bound[0] for bound in bounds], axis=0)
         upper = np.max([bound[1] for bound in bounds], axis=0)
         inside = np.all(lower[:2] >= -inner_half) and np.all(upper[:2] <= inner_half)
         supported = bool(self._contacts(data, self.object_geoms, {self.floor_geom}))
         settled = np.linalg.norm(data.qvel[self.object_dofs]) < 0.05
         return bool(inside and supported and settled)
+
+    def _object_clears_closed_lid(self, data):
+        # The panel's local +Z faces into the box once the lid is closed.
+        rotation = data.geom_xmat[self.lid_panel].reshape(3, 3)
+        inward = rotation[:, 2]
+        panel_inside = data.geom_xpos[self.lid_panel] + inward * self.model.geom_size[self.lid_panel, 2]
+        if self.object_flex >= 0:
+            clearance = ((self._flex_vertices(data) - panel_inside) @ inward).min() - self.flex_radius
+        else:
+            clearance = min(
+                self._geom_extent_in_frame(data, geom, panel_inside, rotation)[0][2]
+                for geom in self.object_geoms
+            )
+        return clearance >= -LID_CLEARANCE_TOLERANCE_M
 
     def physics_step(self, data: mujoco.MjData) -> None:
         if (self.bimanual_lid_closure or not self.released_in_box
@@ -610,5 +630,6 @@ class PackagingMetrics:
             "lid_closed": bool(lid_closed),
             "bimanual_lid_closure": self.bimanual_lid_closure,
             "sim_success": bool(self.placed_in_centered_box and object_in_box
-                                and lid_closed and self.bimanual_lid_closure),
+                                and lid_closed and self.bimanual_lid_closure
+                                and self._object_clears_closed_lid(data)),
         }

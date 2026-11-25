@@ -100,7 +100,9 @@ class MujocoPackagingTest(unittest.TestCase):
         data.qpos[object_qpos:object_qpos + 3] = data.xpos[metrics.box_body] + box_rotation @ [0, 0.075, 0.03]
         data.qpos[object_qpos + 3:object_qpos + 7] = [1, 0, 0, 0]
         mujoco.mj_forward(model, data)
-        root_lower, root_upper = metrics._geom_extent_in_box(data, root)
+        root_lower, root_upper = metrics._geom_extent_in_frame(
+            data, root, data.xpos[metrics.box_body], box_rotation,
+        )
         self.assertGreaterEqual(root_lower[1], -0.095)
         self.assertLessEqual(root_upper[1], 0.095)
         with patch.object(metrics, "_contacts", return_value=[(None, None)]):
@@ -285,6 +287,34 @@ class MujocoPackagingTest(unittest.TestCase):
         mujoco.mj_forward(model, data)
         self.assertAlmostEqual(data.geom_xpos[lid, 2], data.xpos[metrics.lid_body, 2])
 
+    def test_lid_detects_deep_overlap_and_leaves_clearance_unconstrained(self):
+        from scipy.spatial.transform import Rotation
+
+        from simulation.mujoco_packaging import BOX_PANEL_HALF_THICKNESS, BOX_TOP
+
+        model, data, metrics = self.make_scene("golden-curry")
+        box_origin = data.xpos[metrics.box_body].copy()
+        box_matrix = data.xmat[metrics.box_body].reshape(3, 3).copy()
+        yaw = Rotation.from_matrix(box_matrix) * Rotation.from_euler("z", 148.2766, degrees=True)
+        object_qpos = model.joint("packaging_object_free").qposadr[0]
+        carton = model.geom("packaging_object_geom").id
+        data.qpos[metrics.lid_qpos] = np.pi
+        data.qpos[object_qpos + 3:object_qpos + 7] = yaw.as_quat(scalar_first=True)
+
+        # Relative carton pose from the real cross-through return state.
+        for height, should_constrain in (
+            (0.058872, True),
+            (BOX_TOP - BOX_PANEL_HALF_THICKNESS - 0.0575 - 0.0005, False),
+        ):
+            with self.subTest(height=height):
+                data.qpos[object_qpos:object_qpos + 3] = box_origin + box_matrix @ [0.038903, -0.026300, height]
+                mujoco.mj_forward(model, data)
+                active = any(
+                    set(contact.geom) == {metrics.lid_panel, carton} and contact.efc_address >= 0
+                    for contact in data.contact[:data.ncon]
+                )
+                self.assertEqual(active, should_constrain)
+
     def test_grasp_requires_lifting_the_object_off_the_table(self):
         model, data, metrics = self.make_scene()
         opposed = [(None, np.array([1, 0, 0])), (None, np.array([-1, 0, 0]))]
@@ -299,7 +329,7 @@ class MujocoPackagingTest(unittest.TestCase):
     def test_full_score_requires_loaded_bimanual_closing_after_a_grasp_and_placement(self):
         from simulation.mujoco_packaging import WORKSPACE_CENTER
 
-        model, data, metrics = self.make_scene(box_xy=WORKSPACE_CENTER)
+        model, data, metrics = self.make_scene("blue-block", box_xy=WORKSPACE_CENTER)
         object_qpos = model.jnt_qposadr[model.joint("packaging_object_free").id]
         lid_joint = model.joint("packaging_lid_hinge")
         data.qpos[object_qpos:object_qpos + 7] = [*WORKSPACE_CENTER, 0.14, 1, 0, 0, 0]
@@ -352,6 +382,33 @@ class MujocoPackagingTest(unittest.TestCase):
         self.assertTrue(report["placed_in_centered_box"])
         self.assertTrue(report["sim_success"])
 
+    def test_full_score_requires_clearance_under_the_closed_lid(self):
+        from scipy.spatial.transform import Rotation
+
+        from simulation.mujoco_packaging import WORKSPACE_CENTER
+
+        model, data, metrics = self.make_scene("golden-curry", box_xy=WORKSPACE_CENTER)
+        qpos = model.joint("packaging_object_free").qposadr[0]
+        box = data.xpos[metrics.box_body].copy()
+        box_rotation = Rotation.from_matrix(data.xmat[metrics.box_body].reshape(3, 3))
+        floor = model.geom_size[metrics.floor_geom, 2]
+        for upright in (True, False):
+            with self.subTest(upright=upright):
+                half_height = 0.0575 if upright else 0.015
+                rotation = box_rotation * Rotation.from_euler("x", 0 if upright else np.pi / 2)
+                pose = rotation.as_quat(scalar_first=True)
+                data.qpos[qpos:qpos + 7] = [*box[:2], box[2] + floor + half_height - 0.00005, *pose]
+                data.qpos[metrics.lid_qpos] = np.pi
+                mujoco.mj_forward(model, data)
+
+                metrics.ever_grasped = True
+                metrics.placed_in_centered_box = True
+                metrics.bimanual_lid_closure = True
+                report = metrics.update(data)
+                self.assertTrue(report["object_in_box"])
+                self.assertTrue(report["lid_closed"])
+                self.assertEqual(report["sim_success"], not upright)
+
     def test_centering_after_placement_does_not_count_for_full_success(self):
         from simulation.mujoco_packaging import WORKSPACE_CENTER
 
@@ -402,10 +459,10 @@ class MujocoPackagingTest(unittest.TestCase):
         inner_edge = model.geom("packaging_box_wall_4").pos[1] - model.geom("packaging_box_wall_4").size[1]
         lower = np.array([-0.02, -0.02, 0.001])
         wall_contact = np.array([0.02, inner_edge + 0.000002, 0.04])
-        with patch.object(metrics, "_geom_extent_in_box", return_value=(lower, wall_contact)):
+        with patch.object(metrics, "_geom_extent_in_frame", return_value=(lower, wall_contact)):
             self.assertTrue(metrics.update(data)["object_in_box"])
         beyond_wall = wall_contact + [0, 0.003, 0]
-        with patch.object(metrics, "_geom_extent_in_box", return_value=(lower, beyond_wall)):
+        with patch.object(metrics, "_geom_extent_in_frame", return_value=(lower, beyond_wall)):
             self.assertFalse(metrics.update(data)["object_in_box"])
 
         self.assertEqual(
