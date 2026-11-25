@@ -1644,6 +1644,8 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 
 仿真相机现使用本场景桌面的真实位姿为裁剪基准，先保留台面上方 1 mm 的点，前景不足时沿用录制流程的裁剪余量。发布数据的处理入口和坐标不变。相同 81 步 EGL 导出的末帧中，经深度分割几何匹配的布面 P05/P50/P95 从 19.63/37.81/46.82 mm 变为 **7.59/30.41/46.81 mm**，裸桌面匹配点从 49 降至 0。收球视觉参考在相同种子仍为 19/20，捡海绵配对 4/4 均通过，两组无机械臂或双手碰撞及物理警告。旧裁剪结果对应 `3e9fb7a`，新标准导出和配对试验位于数据盘 `benchmarks/packaging-yellow-cloth-complete/{production-foreground-plane-replay,camera-foreground-plane}/`。
 
+旧 PointNet 权重在四个挑选的原评估摆放（3108、3114、3113、3109）使用新裁剪后为 0/4，旧裁剪下该子集为 2/4。此对照用于判断观测变化对既有权重的影响。原 16 条收球轨迹的新观测导出已启动，沿用原有 12 条训练、4 条验证划分。输出位于 `benchmarks/ball-simulation-policy/at-20hz-foreground-2084360/`。
+
 ### 剪纸的展露高度与抓持计分
 
 官方视频上部纸面条带约为前壁高度的 2.31 倍。按 105 mm 壁高、底端落在槽内估算，候选为约 345 × 49 mm，投影存在不确定性。该尺寸在旧黏结力学下先弯曲并翻落。使用实体 6 mm 槽底、可切黏结网格、较高弯曲刚度和 0.25 ms 子步后，完整双臂 EGL 回放 101 步。纸条稳定露出约 237 mm，448 条黏结保持完整，由槽底和侧沿承重，无数值警告。剪刀初始支点仍会移动到托盘另一处，完整取剪、持纸与实际剪断仍待验证，候选场景未替换默认布局。数据在 `runs/mujoco/scissors-paper-gravity-diagnosis/full-source-grid20x12/`。 [MuJoCo 黏结约束](https://mujoco.readthedocs.io/en/stable/XMLreference.html#equality-weld)
@@ -1652,7 +1654,7 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 
 在 105 mm 支撑场景中，保留 80 × 40 mm 固定环，用完整 LEAP 网格和 16 个手指关节找到三指同时通过各自开孔的静态端点。将掌位映射回真实 Panda 后，无新增非目标穿透，最近手指关节距上限约 0.013 mrad。该端点仍需连续原生控制入环并持续承载。证据在数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/source-support-posture-39ed0d5/FREE_PALM_TRIPLE_DIAGNOSTIC.md`。
 
-在 345 × 49 mm 候选纸条上，双指接近后按实测指垫载荷调整关节目标，补偿腕位的静态跟踪误差。纸条质心最高抬升 **99.33 mm**，最长连续 **27 个控制周期（1.35 s）** 无外部支撑且两指载荷均大于 0.045 N。末态分别约 0.077、0.081 N，448 条黏结保持完整。该段无机械臂、双手间接触或物理警告，最大同手交叠约 0.15 mm。证据与独立 EGL 重放目录在数据盘 `runs/mujoco/scissors-paper-gravity-diagnosis/source-scale-right-pinch/{lift-clear,standard-paper-lift-replay}/`。两手同回合取剪和实际切纸仍需验证。
+在 345 × 49 mm 候选纸条上，双指接近后按实测指垫载荷调整关节目标，补偿腕位的静态跟踪误差。纸条质心最高抬升 **99.33 mm**，最长连续 **27 个控制周期（1.35 s）** 无外部支撑且两指载荷均大于 0.045 N。末态分别约 0.077、0.081 N，448 条黏结保持完整。该段无机械臂、双手间接触或物理警告，最大同手交叠约 0.15 mm。证据与独立 EGL 重放目录在数据盘 `runs/mujoco/scissors-paper-gravity-diagnosis/source-scale-right-pinch/{lift-clear,standard-paper-lift-replay}/`。独立 EGL 从默认候选初态复放全部 298 步，再次抬升 99.33 mm 并导出 298 帧 XYZRGB。无机械臂、双手间碰撞、断键或警告，整段最大同手交叠约 0.22 mm。两手同回合取剪和实际切纸仍需验证。
 
 ### 当前木托版本的备茶退丝
 
@@ -1671,3 +1673,5 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 左食指与拇指相向夹持海绵，沿两手指尖的分离方向平移 15 mm，再下探。首个有效内盘接触实测约 0.43 N，盘和海绵均离桌并由手保持。后续干净重放中，失载时右腕位移约 0.16 mm，盘相对腕位移约 4.10 mm、转动约 1.88°。对照的反向短划在约 3.13 mm 后再次脱接，尚未增加完整笔画。先前首次接触后的几个试验发现对 MuJoCo 矩阵视图原地写入，已作废并用不修改状态的重放替代。证据在数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/left-index-support-inplane-*`。
 
 右手另用中指下托盘沿，在新双持路线中真实承力超过 1.5 s，峰值约 4.94 N。盘保持离桌，随后左手海绵失持，仍未完成完整笔画；该段未发生机器人碰撞或物理警告。原生执行和逐步报告为 `left-index-support-right-middle-physical-c.{py,json,npz}`。
+
+从新三点盘支撑降低左腕下降速度后，实测有效内盘擦拭 **6.50 mm**。随后左食指在 2 ms 子步中卸载，海绵失持，右中指仍约承受 2.40 N，盘保持离桌。继续测试需改变海绵受力路径。证据为 `left-index-support-right-middle-scaled-descent-b.{py,json,npz}`。
