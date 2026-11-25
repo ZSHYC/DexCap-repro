@@ -339,6 +339,10 @@ python -m simulation.rollout "$replay/blue-mug-native-entry-reference.hdf5" \
 
 红苹果原用最长轴竖直的椭球。在标准双臂完整场景中，4.5 s 内双手无接触时，默认复位最大漂移约 **363.52 mm**。加入 1° 扰动的对照漂移约 166.21 mm。现在用保留原 79 × 79 × 87 mm 包络的曲面和约 21.2 mm 平底接触面，表示直立支撑。尺寸和总质量继续采用项目估计。新版默认复位最大漂移约 **0.003 mm**，1° 扰动约 **1.26 mm**，无手接触或物理警告。平底尺寸由现有包络和静置力学确定，尚无公开苹果原始深度可直接量测。完整双臂对照在 `benchmarks/packaging-unseen-replay/red-apple/` 的 `apple-production-rest.json` 和 `apple-flat-base-production-rest.json`。
 
+两份实际释放后的苹果都由盒底承托，但在三维接触下仍持续滚动。相同积分态各续跑 9 s，末段 100 个样本分别只有 1 和 0 个满足入盒静置。为苹果曲面和盒底启用与绿梨相同的六维接触后，两份均为 100/100。数值采用模型已有的滚动阻力，接触对局限于苹果曲面和盒底。结果见同目录 `compare-apple-box-rolling-friction.json`。 [MuJoCo 接触维数](https://mujoco.readthedocs.io/en/3.6.0/computation/index.html#contact)
+
+修正苹果静置支撑后，用当前 SetXF 权重运行各 400 步的种子 1–5。三个回合出现右手接触，其中种子 5 曾抓起后脱手。全组入盒和整体成功均为 0/5，无物理警告。报告在同目录 `red-apple-flat-base-policy-seed-{1..5}.json`。
+
 ### 包装整轮计分
 
 包装整轮要求放下物件时，工作区中心 `[0.4, 0.0] m` 落在按实际朝向计算的纸盒内底投影内。论文规定先把盒子移到桌子中间，未给出距离阈值，本项目用实际内底尺寸定义该区域。放置后还要求在同一 2 ms 物理子步里，一只手接触箱体，另一只手接触正向闭合的盒盖或挂片，两处法向载荷均超过 0.05 N。最后物件必须仍在盒内、盖板已合上。独立字段继续记录入盒、合盖和双手承力。 [论文包装流程](https://arxiv.org/html/2403.07788v2#A1.SS6)
