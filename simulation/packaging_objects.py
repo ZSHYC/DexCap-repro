@@ -45,6 +45,7 @@ VIDEO_1 = "normal_packaging_unseenobj.mp4 @ 0.6 s"
 VIDEO_2 = "normal_packaging_unseenobj2.mp4 @ 0.6 s"
 BLUE = (0.03, 0.09, 0.67, 1)
 RED = (0.80, 0.07, 0.035, 1)
+APPLE_RED = (0.68, 0.035, 0.035, 1)
 YELLOW = (0.98, 0.70, 0.04, 1)
 TAN = (0.70, 0.41, 0.17, 1)
 GIRAFFE = (0.78, 0.49, 0.25, 1)
@@ -63,13 +64,17 @@ PACKAGING_OBJECTS = {
     "yellow-cloth": ("box", (0.075, 0.065, 0.020), (0.91, 0.75, 0.09, 1), "demo_250"),
 }
 UNSEEN_PRIMITIVES = {
-    "red-apple": ("ellipsoid", (0.0395, 0.0395, 0.0435), (0.68, 0.035, 0.035, 1), VIDEO_1),
     "earplug-jar": ("cylinder", (0.035, 0.035, 0.059), (0.72, 0.70, 0.64, 1), VIDEO_1),
     "golden-curry": ("box", (0.09, 0.015, 0.0575), (0.67, 0.39, 0.10, 1), VIDEO_1),
 }
 
 
 UNSEEN_COMPOUNDS = {
+    "red-apple": (VIDEO_1, (
+        # Recess the curved underside above a small flat footprint so the apple stands upright.
+        Part("ellipsoid", (0.0395, 0.0395, 0.0427), (0, 0, 0.0008), APPLE_RED),
+        cylinder(0.0106, 0.0036, (0, 0, -0.0417), APPLE_RED),
+    )),
     "tape-dispenser": (VIDEO_1, (
         *ring(0.0525, 0.031, 0.048, (-0.013, 0, 0), (0.79, 0.76, 0.66, 1)),
         box((0.042, 0.080, 0.060), (0.057, 0, 0), RED),

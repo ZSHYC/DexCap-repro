@@ -53,20 +53,22 @@ class MujocoPackagingTest(unittest.TestCase):
                     mujoco.mj_step(model, data)
                 self.assertTrue(np.isfinite(data.qpos).all())
 
-    def test_pear_preserves_placement_after_small_resting_perturbation(self):
-        model, data, metrics = self.make_scene("green-pear")
-        qpos = model.joint("packaging_object_free").qposadr[0]
-        half_roll = np.deg2rad(0.5)
-        data.qpos[qpos + 3:qpos + 7] = [np.cos(half_roll), np.sin(half_roll), 0, 0]
-        mujoco.mj_forward(model, data)
-        start = data.xpos[metrics.object_body, :2].copy()
-        maximum_drift = 0.0
-        for _ in range(2250):
-            mujoco.mj_step(model, data)
-            drift = np.linalg.norm(data.xpos[metrics.object_body, :2] - start)
-            maximum_drift = max(maximum_drift, drift)
-        self.assertLess(maximum_drift, 0.004)
-        self.assertTrue(metrics._object_contacts(data, {metrics.table_geom}))
+    def test_fruit_preserves_placement_after_small_resting_perturbation(self):
+        for object_name in ("green-pear", "red-apple"):
+            with self.subTest(object=object_name):
+                model, data, metrics = self.make_scene(object_name)
+                qpos = model.joint("packaging_object_free").qposadr[0]
+                half_roll = np.deg2rad(0.5)
+                data.qpos[qpos + 3:qpos + 7] = [np.cos(half_roll), np.sin(half_roll), 0, 0]
+                mujoco.mj_forward(model, data)
+                start = data.xpos[metrics.object_body, :2].copy()
+                maximum_drift = 0.0
+                for _ in range(2250):
+                    mujoco.mj_step(model, data)
+                    drift = np.linalg.norm(data.xpos[metrics.object_body, :2] - start)
+                    maximum_drift = max(maximum_drift, drift)
+                self.assertLess(maximum_drift, 0.004)
+                self.assertTrue(metrics._object_contacts(data, {metrics.table_geom}))
 
     def test_pear_settles_after_rolling_on_box_floor(self):
         model, data, metrics = self.make_scene("green-pear")
