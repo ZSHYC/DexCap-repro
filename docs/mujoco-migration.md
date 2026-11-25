@@ -153,6 +153,8 @@ python -m simulation.summarize_results "$wiping/wiping-pointnet.json" \
 131 步官方动作回放中，分件模型第 27–40 步持续满足抓持条件，随后掉落。前一版整块模型第 21–25 步满足条件。新版整段动作仍未入盒或完成合盖，第 92–103 步采样到右臂末端与大纸盒折舌接触。用同一份 SetXF 权重和种子 1–5 闭环复跑新版红银包装，0/5 入盒，4/5 合盖。旧版红银包装为 0/5 入盒、3/5 合盖。逐步轨迹与评估结果位于 `runs/packaging-red-carton-slotted-trace.json` 和 `runs/red-carton-measurement/red-box.final-sim.json`。上节的新版纸盒接触参数下，同一组种子得到 0/5 入盒、1/5 合盖。
 
 
+为拆分相机颜色和点分布的影响，对 `demo_0` 至 `demo_3` 的接近段取 28 组配对三帧输入，每组使用两个固定推理种子，并保持录制腕位、手关节和相机位姿。当前渲染下，PointNet 和 SetXF 的右、左腕误差中位数分别为 **6.79 / 7.63 mm** 和 **4.41 / 6.23 mm**。仅替换匹配表面的 RGB 后，两组分别为 **6.95 / 7.21 mm** 和 **4.15 / 6.82 mm**。按录制数据的表面类别数重采样后，分别为 **7.27 / 8.18 mm** 和 **4.49 / 6.65 mm**。颜色和各表面点数的单独调整都未稳定缩小双腕误差，因此没有据此改变生产输入。完整数据在数据盘 `benchmarks/wiping-observation-gap/wiping-{pointnet,setxf}-{color,coverage}-ablation.json`。
+
 ## Wiping 盘沿观测
 
 从作者原始 ZIP 按字节范围提取了 `demo_0` 对应的四个 RGB-D 样本，文件在数据盘 `data/raw/save_wipe_1-14/save_data_wipe_1-14_01/`。校正后四帧相机矩阵与 HDF5 第 0、15、25、70 帧一致。原始深度拟合得到盘子位置桌高约 −26.3 至 −27.4 mm，海绵位置约 −34.3 至 −35.1 mm。以首帧局部桌面为基准，盘沿外侧半径 115–125 mm 范围内亮色表面的高度中位数约 22.9 mm。原始取样和拟合记录在 `runs/wiping-raw-samples.log` 和 `runs/wiping-raw-source-geometry.{py,json}`。 [作者原始数据](https://huggingface.co/datasets/chenwangj/DexCap-Data/tree/e468f07000de0f8d3234a9c60a9d8208344675e0)
@@ -350,6 +352,8 @@ apple=/data/dexcap-repro/benchmarks/packaging-unseen-replay/red-apple
 python -m simulation.rollout "$apple/red-apple-centered-complete-reference.hdf5" \
   --task packaging --object red-apple --output "$apple/red-apple-centered-complete-replay.json"
 ```
+
+**弹簧夹活动关节。** 复用原有外形和 120 g 总质量。销轴和一侧夹臂随自由物体主体运动，另一侧通过一个相对铰链连接。夹臂和夹嘴仍与桌面、手指和箱体发生碰撞。全部九块实体表面参与抓持和盒内包络判断，铰链运动也参与静置判据。最大开角 44° 参照同尺寸夹具的约 65 mm 开口选取，预紧、0.30 N·m/rad 弹簧刚度和 0.01 N·m·s/rad 阻尼为估计值。两手柄分别施加 5 N 相向载荷，实测最大开角约 **24.93°**，卸载后回到距零位约 **0.022°**，无物理警告。隔离物理试验见数据盘 `benchmarks/packaging-spring-clamp/measure-spring-clamp-handle-response.json`。 [同尺寸夹具参考](https://ronixtools.com/en/product/6-inch-spring-clamp/) · [MuJoCo 铰链与弹簧](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
 ### 包装整轮计分
 

@@ -43,6 +43,11 @@ CLOTH_RADIUS = 0.003
 CLOTH_YOUNG_MODULUS_PA = 10_000
 CLOTH_POISSON_RATIO = 0.2
 CLOTH_DAMPING_S = 0.05
+# The comparable 6-inch clamp has a 65 mm jaw opening. Spring force is estimated.
+SPRING_CLAMP_MAX_ANGLE = np.deg2rad(44)
+SPRING_CLAMP_PRELOAD_ANGLE = np.deg2rad(8)
+SPRING_CLAMP_STIFFNESS_NM_PER_RAD = 0.30
+SPRING_CLAMP_DAMPING_NMS_PER_RAD = 0.01
 
 
 # Centers of the visible object components in the six released reference frames.
@@ -249,6 +254,38 @@ def _add_red_box_hanger(body, rgba):
         )
 
 
+def _add_spring_clamp(body, parts):
+    density = 0.12 / sum(_geom_volume(part.kind, part.half_size) for part in parts)
+    pivot = np.asarray(parts[0].center)
+    moving = body.add_body(name="packaging_object_clamp_jaw", pos=pivot)
+    moving.add_joint(
+        name="packaging_object_clamp_hinge",
+        type=mujoco.mjtJoint.mjJNT_HINGE,
+        axis=[0, 0, 1],
+        limited=True,
+        range=[0, SPRING_CLAMP_MAX_ANGLE],
+        springref=-SPRING_CLAMP_PRELOAD_ANGLE,
+        stiffness=SPRING_CLAMP_STIFFNESS_NM_PER_RAD,
+        damping=SPRING_CLAMP_DAMPING_NMS_PER_RAD,
+        solref_limit=[0.004, 1],
+        solimp_limit=[0.95, 0.995, 0.001, 0.5, 2],
+    )
+    for index, part in enumerate(parts):
+        # The hub and the first four side pieces move together as one jaw.
+        mount = body if index < 5 else moving
+        pos = part.center if index < 5 else np.asarray(part.center) - pivot
+        _add_geom(
+            mount,
+            name=f"packaging_object_part_{index}",
+            kind=part.kind,
+            size=part.half_size,
+            pos=pos,
+            quat=_wxyz(part.orientation),
+            rgba=part.color,
+            density=density,
+        )
+
+
 def _add_object(spec, xy, object_name, object_yaw):
     if object_name == CLOTH_OBJECT:
         _add_cloth(spec, xy)
@@ -268,19 +305,22 @@ def _add_object(spec, xy, object_name, object_yaw):
 
     if object_name in UNSEEN_COMPOUNDS:
         parts = definitions
-        volumes = [_geom_volume(part.kind, part.half_size) for part in parts]
-        density = 0.12 / sum(volumes)
-        for index, part in enumerate(parts):
-            _add_geom(
-                body,
-                name=f"packaging_object_part_{index}",
-                kind=part.kind,
-                size=part.half_size,
-                pos=part.center,
-                quat=_wxyz(part.orientation),
-                rgba=part.color,
-                density=density,
-            )
+        if object_name == "spring-clamp":
+            _add_spring_clamp(body, parts)
+        else:
+            volumes = [_geom_volume(part.kind, part.half_size) for part in parts]
+            density = 0.12 / sum(volumes)
+            for index, part in enumerate(parts):
+                _add_geom(
+                    body,
+                    name=f"packaging_object_part_{index}",
+                    kind=part.kind,
+                    size=part.half_size,
+                    pos=part.center,
+                    quat=_wxyz(part.orientation),
+                    rgba=part.color,
+                    density=density,
+                )
     else:
         kind, size, pos, color, quat = definitions[0]
         mass = 0.118 if object_name == DEFAULT_OBJECT else 0.12
@@ -382,8 +422,17 @@ class PackagingMetrics:
             self.object_body = model.body("packaging_object").id
             object_joint = model.body_jntadr[self.object_body]
             self.initial_object_z = model.qpos0[model.jnt_qposadr[object_joint] + 2]
-            self.object_geoms = self._body_geoms(self.object_body, collidable_only=True)
-            self.object_dofs = None
+            object_bodies = {self.object_body}
+            for body in range(self.object_body + 1, model.nbody):
+                if model.body_parentid[body] in object_bodies:
+                    object_bodies.add(body)
+            self.object_geoms = set().union(*(
+                self._body_geoms(body, collidable_only=True) for body in object_bodies
+            ))
+            self.object_dofs = np.concatenate([
+                np.arange(model.body_dofadr[body], model.body_dofadr[body] + model.body_dofnum[body])
+                for body in object_bodies
+            ])
         self.box_geoms = self._body_geoms(self.box_body, collidable_only=True)
         self.lid_geoms = self._body_geoms(self.lid_body, collidable_only=True)
         self.lid_geoms.update(self._body_geoms(model.body("packaging_lid_tab").id, collidable_only=True))
@@ -486,9 +535,7 @@ class PackagingMetrics:
         upper = np.max([bound[1] for bound in bounds], axis=0)
         inside = np.all(lower[:2] >= -inner_half) and np.all(upper[:2] <= inner_half)
         supported = bool(self._contacts(data, self.object_geoms, {self.floor_geom}))
-        joint = self.model.body_jntadr[self.object_body]
-        dof = self.model.jnt_dofadr[joint]
-        settled = np.linalg.norm(data.qvel[dof:dof + 6]) < 0.05
+        settled = np.linalg.norm(data.qvel[self.object_dofs]) < 0.05
         return bool(inside and supported and settled)
 
     def physics_step(self, data: mujoco.MjData) -> None:

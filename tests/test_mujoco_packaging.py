@@ -53,6 +53,59 @@ class MujocoPackagingTest(unittest.TestCase):
                     mujoco.mj_step(model, data)
                 self.assertTrue(np.isfinite(data.qpos).all())
 
+    def test_spring_clamp_opens_under_load_and_restores_its_closed_rest_angle(self):
+        model, data, metrics = self.make_scene("spring-clamp")
+        hinge = model.joint("packaging_object_clamp_hinge")
+        qpos = hinge.qposadr[0]
+        moving = model.body("packaging_object_clamp_jaw").id
+        self.assertAlmostEqual(data.qpos[qpos], 0)
+        self.assertAlmostEqual(model.body_subtreemass[metrics.object_body], 0.12)
+
+        fixed_handle = model.geom("packaging_object_part_1").id
+        moving_handle = model.geom("packaging_object_part_5").id
+        for _ in range(400):
+            data.qfrc_applied.fill(0)
+            force = data.xmat[metrics.object_body].reshape(3, 3)[:, 1] * 5
+            for handle, direction in ((fixed_handle, force), (moving_handle, -force)):
+                mujoco.mj_applyFT(
+                    model, data, direction, np.zeros(3), data.geom_xpos[handle],
+                    model.geom_bodyid[handle], data.qfrc_applied,
+                )
+            mujoco.mj_step(model, data)
+        self.assertGreater(data.qpos[qpos], 0.15)
+        self.assertIn(moving, model.geom_bodyid[list(metrics.object_geoms)])
+
+        data.qfrc_applied.fill(0)
+        for _ in range(1200):
+            mujoco.mj_step(model, data)
+        self.assertAlmostEqual(data.qpos[qpos], 0, delta=0.03)
+
+    def test_spring_clamp_child_surfaces_count_for_contacts_and_box_bounds(self):
+        model, data, metrics = self.make_scene("spring-clamp")
+        jaw = model.geom("packaging_object_part_8").id
+        root = model.geom("packaging_object_part_0").id
+        self.assertIn(jaw, metrics.object_geoms)
+        self.assertEqual(model.geom_bodyid[jaw], model.body("packaging_object_clamp_jaw").id)
+
+        hand = model.ngeom
+        sample = SimpleNamespace(
+            ncon=1,
+            contact=[SimpleNamespace(geom1=jaw, geom2=hand, frame=np.eye(3).ravel())],
+        )
+        self.assertEqual(len(metrics._object_contacts(sample, {hand})), 1)
+
+        # Keep the root hub inside the box while a child jaw extends beyond its inner wall.
+        box_rotation = data.xmat[metrics.box_body].reshape(3, 3)
+        object_qpos = model.joint("packaging_object_free").qposadr[0]
+        data.qpos[object_qpos:object_qpos + 3] = data.xpos[metrics.box_body] + box_rotation @ [0, 0.075, 0.03]
+        data.qpos[object_qpos + 3:object_qpos + 7] = [1, 0, 0, 0]
+        mujoco.mj_forward(model, data)
+        root_lower, root_upper = metrics._geom_extent_in_box(data, root)
+        self.assertGreaterEqual(root_lower[1], -0.095)
+        self.assertLessEqual(root_upper[1], 0.095)
+        with patch.object(metrics, "_contacts", return_value=[(None, None)]):
+            self.assertFalse(metrics._object_in_box(data))
+
     def test_fruit_preserves_placement_after_small_resting_perturbation(self):
         for object_name in ("green-pear", "red-apple"):
             with self.subTest(object=object_name):
