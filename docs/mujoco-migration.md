@@ -1271,6 +1271,10 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 从镊子已由托盘独立承托的状态，左食指实际把自由木托移开约 35 mm。撤手后镊子仍由托盘承托，木托对镊子载荷为零，壶倾角约 0.05°，盖子仍在右侧。重新计算右手原高空路径，木托导轨已经让开，末段仍有右掌对盖壁约 0.163 mm 的静态干涉，尚未执行夹取。工件为数据盘 `benchmarks/tea-bottle-native/tea-pot-nearclear-cradle-shift-execute-v7.{npz,json}` 和 `tea-pot-nearclear-cradle-shift-right-recheck.json`。
 
+另以实际手部接触把已退丝的瓶盖移到右侧的另一处有效放置点，水平位移约 54.5 mm。沿原 0° 局部滚转进场时，盖与壶保有净空。第 85% 下探阶段右拇指与残存木托导轨、开口各出现约 0.465 mm 的静态干涉。见数据盘 `tea-cap-shift-for-tool-execute-v2.{npz,json}` 和 `tea-post-cap-zero-roll-contact.json`。
+
+擦盘首笔的原右手自碰发生在最早 790 个目标内，当时右中指、无名指未对盘承力。将这两根手指在最初 1,000 步保持为原第 1,000 步已经达到的闲置姿态，再接回原动作。标准 EGL 复放 3,259 步，实际计到 71.84 mm 的一笔，右无名指后段真实承盘峰值仍为 7.34 N，右手穿透降为零。仍需处理左食指自身连杆的约 1.19 mm 接触。工件在数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/first-wipe-ring-clear-b.hdf5` 和 `first-wipe-ring-clear-b-egl.json`。
+
 ### 捡海绵随机摆放的物理基线
 
 使用 305 步、默认摆放可抬升 310.51 mm 的参考，以摆放差平移右腕初态和目标轨迹。在 x 轴 ±0.20 m、y 轴 ±0.35 m 的场景分布内，20 个种子的无相机标准动力学复放完成 10 个任务，重放与生成的物理结果一致。右食指与中指最大采样穿透约 13.49 mm，多个种子右臂与闲置左手接触。这批数据用于定位手指与双腕的调整位置。汇总见 `benchmarks/sponge-seeded-reference/sponge-seeded-reference-summary.json`。
@@ -1284,6 +1288,10 @@ python -m simulation.rollout "$sponge/default-three-pad-clean-pick-reference.hdf
 ```
 
 三个代表性随机摆放也已用真实 EGL 独立回放。种子 1、7、19 分别抬升 **304.27、324.12、318.00 mm**，均为 532 个动作和 659 个控制周期，机械臂、双手间、同手及手部越限计数均为零。种子 1 修正接近海绵的腕位，种子 7 重定向抬升通道，种子 19 在抬升后段逐步调整拇指闭合和腕位。各自的 HDF5 和 `*-egl.json` 在相同数据目录的 `seed-{01,07,19}-three-pad-clean-*`。最终种子 1–20 的 **20/20** 个随机摆放均独立 EGL 通过，抬升 **304.27–368.10 mm**，无物理警告及上述碰撞和越限。种子 5 和 15 在第 331 个目标后调整了抬升通道。种子 8、12、13 各自调整了进入路线，其中种子 8 与 13 还分别调整了抬升路线和后段夹持。逐种子 HDF5 和 EGL 报告见 `sponge-clean-egl-summary.json`。按种子选定的动作、回放与抬升量另见 `sponge-clean-seeds-01-20-summary.json`。
+
+### 捡海绵使用同一初态
+
+上述各摆放的原参考从各自抓取通道起步。固定起点试验改用一对共同的实际腕位与手形，在完整双臂模型中先上提约 60 mm、移向该摆放的高位通道，再沿原动作抓取。各用 185 个 50 ms 腕位目标进入原参考。种子 19 首次接续在起升时食指与拇指失载，仅抬升约 32.8 mm。将原轨迹第 355 步后的拇指闭合目标提前平滑提高 0.01 rad，并在原第 430–439 步平滑回接，最终实际抬升约 345.68 mm。20 个种子均从共同初始姿态单独通过标准 EGL 的 717 步回放，实际抬升约 305.13–368.15 mm，无机械臂、双手间、同手碰撞、越限或物理警告。逐回合 HDF5、结果与种子 19 的修正轨迹位于数据盘 `benchmarks/sponge-seeded-reference/common-start/fixed-start-egl-summary.json` 指向的文件。种子 1、16 重新逐 50 ms 采集，各保留 844 帧 RGB-D 点云及关节、腕位与动作，见同目录 `controller-rate/sponge-seed-{01,16}.{hdf5,json}`。
 
 ### 捡球的 20 个随机摆放标准复放
 
@@ -1338,3 +1346,9 @@ python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" 
 在恢复数据上用原 BC 配置训练 45 轮，完全关闭腕位辅助后，种子 17、21 的 650 步闭环分别采样 596 次和 0 次触球，均无抬球和落篮。直接干净动作扩散对照的第 60 轮在验证种子 13、16 的接触阶段，右腕目标误差中位数分别为 11.4、12.9 mm。对照文件为 `bc-camera-recovery-epoch45-rollout-{17,21}.json`、`diffusion-camera-recovery-epoch60-wrists.json`。 该扩散权重在种子 17、22 的各 650 步无辅助闭环中均未触球，实际指尖最近仍距球约 153.8、151.1 mm。见 `diffusion-camera-recovery-epoch60-rollout-{17,22}.json`。
 
 从上述短程上提结束时的真实三指抓持继续，以实际抓持相对位姿、机械臂关节范围和篮网几何求搬运路径。保持当时策略输出的有限力手形，实际越过篮沿后用训练示范的张手目标释放。种子 17 保持腕朝向，种子 21 绕世界 x 轴逐步转腕 24°。两个 560 步回合均完成抬球、释放与物理篮底静置。保存实际执行的 20 Hz 命令后，从同一初态用标准 EGL 入口独立复放，均推进 28.0 s，产生 `10000 × 6` 点云，触球采样数与原回合一致，均无臂、双手间、同手碰撞、越限或物理警告。这里验证的是用学习策略产生抓持手形并辅助腕位和搬运的执行。工件为同目录 `bc-camera-assisted-transfer-{rollout,replay}-{17,21}.json`、`bc-camera-assisted-transfer-reference-{17,21}.hdf5` 及搬运的轨迹规划记录。
+
+在原训练摆放的种子 7、8、10 运行同一辅助抓取与搬运，其中 7 和 10 完成落篮，8 未抬球。只从前两条回合的完整 620 步实际命令重新执行物理、逐 50 ms 采集 RGB-D 几何与本体状态，分别保留 403、453 帧。两回合首次满足任务条件在第 387、437 步。只增加到原训练分组，验证与测试布局保持原样。
+
+使用同一 45 轮 BC 配置对照两种右、左腕位表示。绝对目标在种子 17、21 的各 650 步无辅助闭环中均未触球，两回合腕位最低均在 318 mm 以上。以相对当前本体观测的平移作为目标时，种子 17 未触球，种子 21 采样到 31 次手球接触，两回合均未抬球或落篮。只变化动作前六个平移分量。数据及结果位于 `history-ablation/ball-camera-with-assisted{,-relative}.hdf5`、`assisted-training-seed-{07,10}.json` 和 `bc-camera-assisted{,-relative}-epoch45-rollout-{17,21}.json`。
+
+以同一相对腕位数据再加 20 Hz 的经过时间观测，保持其余模型配置、训练划分和运行控制周期。两个无辅助回合各 650 步，种子 17、21 的指尖最近分别离球约 14.0、123.2 mm，均未触球。种子 21 出现 276 个有机械臂接触的控制周期。结果为 `bc-camera-relative-clock-epoch45-rollout-{17,21}.json`。
