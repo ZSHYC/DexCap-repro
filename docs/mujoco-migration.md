@@ -385,7 +385,7 @@ python -m simulation.rollout "$bricks/stacked-bricks-centered-complete-reference
 
 接着先沿盒坐标 y 偏移避开左手，右手通过盒盖摆扫范围后解除撑盖。左手再移开 25 mm 并升高 25 mm，给右手让出回到盒中心的走廊。追加 601 个实际目标后右手在盒内松开。四处盒底接触合计约 1.177 N。独立标准 EGL 从初态执行 8,210 步，复现抓取后释放、在居中纸盒内落稳，生成 `10000 × 6` 点云，无臂及双手间接触、越限或物理警告。盒盖仍开且物体包络最高约 144.9 mm，需要在盒内侧放后才能尝试合盖。见 `dispenser-braced-in-box-reference.hdf5`、`dispenser-braced-in-box-egl{,-lid}.json` 和 `braced-lift-lateral-route2.{npz,json}`。
 
-盒内重抓在盒底承托时把厚轴的平面方向误差从约 68.5° 降至 4.53°。反向翻转时实测第七关节到达上限，腕位跟踪偏差约 28 mm，随后物体短暂失去盒底承托。以实际关节态求替代分支，能覆盖 0–12° 倾斜的分支起点需改变约 0.224 rad。保持实测腕位让原 OSC 回中，三周期内第七关节仅回退约 1.2 mrad，已有一侧指垫失载。见同目录 `dispenser-in-box-flat-route6.json`、`dispenser-flat-elbow-diagnostic.json` 和 `dispenser-flat-elbow-nullspace.json`。下一次使用壳体高处实体推倒，绕开原双指闭链的腕位限制。
+盒内重抓在盒底承托时把厚轴的平面方向误差从约 68.5° 降至 4.53°。反向翻转时实测第七关节到达上限，腕位跟踪偏差约 28 mm，随后物体短暂失去盒底承托。以实际关节态求替代分支，能覆盖 0–12° 倾斜的分支起点需改变约 0.224 rad。保持实测腕位让原 OSC 回中，三周期内第七关节仅回退约 1.2 mrad，已有一侧指垫失载。见同目录 `dispenser-in-box-flat-route6.json`、`dispenser-flat-elbow-diagnostic.json` 和 `dispenser-flat-elbow-nullspace.json`。随后在真实盒底支撑上缓慢释放，换右中指从红壳高处沿盒坐标 −x 推动，峰值约 1.67 N。物体上界由约 153.4 降至 115.5 mm，末态仍位于盒内，盒底承力约 1.06 N，盒移动约 0.085 mm，无臂或双手间接触和物理警告。红壳随后离开推线，物体仍高于可闭盖位置。接续工件及原生动作在 `dispenser-flat-push-route1.{npz,json}`。
 
 **弹簧夹活动关节。** 复用原有外形和 120 g 总质量。销轴和一侧夹臂随自由物体主体运动，另一侧通过一个相对铰链连接。夹臂和夹嘴仍与桌面、手指和箱体发生碰撞。全部九块实体表面参与抓持和盒内包络判断，铰链运动也参与静置判据。最大开角 44° 参照同尺寸夹具的约 65 mm 开口选取，预紧、0.30 N·m/rad 弹簧刚度和 0.01 N·m·s/rad 阻尼为估计值。两手柄分别施加 5 N 相向载荷，实测最大开角约 **24.93°**，卸载后回到距零位约 **0.022°**，无物理警告。隔离物理试验见数据盘 `benchmarks/packaging-spring-clamp/measure-spring-clamp-handle-response.json`。 [同尺寸夹具参考](https://ronixtools.com/en/product/6-inch-spring-clamp/) · [MuJoCo 铰链与弹簧](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
@@ -1268,6 +1268,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 另从已开盖并把盖子放在右侧的真实倒茶前状态继续，先做原生沉降再从两侧接近镊子桥端。两指峰值约 0.362 N、0.647 N，实测法向点积最低约 −0.101，工具未形成相向夹持。托盘一度受力，但木托最小承力仍约 0.256 N。备用中指或无名指下托的完整手路径也会与盘底或闲置手指干涉。数据盘 `benchmarks/tea-bottle-native/` 保存了 `tea-prepour-tool-acquisition-summary.md` 和 `tea-prepour-underside-topology-summary.md`。
 
 从已开盖且盖子在右侧的倒茶前积分态，右食指先真实沿木托开口外推，工具在第一段连续接触时相对木托外移约 2.89 mm。接续按实际指垫法向小幅转腕，沿开口方向的法向分量从约 0.042 增到 0.185，再使工具外移约 1.65 mm。末态木臂从最后承力点外露约 38.5 mm，仍由木托承重。其余指垫在此腕位离工具约 69–96 mm，需要重新预抓。实测文件见数据盘 `benchmarks/tea-bottle-native/` 的 `tea-prepour-tip-outward-slide-normal-corrected.json` 和 `tea-prepour-tip-refit-continuation-dynamic-contact.json`。
+
+从镊子已由托盘独立承托的状态，左食指实际把自由木托移开约 35 mm。撤手后镊子仍由托盘承托，木托对镊子载荷为零，壶倾角约 0.05°，盖子仍在右侧。重新计算右手原高空路径，木托导轨已经让开，末段仍有右掌对盖壁约 0.163 mm 的静态干涉，尚未执行夹取。工件为数据盘 `benchmarks/tea-bottle-native/tea-pot-nearclear-cradle-shift-execute-v7.{npz,json}` 和 `tea-pot-nearclear-cradle-shift-right-recheck.json`。
 
 ### 捡海绵随机摆放的物理基线
 
