@@ -339,6 +339,8 @@ python -m simulation.rollout "$replay/blue-mug-native-entry-reference.hdf5" \
   --task packaging --object blue-mug --first-seed 1 --output "$replay/blue-mug-native-seed1-replay.json"
 ```
 
+**蓝杯杯柄抓持。** 左手先移盒居中，右中指与拇指再相向夹住杯柄。标准 EGL 入口从默认摆放执行 **6,539 步**，末态检测到持杯，杯体根位置上升约 **18.9 mm**，杯已脱离桌面。两个接触载荷约 1.61 N 和 1.47 N，接触法向点积约 −0.915。机械臂、双手和同手碰撞均为零，无物理警告。续段一度把杯体再抬高并向纸盒方向移动，随后从夹口滚出。抓持 HDF5 和独立 EGL 报告位于数据盘 `benchmarks/packaging-unseen-replay/blue-mug/` 的 `blue-mug-centered-handle-grasp-*`，续段及接触记录位于 `mug-follow-angular-*`。
+
 红苹果原用最长轴竖直的椭球。在标准双臂完整场景中，4.5 s 内双手无接触时，默认复位最大漂移约 **363.52 mm**。加入 1° 扰动的对照漂移约 166.21 mm。现在用保留原 79 × 79 × 87 mm 包络的曲面和约 21.2 mm 平底接触面，表示直立支撑。尺寸和总质量继续采用项目估计。新版默认复位最大漂移约 **0.003 mm**，1° 扰动约 **1.26 mm**，无手接触或物理警告。平底尺寸由现有包络和静置力学确定，尚无公开苹果原始深度可直接量测。完整双臂对照在 `benchmarks/packaging-unseen-replay/red-apple/` 的 `apple-production-rest.json` 和 `apple-flat-base-production-rest.json`。
 
 两份实际释放后的苹果都由盒底承托，但在三维接触下仍持续滚动。相同积分态各续跑 9 s，末段 100 个样本分别只有 1 和 0 个满足入盒静置。为苹果曲面和盒底启用与绿梨相同的六维接触后，两份均为 100/100。数值采用模型已有的滚动阻力，接触对局限于苹果曲面和盒底。结果见同目录 `compare-apple-box-rolling-friction.json`。 [MuJoCo 接触维数](https://mujoco.readthedocs.io/en/3.6.0/computation/index.html#contact)
@@ -1167,6 +1169,10 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 ### 退丝后的取盖与进剪刀柄
 
+左手中指先外让，再抬高约 40 mm 换肘，从远离壶嘴的一侧下降。左食指在保留 `cap_on_right=true` 时实际接触镊子木托，该次力采样约 **2.32 N**。食指随后滑离，镊子仍由木托承载。原生动作与末态在数据盘 `benchmarks/tea-bottle-native/tea-prepour-left-high-elbow-insertion.*`。
+
+剪刀固定环外弧经实体接触重新定位后，从无接触保存态中指优先插入。末态 `final_strict_middle=true`，拇指仍在活动环外，双环同时承力时长为 0。中指的下一段必须在保持开孔截面约束时重定向拇指。记录在数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/left-fixed16-rotated-middle-first-servo.*`。
+
 从标准腕位控制实际退丝后的积分态撤手，再在高位调整右手指形并限速接近。食指和拇指首次相向抬盖约 11.98 mm。用这一实测夹持接续上提，盖子在无瓶身支撑时累计上移约 21.3 mm，其侧壁随后重新触到瓶颈。按实际接触法向侧向退出后，瓶颈接触短时消失，双指仍有载荷，继续移动时滑脱。取盖仍未完成右侧放置。逐步受力与实际积分态见数据盘 `benchmarks/tea-bottle-native/after-scaled-trough/after-standard-release/` 的 `tea-standard-cap-quiet-extraction.json`、`tea-standard-cap-carry-live-tilt.json` 和 `tea-standard-cap-unhook-and-carry.json`。
 
 从上述真实脱离瓶颈的积分态，右手继续快速侧移。盖子脱手后在托盘上滚动，最终在右侧静止，世界坐标约 `[0.35188, -0.01172, 0.01099] m`。末态托盘承载约 0.247 N，双手和瓶颈均已脱离盖子，`cap_unthreaded=true`、`cap_on_right=true`，无物理警告。该段使用实际关节执行器的延续试验，从独立验证的标准退丝回放接续。右侧静置的积分状态与动作记录为 `tea-south-cap-transfer-south_direct.npz`、`tea-right-cap-supported-actions.npz`，逐步结果为 `tea-right-cap-supported-checkpoint.json`，同在上述数据盘目录。
@@ -1262,3 +1268,9 @@ ball=/data/dexcap-repro/benchmarks/ball-seeded-reference/world/stowed
 python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" \
   --task ball-collecting --first-seed 20 --output "$ball/seed-20-three-pad-open-left-reference-egl-standard.json"
 ```
+
+### 收球的固定起点与留出评估
+
+用原先随物体摆放调整右腕起点的 16 条轨迹生成 5,520 帧。种子 1–12 训练，13–16 验证，17–20 留出。PointNet 扩散策略训练 30 轮，每轮 100 个更新。在保存的检查点中按验证损失选第 25 轮，损失 0.17516。对种子 17–20 各测试一次原参考起点和共用种子 1 起点，八次均未抬球，手指越限导致提前结束。示范中闲置左手的手指目标恒为零。原反归一化依然允许网络噪声改变这些目标，现按训练集的恒定分量还原，保留平面平移增强能够改变的腕位分量。用同一权重、同一初始化和相同种子重新评估，仅从训练示范补齐恒定动作的反归一化系数。八个配对回合均运行到 400 步，无手指越限、双手碰撞或物理警告。采样机械臂接触步数中位数从 255.5 降到 0，仍无右手触球、抬球或落篮。原始数据、检查点和配对报告在 `/data/dexcap-repro/benchmarks/ball-simulation-policy/`。
+
+另从统一右腕世界坐标 `[0.563, -0.159, 0.324] m` 开始，在高位实际移动到各摆放的抓球通道，接续完整物理动作。左腕起点也一致。20 个种子的 399 步原生复放均抬球、释放并落篮，没有机械臂、双手、同手穿透及物理警告。留出的 17–20 又由标准 EGL 入口独立复放，四条均通过。完整原生轨迹为同目录 `neutral-ball-seed-*.hdf5`，训练用的逐步实测点云导出到 `neutral/`。
