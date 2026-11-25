@@ -66,5 +66,49 @@ class DexCapTranslationTest(unittest.TestCase):
             augmented.close_and_delete_hdf5_handle()
 
 
+    def test_training_accepts_disjoint_demonstration_masks_in_each_dataset(self):
+        keys = ("robot0_eef_pos",)
+        with TemporaryDirectory() as directory:
+            paths = [Path(directory) / f"seed_{seed}.hdf5" for seed in (1, 2)]
+            for path, train_length, valid_length in zip(paths, (4, 5), (7, 8)):
+                with h5py.File(path, "w") as archive:
+                    for name, length in (("demo_1", train_length), ("demo_2", valid_length)):
+                        actions = np.linspace(0, 1, length)[:, None] * np.linspace(0.15, 0.65, 46)
+                        if name == "demo_2":
+                            actions += 0.25
+                        demo = archive.create_group(f"data/{name}")
+                        demo.attrs["num_samples"] = length
+                        demo.create_dataset("actions", data=actions)
+                        demo.create_dataset("obs/robot0_eef_pos", data=actions[:, :6])
+                    archive.create_dataset("mask/train", data=[b"demo_1"])
+                    archive.create_dataset("mask/valid", data=[b"demo_2"])
+
+            config = config_factory("diffusion_policy")
+            config.train.data = [{"path": str(path)} for path in paths]
+            config.train.hdf5_load_next_obs = False
+            config.train.hdf5_cache_mode = None
+            config.train.dataset_keys = ("actions",)
+            config.train.action_config = {"actions": {"normalization": "min_max"}}
+            config.train.seq_length = 3
+            config.train.hdf5_filter_key = "train"
+            config.train.hdf5_validation_filter_key = "valid"
+            config.experiment.validate = True
+
+            train, valid = load_data_for_training(config, keys)
+            self.assertEqual(len(train), 4 + 5)
+            self.assertEqual(len(valid), 7 + 8)
+            train_stats = train.get_action_normalization_stats()["actions"]
+            valid_stats = valid.get_action_normalization_stats()["actions"]
+            for key in ("scale", "offset"):
+                np.testing.assert_array_equal(valid_stats[key], train_stats[key])
+            for dataset in (*train.datasets, *valid.datasets):
+                dataset.close_and_delete_hdf5_handle()
+
+            with h5py.File(paths[1], "r+") as archive:
+                archive["mask/valid"][0] = b"demo_1"
+            with self.assertRaisesRegex(AssertionError, "overlap"):
+                load_data_for_training(config, keys)
+
+
 if __name__ == "__main__":
     unittest.main()

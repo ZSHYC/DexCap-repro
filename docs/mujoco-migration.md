@@ -1255,6 +1255,8 @@ python -m simulation.rollout "$sponge/default-three-pad-clean-pick-reference.hdf
 
 在 `pro1` 上，用真实 EGL 相机和相同种子复放 20 份轨迹。每份 345 步，种子 1–20 全部完成抬球、松手及落篮，球实际由篮底承托。机械臂接触步、双手穿透和采样到的同手最大穿透均为 0，无物理警告。每回合生成 `10000 × 6` 点云。这里验证的是按初始摆放生成的参考动作。HDF5 文件及实测逐回合汇总 `three-pad-open-left-seeds-01-20-egl-summary.json` 在数据盘 `benchmarks/ball-seeded-reference/world/stowed/`。
 
+在相同场景把其中四条完整参考转成 DexCap 训练 HDF5，逐步写入 EGL 实测点云、机器人本体状态和实际执行的动作目标，共 1,380 帧。种子 1–3 训练，种子 4 验证。训练加载器逐个 HDF5 检查训练和验证掩码是否重叠，并让验证动作使用训练集的归一化参数。使用 PointNet 扩散策略从头训练 1 轮（20 个更新），验证损失 1.00063，已保存检查点。独立种子 5 的闭环评估在第 33 步因无效手部运动提前终止，球未抬起、未落篮。数据集、配置、检查点和日志位于 `/data/dexcap-repro/benchmarks/ball-simulation-policy/`。
+
 ```bash
 ball=/data/dexcap-repro/benchmarks/ball-seeded-reference/world/stowed
 python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" \

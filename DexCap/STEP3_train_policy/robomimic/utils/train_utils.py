@@ -168,16 +168,17 @@ def load_data_for_training(config, obs_keys, *, dexcap_xy_translation_m=0.0):
         assert (train_filter_by_attribute is not None) and (valid_filter_by_attribute is not None), \
             "did not specify filter keys corresponding to train and valid split in dataset" \
             " - please fill config.train.hdf5_filter_key and config.train.hdf5_validation_filter_key"
-        train_demo_keys = FileUtils.get_demos_for_filter_key(
-            hdf5_path=os.path.expanduser(config.train.data),
-            filter_key=train_filter_by_attribute,
-        )
-        valid_demo_keys = FileUtils.get_demos_for_filter_key(
-            hdf5_path=os.path.expanduser(config.train.data),
-            filter_key=valid_filter_by_attribute,
-        )
-        assert set(train_demo_keys).isdisjoint(set(valid_demo_keys)), "training demonstrations overlap with " \
-            "validation demonstrations!"
+        for dataset in config.train.data:
+            path = os.path.expanduser(dataset["path"])
+            train_demo_keys = FileUtils.get_demos_for_filter_key(
+                hdf5_path=path, filter_key=train_filter_by_attribute,
+            )
+            valid_demo_keys = FileUtils.get_demos_for_filter_key(
+                hdf5_path=path, filter_key=valid_filter_by_attribute,
+            )
+            assert set(train_demo_keys).isdisjoint(valid_demo_keys), (
+                f"training and validation demonstrations overlap in {path}"
+            )
     train_dataset = dataset_factory(
         config, obs_keys, filter_by_attribute=train_filter_by_attribute,
         dexcap_xy_translation_m=dexcap_xy_translation_m,
@@ -187,6 +188,8 @@ def load_data_for_training(config, obs_keys, *, dexcap_xy_translation_m=0.0):
         if config.experiment.validate else None
     )
 
+    if valid_dataset is not None:
+        valid_dataset.set_action_normalization_stats(train_dataset.get_action_normalization_stats())
     return train_dataset, valid_dataset
 
 
