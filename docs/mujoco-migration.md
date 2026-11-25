@@ -1652,11 +1652,15 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 
 在 105 mm 支撑场景中，保留 80 × 40 mm 固定环，用完整 LEAP 网格和 16 个手指关节找到三指同时通过各自开孔的静态端点。将掌位映射回真实 Panda 后，无新增非目标穿透，最近手指关节距上限约 0.013 mrad。该端点仍需连续原生控制入环并持续承载。证据在数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/source-support-posture-39ed0d5/FREE_PALM_TRIPLE_DIAGNOSTIC.md`。
 
+在 345 × 49 mm 候选纸条上，双指接近后按实测指垫载荷调整关节目标，补偿腕位的静态跟踪误差。纸条质心最高抬升 **99.33 mm**，最长连续 **27 个控制周期（1.35 s）** 无外部支撑且两指载荷均大于 0.045 N。末态分别约 0.077、0.081 N，448 条黏结保持完整。该段无机械臂、双手间接触或物理警告，最大同手交叠约 0.15 mm。证据与独立 EGL 重放目录在数据盘 `runs/mujoco/scissors-paper-gravity-diagnosis/source-scale-right-pinch/{lift-clear,standard-paper-lift-replay}/`。两手同回合取剪和实际切纸仍需验证。
+
 ### 当前木托版本的备茶退丝
 
 从默认满瓶、闭盖重跑 50 ms 受力反馈控制，执行 2,297 周期，约 114.85 s。末态 1.995159 圈、螺纹已解除，全程无机械臂接触、双手间接触或物理警告。独立 EGL 正常入口复放同样 2,297 步和 1.995159 圈，成功脱扣，无机器人碰撞或求解器警告。日志、末态、动作 HDF5 和标准回放目录为 `runs/mujoco/tea-source-shallow-trough/committed-adaptive-uncap/`。
 
 从上述脱扣态以真实关节执行器接续，取盖从瓶颈脱离，瓶盖搬运期间仍双指承力。朝托盘内侧搬运的候选在目标区上方滑脱，随后用 64 个 50 ms 周期等待自然落稳。最后 59 个周期保持 `cap_on_right=true`，末态世界坐标约 [0.3772, −0.0753, 0.0080] m，无机械臂接触、双手间接触、同手穿透或物理警告。受控落放、镊子辅助和倒茶仍需验证。分段保存态和报告位于数据盘 `runs/mujoco/tea-source-shallow-trough/committed-adaptive-uncap/extract-and-park/south-transfer-setdown/`。
+
+保存逐 2 ms 原生关节目标后，从真实脱扣末态连续复放撤手、取盖、脱离瓶颈、搬运和落稳。各分段边界的原生积分状态与实录一致，最终 59 个控制周期保持右侧落稳，零机器人碰撞与物理警告。分段间未恢复状态。命令和报告在 `native-cap-replay/`，从闭盖初态的整段复放已启动。
 
 ### 捡海绵示范观测诊断
 
@@ -1665,3 +1669,5 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 ### 擦盘的新双持入盘路线
 
 左食指与拇指相向夹持海绵，沿两手指尖的分离方向平移 15 mm，再下探。首个有效内盘接触实测约 0.43 N，盘和海绵均离桌并由手保持。后续干净重放中，失载时右腕位移约 0.16 mm，盘相对腕位移约 4.10 mm、转动约 1.88°。对照的反向短划在约 3.13 mm 后再次脱接，尚未增加完整笔画。先前首次接触后的几个试验发现对 MuJoCo 矩阵视图原地写入，已作废并用不修改状态的重放替代。证据在数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/left-index-support-inplane-*`。
+
+右手另用中指下托盘沿，在新双持路线中真实承力超过 1.5 s，峰值约 4.94 N。盘保持离桌，随后左手海绵失持，仍未完成完整笔画；该段未发生机器人碰撞或物理警告。原生执行和逐步报告为 `left-index-support-right-middle-physical-c.{py,json,npz}`。
