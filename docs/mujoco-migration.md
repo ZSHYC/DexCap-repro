@@ -1031,6 +1031,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 以上导出经独立标准入口实际复放 2,301 步，终态同样为 1.995295 圈且 `cap_unthreaded=true`。EGL 输出 `10000 × 6` 点云，机械臂、双手及采样同手穿透均为 0，无物理警告。标准出口文件为 `tea-standard-osc-cap-unthread-rollout.json`。
 
+改用生产完整隐式积分后，同一份标准目标又用 EGL 执行 **2,301 步**。末态实测 **1.995103 圈**且 `cap_unthreaded=true`，无求解器警告、机械臂接触、双手接触或采样同手穿透，输出 `10000 × 6` 点云。实测文件为同目录 `tea-standard-osc-cap-unthread-implicit-2ms.json`。
+
 ### 退丝后的取盖与进剪刀柄
 
 从标准腕位控制实际退丝后的积分态撤手，再在高位调整右手指形并限速接近。食指和拇指首次相向抬盖约 11.98 mm。用这一实测夹持接续上提，盖子在无瓶身支撑时累计上移约 21.3 mm，其侧壁随后重新触到瓶颈。按实际接触法向侧向退出后，瓶颈接触短时消失，双指仍有载荷，继续移动时滑脱。取盖仍未完成右侧放置。逐步受力与实际积分态见数据盘 `benchmarks/tea-bottle-native/after-scaled-trough/after-standard-release/` 的 `tea-standard-cap-quiet-extraction.json`、`tea-standard-cap-carry-live-tilt.json` 和 `tea-standard-cap-unhook-and-carry.json`。
@@ -1072,6 +1074,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 保留现有 40 × 37 mm 活动环后，完整网格能容纳轴向 +15 mm 的拇指薄段。实际从托盘支撑位走向该端点时，拇指先压活动环外侧，使剪刀移位约 7.38 mm 并打开至 0.568 rad。改由外侧拇指保持接触并沿关合方向施力，两段连续实测使铰链从 **0.35252 rad** 降到 **0.33821 rad**。后段持续负向运动约 23.18 s，拇指峰值约 0.114 N。剪刀由原托盘和隔板承托，纸带 85 条粘结均完好，未切断。状态、动作和实测报告位于数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/` 的 `current-outer-friction-close-continue*`。
 
 再从同一个物理状态连续执行右手抓纸、搬运和向刀口进给，同时左拇指对活动柄施力。100 个目标内铰链实测关合约 0.03654 rad，固定刀刃实际触纸。活动刀刃离纸约 1.88 mm，尚未形成双刀刃夹压。纸带仍为 85 条完整粘结。记录见同目录 `current-carry-close-combined.json`、`current-carry-close-combined-state.npz`。
+
+继续按活动刃与纸带的实测距离进给，首次同时接触两片刀刃，纸夹持约 0.0462 N，双刃总载荷约 0.00303 N，接触落在不同纸单元。对齐至 `paper_bond_4_3_0` 的后续最佳中间态中，活动刃距目标单元约 0.059 mm，固定刃约 3.24 mm，尚未形成同一接缝的双刃夹压。回到标准 223 步抓纸末态，用实测距离加深贴面 0.90 mm，约 0.60 s 观察区间内的右手相向载荷最低约 0.0536 N，纸带保持离托。接触与深抓记录见同目录 `current-paper-movingblade-livefeed.json`、`current-bond43-blade-gaps.json` 和 `paper223-deep900-grip.json`。
 
 擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。逐步复算确认海绵在盘坐标的法向高度仅变化约 −0.003 mm，而切向位移约 15.5 mm，盘本身同时平移和倾转。按实际斑块反向转动，法向开口约增加 1.03 mm，最深接触仍约 0.74 mm，载荷增至约 3.78 N。下一次接触调整从第一笔更早的轻载状态开始。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
 
