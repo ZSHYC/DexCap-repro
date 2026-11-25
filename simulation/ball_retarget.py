@@ -7,6 +7,8 @@ from pathlib import Path
 import h5py
 import mujoco
 import numpy as np
+from scipy.optimize import least_squares
+from scipy.spatial.transform import Rotation, Slerp
 
 from simulation import mujoco_ball_collecting as task
 from simulation.frames import AXES, TABLE_SHIFT
@@ -84,10 +86,104 @@ def retarget(references, layout):
         else:
             shift = basket_delta
         action[:2] += shift
-    return seed, targets, transfer_start
+    return seed, targets, (transfer_start, transfer_end, release)
 
 
-def evaluate(directory, first_seed, trials):
+def wrist_ik(model, arm, work, position, rotation, previous, weight=0.001, max_evaluations=240):
+    def residual(q):
+        work.qpos[arm.pos] = q
+        mujoco.mj_kinematics(model, work)
+        error = arm.error(work, position, rotation)
+        return np.r_[error[:3], 0.22 * error[3:], weight * (q - previous)]
+
+    fit = least_squares(residual, np.clip(previous, arm.lower, arm.upper),
+                        bounds=(arm.lower, arm.upper), max_nfev=max_evaluations)
+    return fit.x, float(np.linalg.norm(fit.fun[:3]))
+
+
+def transport_risk(scene, targets, start, release):
+    # Only joint proprioception and the camera-retargeted targets enter the preview.
+    arm = scene.control.arms[0]
+    work = mujoco.MjData(scene.model)
+    current = scene.data.qpos[arm.pos].copy()
+    rotations = Rotation.from_quat(targets[start:release + 1, 6:10], scalar_first=True).as_matrix()
+    direct_q, direct_error = wrist_ik(scene.model, arm, work, targets[release, :3], rotations[-1], current)
+    direct_margin = float(arm.upper[5] - direct_q[5])
+    timed_margin = float("inf")
+    for target, rotation in zip(targets[start:release + 1], rotations):
+        current, timed_error = wrist_ik(scene.model, arm, work, target[:3], rotation, current, 0.010, 60)
+        timed_margin = min(timed_margin, float(arm.upper[5] - current[5]))
+    reroute = (direct_margin < 0.050 and direct_error > 0.020) or (timed_margin < 0.050 and timed_error > 0.050)
+    return dict(rerouted=reroute, direct_q6_margin_rad=direct_margin, direct_wrist_error_m=direct_error,
+                timed_q6_margin_rad=timed_margin, timed_wrist_error_m=timed_error)
+
+
+def interpolate_wrist_targets(start, goal, steps):
+    rotations = (slice(6, 10), slice(10, 14))
+    paths = [Slerp([0.0, 1.0], Rotation.from_quat(np.stack((start[part], goal[part])), scalar_first=True))
+             for part in rotations]
+    for u in np.linspace(1.0 / steps, 1.0, steps):
+        t = u * u * (3.0 - 2.0 * u)
+        target = (1.0 - t) * start + t * goal
+        for part, path in zip(rotations, paths):
+            target[part] = path([t]).as_quat(scalar_first=True)[0]
+        yield target
+
+
+def elbow_route(scene, targets, branch_target, release):
+    right, left = scene.control.arms
+    pose = branch_target.copy()
+    for arm, position, quaternion in ((right, slice(0, 3), slice(6, 10)), (left, slice(3, 6), slice(10, 14))):
+        pose[position] = scene.data.site_xpos[arm.site]
+        pose[quaternion] = Rotation.from_matrix(
+            scene.data.site_xmat[arm.site].reshape(3, 3),
+        ).as_quat(scalar_first=True)
+    for axis, distance, steps in ((5, 0.060, 50), (4, 0.120, 70)):
+        goal = pose.copy()
+        goal[axis] += distance
+        for pose in interpolate_wrist_targets(pose, goal, steps):
+            yield pose
+
+    work = mujoco.MjData(scene.model)
+    initial = scene.data.qpos[right.pos].copy()
+    rotation = Rotation.from_rotvec([np.deg2rad(40.0), 0.0, 0.0]) * Rotation.from_quat(
+        targets[release, 6:10], scalar_first=True,
+    )
+    final, _ = wrist_ik(scene.model, right, work, targets[release, :3], rotation.as_matrix(), initial)
+    for u in np.linspace(1.0 / 180.0, 1.0, 180):
+        t = u * u * (3.0 - 2.0 * u)
+        work.qpos[right.pos] = (1.0 - t) * initial + t * final
+        mujoco.mj_kinematics(scene.model, work)
+        pose[:3] = work.site_xpos[right.site]
+        pose[6:10] = Rotation.from_matrix(work.site_xmat[right.site].reshape(3, 3)).as_quat(scalar_first=True)
+        yield pose
+    for _ in range(25):
+        yield pose
+    for target in targets[max(0, release - 70):]:
+        pose[14:30] = target[14:30]
+        yield pose
+    for _ in range(100):
+        yield pose
+
+
+def transport_commands(scene, targets, phase, preview):
+    start, transfer_end, release = phase
+    yield from targets[:start]
+    stop = len(targets)
+    if preview is not None:
+        preview.update(transport_risk(scene, targets, start, release))
+        if preview["rerouted"]:
+            stop = start + round(0.65 * (transfer_end - start)) + 1
+    arm = scene.control.arms[0]
+    for target in targets[start:stop]:
+        command = target.copy()
+        command[:3] += np.clip(0.7 * (target[:3] - scene.data.site_xpos[arm.site]), -0.060, 0.060)
+        yield command
+    if preview is not None and preview["rerouted"]:
+        yield from elbow_route(scene, targets, command, release)
+
+
+def evaluate(directory, first_seed, trials, *, guarded_transport=False):
     references = training_references(directory)
     frames, start, camera, _ = load_demo(directory / "neutral-ball-seed-01.hdf5")
     results = []
@@ -102,17 +198,17 @@ def evaluate(directory, first_seed, trials):
             except ValueError as error:
                 results.append(dict(seed=seed, sim_success=False, executed_steps=0, localization_error=str(error)))
                 continue
-            donor, targets, transfer_start = retarget(references, layout)
+            # The frozen preview uses the camera coordinates in double precision.
+            donor, targets, phase = retarget(references, layout.astype(float) if guarded_transport else layout)
+            preview = {} if guarded_transport else None
             arm = scene.control.arms[0]
             peak_load = 0.0
             first_release_error = None
             force = np.zeros(6)
-            for step, target in enumerate(targets):
-                command = target.copy()
-                if step >= transfer_start:
-                    wrist = scene.data.site_xpos[arm.site]
-                    command[:3] += np.clip(0.7 * (target[:3] - wrist), -0.060, 0.060)
+            min_q6_margin = float("inf")
+            for step, command in enumerate(transport_commands(scene, targets, phase, preview)):
                 score, wrist_error, _ = scene.step(command, control_cycles=1)
+                min_q6_margin = min(min_q6_margin, float(arm.upper[5] - scene.data.qpos[arm.pos][5]))
                 load = 0.0
                 for contact_id, contact in enumerate(scene.data.contact[:scene.data.ncon]):
                     pair = set(map(int, contact.geom))
@@ -133,6 +229,9 @@ def evaluate(directory, first_seed, trials):
                 same_hand_max_penetration_m=scene.same_hand_max_penetration_m,
                 invalid_hand_motion=scene.invalid_hand_motion, physics_warnings=scene.data.warning.number.tolist(),
             )
+            if preview is not None:
+                result["transport_preview"] = preview
+                result["min_q6_upper_margin_rad"] = min_q6_margin
             results.append(result)
             print(json.dumps(result), flush=True)
         finally:
@@ -147,10 +246,13 @@ def main():
     parser.add_argument("--first-seed", type=int, required=True)
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--guarded-transport", action="store_true",
+                        help="Use the joint-limit preview and continuous elbow route")
     args = parser.parse_args()
     if args.first_seed < 1 or args.trials < 1:
         parser.error("First seed and trial count must be positive")
-    result = evaluate(args.reference_directory, args.first_seed, args.trials)
+    result = evaluate(args.reference_directory, args.first_seed, args.trials,
+                      guarded_transport=args.guarded_transport)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
 
 
