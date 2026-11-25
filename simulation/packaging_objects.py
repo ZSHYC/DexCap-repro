@@ -59,7 +59,7 @@ PACKAGING_OBJECTS = {
     # The pear rests with its shortest principal radius upright.
     "green-pear": ("ellipsoid", (0.029, 0.027, 0.025), (0.31, 0.47, 0.09, 1), "demo_100"),
     "green-can": ("cylinder", (0.0405, 0.0405, 0.034), (0.17, 0.45, 0.12, 1), "demo_150"),
-    "tape-measure": ("cylinder", (0.038, 0.038, 0.017), (0.78, 0.60, 0.08, 1), "demo_175"),
+    "tape-measure": ("cylinder", (0.038, 0.038, 0.017), (0.085, 0.09, 0.072, 1), "demo_175"),
     "yellow-cloth": ("box", (0.075, 0.065, 0.020), (0.91, 0.75, 0.09, 1), "demo_250"),
 }
 UNSEEN_PRIMITIVES = {

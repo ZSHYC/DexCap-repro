@@ -97,6 +97,17 @@ class MujocoPackagingTest(unittest.TestCase):
                 np.testing.assert_allclose(model.geom_size[geom, :2], [radius, half_height])
                 self.assertAlmostEqual(model.body_mass[metrics.object_body], 0.12)
 
+    def test_tape_render_layers_do_not_change_its_contact_shape_or_mass(self):
+        model, _, metrics = self.make_scene("tape-measure")
+        case = model.geom("packaging_object_geom").id
+        self.assertEqual(metrics.object_geoms, {case})
+        np.testing.assert_allclose(model.geom_size[case, :2], [.038, .017])
+        self.assertAlmostEqual(model.body_mass[metrics.object_body], .12)
+        for name in ("band", "label"):
+            layer = model.geom(f"packaging_object_tape_{name}").id
+            self.assertEqual(model.geom_contype[layer], 0)
+            self.assertEqual(model.geom_conaffinity[layer], 0)
+
     def test_rolling_can_settles_on_the_box_floor(self):
         model, data, metrics = self.make_scene("green-can")
         model.opt.cone = mujoco.mjtCone.mjCONE_ELLIPTIC

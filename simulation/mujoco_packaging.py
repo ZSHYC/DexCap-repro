@@ -316,6 +316,22 @@ def _add_object(spec, xy, object_name, object_yaw):
                 conaffinity=0,
                 mass=0,
             )
+        elif object_name == "tape-measure":
+            # RGB-D shows a dark case with a yellow band and an off-center blue label.
+            for name, layer_size, layer_pos, rgba in (
+                ("band", [size[0] + .0001, .0035, 0], [0, 0, size[2] - .007], [.72, .59, .14, 1]),
+                ("label", [.017, .00015, 0], [.012, -.012, size[2] + .0001], [.095, .31, .54, 1]),
+            ):
+                body.add_geom(
+                    name=f"packaging_object_tape_{name}",
+                    type=mujoco.mjtGeom.mjGEOM_CYLINDER,
+                    size=layer_size,
+                    pos=layer_pos,
+                    rgba=rgba,
+                    contype=0,
+                    conaffinity=0,
+                    mass=0,
+                )
 
 
 def add_packaging_scene(spec: mujoco.MjSpec, object_xy, object_name=DEFAULT_OBJECT, *, object_yaw=None):

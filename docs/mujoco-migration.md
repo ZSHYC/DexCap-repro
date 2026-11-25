@@ -271,7 +271,7 @@ python -m simulation.rollout "$pear/green-pear-centered-complete-reference.hdf5"
   --task packaging --object green-pear --output "$pear/green-pear-centered-complete-replay.json"
 ```
 
-在相同绿梨模型上以已训练的 SetXF 第 3,000 轮权重逐一复测种子 1–5。每轮用 EGL 点云闭环执行 400 步。仅种子 5 有右手与梨的接触，共 82 个控制周期。五轮均未抓起或入盒，无物理警告。逐轮报告为同目录的 `green-pear-rolling-floor-policy-seed-{1..5}.json`。
+在相同绿梨模型上以已训练的 SetXF 第 3,000 轮权重逐一复测种子 1–5。每轮用 EGL 点云闭环执行 400 步。仅种子 5 有右手与梨的接触，共累计 82 个采样接触点。五轮均未抓起或入盒，无物理警告。逐轮报告为同目录的 `green-pear-rolling-floor-policy-seed-{1..5}.json`。
 
 改用高位预抓，下降中首次检测到手与梨接触时，拇指垫最近间隙约 1.49 mm，中指垫仍约 49.3 mm。停在该处单独合拢中指仍未抓起，梨从初始位置移动约 97.7 mm。记录见 `runs/packaging-green-pear-signed-gap-close-b6d8e6d.json`。
 
@@ -366,6 +366,10 @@ tape=/data/dexcap-repro/benchmarks/packaging-tape-measure-complete
 python -m simulation.rollout "$tape/tape-measure-centered-complete-reference.hdf5" \
   --task packaging --object tape-measure --output "$tape/tape-measure-centered-complete-replay.json"
 ```
+
+随后按三份发布示范中的卷尺点云补上深色外壳、黄色环带和偏置蓝标。黄边和蓝标作为无质量、无碰撞的渲染几何。对 `demo_175`、`demo_176` 和 `demo_180` 共 30 组三帧输入保持摄像机、腕位、随机种子和策略权重配对，卷尺区域的平均绝对 RGB 差中位数由 **0.335 降至 0.116**。相对录制动作的右、左腕误差中位数由 **9.93、9.67 mm** 降至 **6.07、6.46 mm**。壳体厚度仍使用圆柱近似，公开点云没有充分覆盖其底面用于独立标定。采用新外观的 `tape-measure-centered-complete-layered{,-contacts}.json` 复放了同一完整轨迹，整段物理结果、末态和逐子步受力汇总完全相同。数据盘同目录的 `tape-case-offset-rgb-paired-demo_{175,176,180}.json` 保存配对测量。 [MuJoCo 几何体外观与惯量](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-geom)
+
+外观更新后，现有 SetXF 权重的五个种子仍均未抓起或入盒。每轮闭环 400 步，只有种子 5 观察到右手接触。逐轮结果为同目录的 `tape-layered-policy-seed-{1..5}.json`。
 
 ## Ball Collecting
 
