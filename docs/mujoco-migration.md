@@ -1599,3 +1599,19 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 第 300 轮增强权重对独立摆放 3001、3004 各闭环 900 个动作，均无实际手与海绵接触。在 3004，左腕平面最接近处相差约 11 mm，腕高仍为约 240 mm。四条增强左手示范的实际最低腕高约 124 mm，每条有 346 帧低于 160 mm。该阶段失败发生在下探前，未观察到抓取后滑脱。闭环和接触数据位于 `benchmarks/sponge-seeded-reference/common-start/controller-rate/left-augmentation-20hz/epoch300-pilot/`。
 
 两项原 PointNet 3,000 轮训练继续运行。最终检查点关闭写入后，标准场景入口在新种子 3101–3120 各执行 20 个回合，收球每回合 1,040 步，捡海绵每回合 900 步。这批摆放不与此前 3001–3004 的早期对照共用。输出为两项训练目录下的 `pointnet-epoch3000-evaluation/`。
+
+### 包装配对结果与分段时序
+
+四个物体、两个相同种子按 400 个物理动作闭环。官方数据组与加入 MuJoCo 示范组均 **0/8**，两组均未入盒或合盖。按四条物理示范当前动作，约 61%–62% 的相邻目标变化小于 0.1 mm 腕位、0.001 rad 腕向及 0.001 rad 指关节。将红银包装的连续微动区间抽稀到 7,977、7,731、7,603 个控制周期，三份标准回放仍能移动盒子约 75–82 mm，但均失去入盒和合盖。完整 8,736 周期参考仍作为物理基准。配对和时序输出见 `benchmarks/packaging-controller-rate/{setxf-physical-paired,retiming}/`。
+
+收球增强版第 300 轮在留出种子 3003、3004 各运行 1,040 步，右手实际接触球 11、20 次，但均未抬球。两次无机械臂或双手碰撞、关节越限及物理警告。结果位于 `benchmarks/ball-simulation-policy/at-20hz/retarget-augmentation/epoch300-pilot/`。
+
+### 右盘下支撑与再接近
+
+通过在双持前缀中重新排列右手无名指，实测世界竖向食指 +7.86 N、无名指 +7.59 N、拇指 −13.68 N。标准 EGL 重放全部 3,178 个目标保持盘和海绵均离桌且彼此分离，无机械臂和双手间碰撞或物理警告。全程最大同手穿透约 1.71 mm。文件为 `benchmarks/wiping-coordinated-grasp/stroke-support/first-wipe-right-ring-loadpath-{reference.hdf5,standard.json}`。
+
+在该抓持上额外使用双方低层接触反馈，海绵可到达盘局部 `[-11.65,-34.50,83.10] mm` 的上方仍双持。首次下探时海绵失持，而右拇指仍承力约 14.9 N。旧的 93.08 mm 回放已从共同初态按逐子步控制精确复核，失持后固定腕位 0.8 s，海绵沿掌滑约 7.0 mm，最终只有左拇指承力。记录在同目录 `wiping-strong-grip-bilateral-feedback-0p007-fixedplate-0p00002.{npz,json}` 和 `wiping-sponge-retention-readback.json`。
+
+### 备茶支撑槽的场景偏差
+
+对照公开视频，现模型的槽宽 95 mm，约是镊子宽臂跨度的 2.23 倍。当前初始姿态的桥端和宽臂分别仅高出导轨 0.5、0.8 mm，而公开视频可见桥端越过浅槽、指腹在外露木臂上建立夹持。公开材料缺少可靠的侧视标尺，校准报告区分了当前模型的精确尺寸和视频支持的定性几何关系。证据在数据盘 `runs/mujoco/tea-fidelity-cradle-audit.json`。 [DexCap 公开视频](https://dex-cap.github.io/#results-after-finetuning---tea-preparing)
