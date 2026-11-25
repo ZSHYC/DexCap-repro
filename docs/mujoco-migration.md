@@ -1511,3 +1511,13 @@ Wiping 的标准输出增加 `plate_held` 和 `sponge_held`。两项报告当前
 20 Hz 导出现在沿原始控制周期推进，每个周期写入动作前点云和本体观测。原生目标精度、初态和持续周期另存于导出 HDF5 的 `replay` 组。标准回放读取这组数据和原始物体摆放，避免固定腕位过渡被重新触发。训练仍直接读取 20 Hz 的 `actions` 与 `obs`。
 
 蓝积木种子 5 的完整参考共有 1,586 个腕位目标、1,928 个实际控制周期。旧导出每周期重复重启腕位插值，本次实测未入盒。修正后，在当前完整模型上对常规回放、开启导出时的物理回放、读取导出 HDF5 再回放三者进行配对。居中入盒、双手合盖与正常结束的物理指标一致。这个全程对照为验证物理，复用精简点云。另从前 27 个原始目标实际渲染导出 193 帧 `10000 × 6` 点云，记录还原相同初始摆放和物理末态，robomimic 可读出三个点云观察和六个动作。文件在 `benchmarks/packaging-material-calibrated-setxf/observations-20hz/`。种子 5 是测试摆放。
+
+黄布先由右食指和中指以同向接触在桌面上预移，抬手后重新落稳。从共同初态独立按原控制组重放得到 **71.78 mm** 向工作区中心的位移。另将这段预移和释放整理为 1,080 个 20 Hz 控制目标，独立重放得到 **71.53 mm**，无机器人碰撞或物理警告，纸箱位移不到 0.001 mm。两条复放与 HDF5 位于 `benchmarks/packaging-yellow-cloth-complete/sponge-guided/yellow-cloth-pre-slide-independent-*`。布面产生实际形变，下一阶段需要重新拟合抓点。全量预移后的原三指入场受盒壁挡住，仍待完成重新夹持和入盒。
+
+长颈鹿的完整碰撞几何可侧放入盒。静态低姿态的包络约 190.4 × 95.8 × 35.0 mm，对比内腔 292 × 184 × 75 mm。改为物件留在桌面时先移动空盒，实测盒体在初始局部平面移动约 [120.1, 61.6] mm，距原规划目标约 4.2 mm，长颈鹿保持在原位。纸盒同时转过 7.36°，后续放置需用实测盒姿。该物理分段没有机器人碰撞或物理警告，长颈鹿的换抓和运输仍待验证。证据在 `benchmarks/packaging-unseen-replay/giraffe/giraffe-{corridor-summary,preposition-target-prefix}.json`。
+
+弹簧夹的右手后柄夹持已实际打开铰链约 12.70°。抬升阶段因远侧夹爪仍支撑桌面，两垫在完全接管物重前脱离。改为靠近质心的中央侧夹，几何和法向可形成相向抓持，但只有一个 50 ms 周期无桌面支撑。最新结果分别在 `benchmarks/packaging-spring-clamp/clamp-{rear-handle-pinch,com-grip}-route*.json`。夹持、入盒和合盖是任务条件，夹具开合用于检验真实弹簧及接触。
+
+擦盘从双持越沿轨迹的第 3,191 个控制目标接续，保留左腕已验证的路径，再由右腕让实测盘向海绵移动约 27–33 mm。四条物理路线进入盘局部半径 76.4–79.5 mm 的投影范围，均保持当前双持，续段无机器人碰撞、物体相互接触或物理警告。再推进一段，水平路线首次接触为盘外缘约 0.327 N，严切向路线达到约 62.0 mm、仍未碰盘时左手失去海绵。有效擦拭尚待通过调整左手夹持和海绵入盘朝向实现。记录为 `benchmarks/wiping-coordinated-grasp/stroke-support/wiping-meet-{held-sponge,low-edge}-summary.json`。
+
+备茶操作按论文使用左手持瓶并倒茶、右手拿镊子辅助，茶壶作为接收容器。实测瓶体纵向持握位移约 11.8 mm，释放后在托盘上回弹。用实际瓶内半径确认此段前后均保留 108 粒茶。镊子桥端已实际升高约 12.12 mm，右食指与中指的新对夹路线分别受壶嘴和木托口阻挡，尚未抬离木托。证据 `benchmarks/tea-bottle-native/tea-{park-bottle-corridor-longitudinal-contents,raised-bridge-regrasp-index-middle-stowed}.json`。 [DexCap 任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
