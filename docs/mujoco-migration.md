@@ -1589,3 +1589,13 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 ### 黄布原始表面轮廓
 
 从公开 `demo_250` 的帧 0、5、10、14，以邻近台面校正高度，得到真实折布 P95 高度中位数 45.44 mm，P95 和 P05 之间的起伏中位数 36.95 mm。约三分之一可见表面低于 20 mm。当前 6×6×3 体网格静置 4 s 后，最高约 45.81 mm，但整个顶面起伏仅约 0.029 mm，36 个底层柱均由桌面支撑。RGB-D 直接约束可见轮廓，隐藏布沿的形状需要明确建模假设。校准脚本及报告位于 `benchmarks/packaging-yellow-cloth-complete/sponge-guided/yellow-cloth-fidelity-audit.{py,json}`。
+
+### 擦盘的 2 ms 握持反馈
+
+保留 20 Hz 双腕目标，在低层每 2 ms 依据盘沿真实接触更新右拇指关节目标。从左无名指加固的物理前缀重新执行，掠过原来拇指卸载的时刻，两物保持，累计路径到 93.08 mm。随后海绵先脱离相向持握，右手盘沿三处仍有真实载荷。更激进的压力补偿和左手同步反馈均未完成第二笔。该分段使用额外的原生关节目标，不能只用保存的 20 Hz 腕位复现全部动作。目标和逐周期输出位于 `benchmarks/wiping-coordinated-grasp/stroke-support/wiping-ring-plate-inner-loop-3274-1.{py,npz,json}` 对应的演算脚本 `wiping-ring-plate-inner-loop.py` 和结果文件。
+
+### 捡海绵增强模型的早期接近诊断
+
+第 300 轮增强权重对独立摆放 3001、3004 各闭环 900 个动作，均无实际手与海绵接触。在 3004，左腕平面最接近处相差约 11 mm，腕高仍为约 240 mm。四条增强左手示范的实际最低腕高约 124 mm，每条有 346 帧低于 160 mm。该阶段失败发生在下探前，未观察到抓取后滑脱。闭环和接触数据位于 `benchmarks/sponge-seeded-reference/common-start/controller-rate/left-augmentation-20hz/epoch300-pilot/`。
+
+两项原 PointNet 3,000 轮训练继续运行。最终检查点关闭写入后，标准场景入口在新种子 3101–3120 各执行 20 个回合，收球每回合 1,040 步，捡海绵每回合 900 步。这批摆放不与此前 3001–3004 的早期对照共用。输出为两项训练目录下的 `pointnet-epoch3000-evaluation/`。
