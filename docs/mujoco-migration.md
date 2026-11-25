@@ -273,6 +273,18 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 ```
 
 
+### 校正模型的 Packaging SetXF 闭环评估
+
+在 MuJoCo 3.6.0 的完整双臂场景执行现有 SetXF 权重 `model_epoch_3000.pth`，使用公开 Packaging HDF5、真实 EGL 点云输入和相同的五组种子摆放。六个训练物件 30 轮，九个未见物件 45 轮，每轮实际执行 400 个策略步。
+
+| 物件组 | 右手接触物件 | 抓起后失去抓持 | 入盒 | 合盖 | 完整成功 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 训练物件 | 8/30 | 1/30 | 0/30 | 10/30 | 0/30 |
+| 未见物件 | 19/45 | 5/45 | 0/45 | 12/45 | 0/45 |
+| 合计 | 27/75 | 6/75 | 0/75 | 22/75 | 0/75 |
+
+有 20 轮出现机械臂接触，采样到的最大同手穿透约 15.75 mm。75 轮均无物理求解器警告或手指越限触发。蓝积木和绿罐的完整参考回放使用各自专门生成的动作。闭环逐轮结果和评估参数见数据盘 `benchmarks/packaging-current-policy-summary.json` 及其中引用的 15 个报告。
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
@@ -1017,6 +1029,10 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 为让右食指及时接住仍由左手夹持的茶瓶，右手在左手提瓶期间接近。按实测指垫间距分段减速建立侧向接触，连续 **2.256 s** 实测两手均有载荷且托盘承力为零。从保存的积分态继续实际转运，左拇指与食指保持相向接触、右食指仍承力，在 **2.932 s** 连续带载段内瓶身沿世界 x 正向移动约 **86.5 mm**、y 负向约 44.9 mm。最高位移处右食指法向载荷约 2.38 N，托盘承力为零。另一次接续将带载瓶身移到世界 x 约 0.570 m，左指接触法线转为近正交，仍未倒入茶叶。结果与实测积分状态见 `tea-side-support-distance-rate-3.json`、`tea-range-supported-translation{,-second}.json` 和 `tea-range-supported-translation-best.npz`。
 
+接续向壶口移动时，茶瓶滑脱并在托盘上近乎竖直落稳，距壶口中心的水平距离约 114 mm。撤手后，托盘约承力 1.02 N，双手对瓶载荷为零，108 粒茶叶均仍在瓶内，盖子保持放在右侧。实际积分态和从前一状态接续的执行器记录见同目录的 `tea-staged-upright-near-pot.{json,npz}`。随后打开左手并保持腕位，清除了无名指与手掌残余接触，瓶身位置变化小于 0.1 mm，108 粒茶叶仍在瓶内。较干净的接续状态保存在 `tea-staged-upright-near-pot-clear.{json,npz}`。
+
+从该状态重新形成左拇指、食指和中指三点抓持。瓶身离开托盘最高 **18.59 mm**，最长连续离托且三指有载荷的区间为 **1.136 s**。在抬升约 15.02 mm 的保存点，三指约承力 1.46、0.60、0.85 N，拇指和食指接触法线点积约 −0.89。实测与带载积分态见同目录 `tea-near-pot-three-pad-bottle-lift.json` 和 `tea-near-pot-three-pad-held-15mm.npz`。
+
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
 从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
@@ -1034,6 +1050,10 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 擦盘在第一笔进行到第 3,256 步时，以右中指增加实测盘下支撑，随后保持该指形至换向。回程盘连续保持 11 个动作，其中两手同时实际持物 7 个动作。第一回程动作的中指载荷约 0.96 N，关于先前失持方向的力矩约 −0.065 N·m。盘随后仍保持，先失载的是左手夹海绵的中指，第二笔尚未达计分。这次结果存于 `benchmarks/wiping-coordinated-grasp/stroke-support/left-return-middle-support-frozen-left.{json,npz}`。
 
 左食指从镊子桥侧推，实际桌面上的木托在原托盘边沿形成了双边支点。工具相对木托沿局部 y 方向又移动约 31.75 mm。继续推时镊子滚转，指垫从桥侧移到顶部并失载。工具仍由木托承重。外露木臂到木托上沿的垂直间隙约 11.1 mm，所测完整食指形状无法从下方通过。结果在 `benchmarks/tea-tool-source-model/scaledTrough/` 中的 `source-tool-left-bridge-rim-arrest-push-v3.json`、`source-tool-rim-arrest-clearance.json` 与 `source-tool-right-index-underarm-fit.json`。
+
+右食指从镊子桥的外露端沿实测间隙方向推压，镊子桥首次与托盘 x 正向边沿接触并承力。边沿承力超过 0.02 N 持续 0.384 s，末态约 0.032 N，同时木托仍承力约 0.302 N。随后推动自由木托，其实际横移约 0.93 mm 后镊子脱离盘沿，重量仍由木托承担。实测记录和接续积分态在 `benchmarks/tea-tool-source-model/scaledTrough/source-tool-right-tool-to-rim-tip-summary.md`。
+
+另用 3,138 个动作从原始场景复放，左无名指、中指和拇指在盘与海绵双持的端点分别承力约 1.64、3.92 和 3.65 N。指间网格间距约 10.85 mm。下一周期无名指卸载，固定左腕与指形或暂停 40 个周期均没有恢复支撑。这次验证覆盖接触盘面前的阶段，第二笔未完成。端点和复放结果见 数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-ring-inner-stable-prefix.npz` 和 `left-return-ring-inner-stable-prefix-verification.json`。
 
 ### 捡海绵随机摆放的物理基线
 
