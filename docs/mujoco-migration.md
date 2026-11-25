@@ -231,7 +231,17 @@ python -m simulation.rollout data/derived/packaging-blue-block-apex-grasp-native
 ```
 
 
-在当前完整碰撞模型重新执行上述 50 步，右手物体接触累计 133 个周期，终态 `object_grasped=false`。右腕最大位置误差约 54.84 mm，右中指近端与拇指末端最大采样穿透约 14.69 mm。机械臂与双手间接触步数均为零，无物理警告。当前模型采用这次复验的结果。数据见 `/data/dexcap-repro/benchmarks/runs/blue-block-demo50-apex-verify.json`。
+在当前完整碰撞模型重新执行上述 50 步，右手物体接触累计 133 个周期，终态 `object_grasped=false`。右腕最大位置误差约 54.84 mm，右中指与拇指末端最大采样穿透约 14.69 mm。机械臂与双手间接触步数均为零，无物理警告。当前模型采用这次复验的结果。数据见 `/data/dexcap-repro/benchmarks/runs/blue-block-demo50-apex-verify.json`。
+
+重新测量右食指、拇指实际接触点，按蓝积木两侧真实法线拟合腕姿和指形。中指、无名指与闲置左手保持张开。实际抓取时两指负载约 3.05 N 与 3.02 N，相向法线点积为 −1。456 步的独立 EGL 回放确认最高离桌约 33.9 mm，对向接触保持到末态，最大右腕位置误差降至 5.60 mm。另一组对向抓姿用于整套转运，从同一 `demo_50` 摆放夹起积木并移到开盒上方。倾斜松手后，积木平躺在盒底，顶面低于盒沿约 40.6 mm。左手随后拉折舌并合盖。
+
+整套 **1,237 步**在标准 MuJoCo 入口从原摆放用 EGL 独立复放，`object_released`、`object_in_box`、`lid_closed` 和 `sim_success` 均为真。盒位移约 0.36 mm，机械臂、双手间及同手采样穿透均为零，生成 `10000 × 6` 点云，无物理警告。此轨迹中右手负责抓取与放置，随后撤离闭盖区。原 50 步参考的抬升和盒沿限制属于更早的动作。新轨迹、逐步物理记录和 EGL 结果在数据盘 `benchmarks/packaging-blue-current/`。
+
+```bash
+blue=/data/dexcap-repro/benchmarks/packaging-blue-current
+python -m simulation.rollout "$blue/blue-block-complete-reference.hdf5" \
+  --task packaging --object blue-block --output "$blue/blue-block-complete-egl.json"
+```
 
 蓝积木接近纸盒时还需要最低角增加约 49 mm 净空。试验中沿当前箱缘跨入需要纸盒倾斜约 31°，所执行的左手路线未接触到箱壁。单独保持右手末动作 0.30 s 时蓝积木失去夹持，随后将左手接近与原拾取动作同步，首次碰撞出现在左臂下降阶段，右手随后失去夹持。未执行放入。记录见 `runs/packaging-blue-{box-tip,apex-brace-feasibility,sync-left-prepose}-66b7507.json`。
 
@@ -1002,6 +1012,12 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。逐步复算确认海绵在盘坐标的法向高度仅变化约 −0.003 mm，而切向位移约 15.5 mm，盘本身同时平移和倾转。按实际斑块反向转动，法向开口约增加 1.03 mm，最深接触仍约 0.74 mm，载荷增至约 3.78 N。下一次接触调整从第一笔更早的轻载状态开始。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
 
 备茶的原尺寸木托与镊子从实际接触状态继续。右拇指顶到镊子桥的上沿时，镊子相对木托横移约 17.43 mm、抬高约 1.81 mm，木托自身只移动约 1 mm。拇指滑脱后木托仍以约 0.337 N 支撑镊子。再次下探桥端垂直侧面时，上木臂首先挡住拇指并承受约 0.310 N 向下载荷，尚未把镊子送到托盘上。记录在 `/data/dexcap-repro/benchmarks/tea-tool-source-model/scaledTrough/source-tool-cradle-to-tray-summary.md`。
+
+从擦盘第一笔的第 3,238 步改用实测盘姿闭环，第一笔载荷约 0.23–0.57 N，盘面倾角不超过 46.1°。换向前若增加右环指部分支撑，第一个反向周期仍持住两件物体，第二周期右拇指与环指同时失载，盘下落约 7.29 mm。无环指路线同样在第二周期失载。由此把下一轮调节集中到右手对盘的抓持力矩。细节见 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-light-first-controlled-reverse-{e,g}.json`。
+
+### 捡海绵随机摆放的物理基线
+
+使用 305 步、默认摆放可抬升 310.51 mm 的参考，以摆放差平移右腕初态和目标轨迹。在 x 轴 ±0.20 m、y 轴 ±0.35 m 的场景分布内，20 个种子的无相机标准动力学复放完成 10 个任务，重放与生成的物理结果一致。右食指与中指最大采样穿透约 13.49 mm，多个种子右臂与闲置左手接触。这批数据用于定位手指与双腕的调整位置。汇总见 `benchmarks/sponge-seeded-reference/sponge-seeded-reference-summary.json`。
 
 ### 捡球的 20 个随机摆放标准复放
 
