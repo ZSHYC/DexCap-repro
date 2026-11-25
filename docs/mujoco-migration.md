@@ -1471,3 +1471,7 @@ envs/train/bin/python -m simulation.ball_retarget "$ball" --first-seed 61 --tria
 备茶改为单食指作支点，闲指收拢并转腕 60°。在完整模型中实测对工具最大施力约 2.93 N，镊子绕木托旋转约 20.99°，桥端升高 12.12 mm。桥底距托盘沿顶部约 9.33 mm，工具仍由木托和食指支撑，盖始终在右侧。记录在备茶数据目录 `tea-tool-single-pad-pivot-execute*`。
 
 剪纸的放宽姿态约束方案另做实际分段接续。中指保持严格在固定环内的最后实测状态是 step 141，拇指与活动环仍距约 86.10 mm，剪刀漂移约 0.058 mm。随后中指失去占位并停止，未产生拇指载荷。最后有效状态与原生目标见 `scissor-middle-region-active-result.npz`，可用于继续规划。
+
+收球另按运输前实际 Panda 关节状态、当期 RGB-D 布局和示范动作，预估释放姿态的腕误差和第 6 轴余量。预测触及限位时，先用原生控制撤开闲置左腕，再按连续关节解换算的腕轨迹转肘并释放。球的位置和载荷仅记录用于诊断。冻结规则在种子 81–100 用相同初始相机采样做配对评估，`simulation.ball_retarget` 原方案为 **18/20**，加入限位触发后的方案为 **20/20**，三个回合触发，无回归。20 回合均无机械臂、双手、同手碰撞或物理警告。种子 98 的右臂第 6 轴实测软止挡超出约 0.70 mrad。逐回合与汇总位于数据盘 `benchmarks/ball-simulation-policy/at-20hz/ball-layout-guarded-transport-seeds81-100-summary.json`。两条被救回的 87、95 已分别保存为 `ball-layout-guarded-transport-seed-{87,95}-reference.hdf5`，重新从初态走标准 EGL 共 906 和 1,042 步，均通过。
+
+捡海绵的高位左手参考在最后上提阶段增加向左臂安装座方向的平移。第 194 号从照相选择参考，真实抬升 327.5 mm 且无机器人碰撞。其他几种位置仍受夹持敏感性限制。初始定位校准及双点预演未能救回第 229 号。数据盘 `benchmarks/sponge-seeded-reference/common-start/controller-rate/left-workspace/left-{inward,calibrated}-seed-*.json`。
