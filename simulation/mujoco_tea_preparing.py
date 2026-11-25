@@ -249,7 +249,7 @@ _PRISM_FACES = (
 def _add_tweezers(spec, xy):
     # Start the bridge above the cradle lip so gravity seats the free tool.
     root = spec.worldbody.add_body(
-        name="tea_tweezers", pos=[*xy, TRAY_TOP + .0235], quat=_yaw(TOOL_YAW)
+        name="tea_tweezers", pos=[*xy, TRAY_TOP + .018], quat=_yaw(TOOL_YAW)
     )
     root.add_freejoint(name="tea_tweezers_free")
     root.add_geom(
@@ -287,29 +287,31 @@ def _add_tweezers(spec, xy):
 def _add_tool_cradle(spec, tray_xy):
     xy = tray_xy + TRAY_ROTATION @ [.1027, -.0872]
     cradle = spec.worldbody.add_body(
-        name="tea_tool_cradle", pos=[*xy, TRAY_TOP + .008], quat=_yaw(TOOL_YAW),
+        name="tea_tool_cradle", pos=[*xy, TRAY_TOP + .006], quat=_yaw(TOOL_YAW),
     )
     cradle.add_freejoint(name="tea_tool_cradle_free")
+    # The source video shows a shallow, close-fitting wooden trough with the
+    # broad arms and outboard bridge exposed. Dimensions remain visual estimates.
     for name, pos, size in (
-        ("base", [0, 0, 0], [.060, .0475, .003]),
-        ("outboard_end", [-.058, 0, .00375], [.002, .0475, .00175]),
-        ("inboard_end", [.058, 0, .0065], [.002, .042, .004]),
+        ("base", [0, 0, 0], [.060, .034, .003]),
+        ("outboard_end", [-.058, 0, .00375], [.002, .034, .00175]),
+        ("inboard_end", [.058, 0, .0050], [.002, .031, .0025]),
     ):
         cradle.add_geom(
             name=f"tea_tool_cradle_{name}", type=mujoco.mjtGeom.mjGEOM_BOX,
             pos=pos, size=size, density=650, friction=[.9, .01, .001],
             rgba=[.72, .40, .16, 1],
         )
-    # The low mouth exposes the bridge-side grip while the sloped rails support the tool.
+    # Retain the mouth and rails, but keep their tops below the exposed grasp faces.
     for side, sign in (("pos", 1), ("neg", -1)):
         for part, bounds in (
-            ("mouth", ((-.060, .006), (-.024, .019))),
-            ("rail", ((-.024, .019), (.060, .019))),
+            ("mouth", ((-.060, .005), (-.024, .010))),
+            ("rail", ((-.024, .010), (.060, .010))),
         ):
             vertices = np.array([
                 [x, sign * y, z]
                 for x, top in bounds
-                for y, z in ((.0195, .0028), (.0475, .0028), (.043, top), (.038, top))
+                for y, z in ((.022, .0028), (.034, .0028), (.0315, top), (.028, top))
             ])
             winding = _PRISM_FACES if sign > 0 else np.asarray(_PRISM_FACES)[:, ::-1]
             mesh = spec.add_mesh(
