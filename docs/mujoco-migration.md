@@ -341,6 +341,8 @@ python -m simulation.rollout "$replay/blue-mug-native-entry-reference.hdf5" \
 
 **蓝杯杯柄抓持。** 左手先移盒居中，右中指与拇指再相向夹住杯柄。标准 EGL 入口从默认摆放执行 **6,539 步**，末态检测到持杯，杯体根位置上升约 **18.9 mm**，杯已脱离桌面。两个接触载荷约 1.61 N 和 1.47 N，接触法向点积约 −0.915。机械臂、双手和同手碰撞均为零，无物理警告。续段一度把杯体再抬高并向纸盒方向移动，随后从夹口滚出。抓持 HDF5 和独立 EGL 报告位于数据盘 `benchmarks/packaging-unseen-replay/blue-mug/` 的 `blue-mug-centered-handle-grasp-*`，续段及接触记录位于 `mug-follow-angular-*`。
 
+进一步以食指入杯、拇指夹外壁的方式抓杯沿。独立的原生控制段在纸盒居中后干净抬升杯体 **85.52 mm**，随后直立放入盒中并释放，三类碰撞与物理警告为零。直立杯在盒坐标的最高点为 **111.37 mm**。当前刚体可闭合纸盒的内高是 **75 mm**。杯身模型的十边形凸包给出至少 **90.35 mm** 的最小投影高度，完全闭盖在当前尺寸下不可行。把盖角放宽到当前 6° 判据进行的几何搜索，找到的最佳候选仍贯入约 7.06 mm。原生抓取与放置在蓝杯目录的 `rim/`，几何测量在 `source/mug-lid-clearance.json`。作者视频首帧提供杯形与盒形外观。 [作者未见物件视频](https://dex-cap.github.io/assets/normal_packaging_unseenobj2.mp4)
+
 红苹果原用最长轴竖直的椭球。在标准双臂完整场景中，4.5 s 内双手无接触时，默认复位最大漂移约 **363.52 mm**。加入 1° 扰动的对照漂移约 166.21 mm。现在用保留原 79 × 79 × 87 mm 包络的曲面和约 21.2 mm 平底接触面，表示直立支撑。尺寸和总质量继续采用项目估计。新版默认复位最大漂移约 **0.003 mm**，1° 扰动约 **1.26 mm**，无手接触或物理警告。平底尺寸由现有包络和静置力学确定，尚无公开苹果原始深度可直接量测。完整双臂对照在 `benchmarks/packaging-unseen-replay/red-apple/` 的 `apple-production-rest.json` 和 `apple-flat-base-production-rest.json`。
 
 两份实际释放后的苹果都由盒底承托，但在三维接触下仍持续滚动。相同积分态各续跑 9 s，末段 100 个样本分别只有 1 和 0 个满足入盒静置。为苹果曲面和盒底启用与绿梨相同的六维接触后，两份均为 100/100。数值采用模型已有的滚动阻力，接触对局限于苹果曲面和盒底。结果见同目录 `compare-apple-box-rolling-friction.json`。 [MuJoCo 接触维数](https://mujoco.readthedocs.io/en/3.6.0/computation/index.html#contact)
@@ -370,6 +372,8 @@ bricks=/data/dexcap-repro/benchmarks/packaging-unseen-replay/stacked-bricks
 python -m simulation.rollout "$bricks/stacked-bricks-centered-complete-reference.hdf5" \
   --task packaging --object stacked-bricks --output "$bricks/stacked-bricks-centered-complete-replay.json"
 ```
+
+**狮子摆件完整居中回放。** 右食指和拇指夹持躯干，将物件越过已居中的盒沿，在空中旋腕把物件转到侧躺方向。按实测腕位重新对齐后松手，物件在盒底静置，竖向包络上界约 47.5 mm。独立 EGL 复放 **9,249 步**，通过抓起后释放、居中入盒和双手闭盖。双手连续承力 **1.330 s**，盖板约 **180.00°**。机械臂接触与双手间穿透均为零，最大同手采样穿透约 0.53 mm，无求解器警告。数据盘 `benchmarks/packaging-unseen-replay/lion/` 下的 `lion-centered-complete-reference.hdf5`、标准报告 `lion-centered-complete-egl.json` 和接触审计 `lion-centered-complete-egl-contacts.json` 保留实测记录。
 
 **弹簧夹活动关节。** 复用原有外形和 120 g 总质量。销轴和一侧夹臂随自由物体主体运动，另一侧通过一个相对铰链连接。夹臂和夹嘴仍与桌面、手指和箱体发生碰撞。全部九块实体表面参与抓持和盒内包络判断，铰链运动也参与静置判据。最大开角 44° 参照同尺寸夹具的约 65 mm 开口选取，预紧、0.30 N·m/rad 弹簧刚度和 0.01 N·m·s/rad 阻尼为估计值。两手柄分别施加 5 N 相向载荷，实测最大开角约 **24.93°**，卸载后回到距零位约 **0.022°**，无物理警告。隔离物理试验见数据盘 `benchmarks/packaging-spring-clamp/measure-spring-clamp-handle-response.json`。 [同尺寸夹具参考](https://ronixtools.com/en/product/6-inch-spring-clamp/) · [MuJoCo 铰链与弹簧](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
@@ -1286,3 +1290,5 @@ python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" 
 策略闭环现在每条动作只推进一个 50 ms 控制周期，与论文的 20 Hz 控制频率一致。旧入口会等待腕位跟踪，八个已修复归一化的 400 步历史回合分别用了 161.4–197.05 s 仿真时间。新入口独立测试 12 个策略动作实测 0.60 s。同一引用轨迹的 60 步复放在给定的 75 个控制周期内推进 3.75 s。记录为 `pointnet-cadence-20hz-smoke.json` 和 `recorded-cadence-smoke.json`。 [DexCap 实验设置](https://arxiv.org/html/2403.07788v2#S5.SS1)
 
 固定起点的 16 条轨迹已导出 6,384 帧。仍按种子 1–12 训练、13–16 验证，训练 30 轮后从已保存的检查点中按验证损失选第 20 轮，损失约 0.15069。种子 17–20 从同一固定腕位分别跑满 400 个闭环动作，每次实测 20.0 s，无机械臂接触、双手碰撞、手指越限或物理警告，四回合均未触球。数据、配置、训练日志、权重与测试输出在 `benchmarks/ball-simulation-policy/neutral/`。下一批训练数据按实际 50 ms 控制周期采集观测，保留原轨迹中的真实保持时间。
+
+按每个真实 50 ms 控制周期采集的数据已独立完成 16 条轨迹的抬球与落篮，训练种子 1–12 共 7,245 帧，验证种子 13–16 共 2,284 帧。验证损失最低的已保存检查点为第 30 轮，损失 0.11876。四个留出种子 17–20 各执行 1,000 个动作并推进 50 s，均无机械臂接触、双手碰撞、手指越限或物理警告，右手触球次数均为 0。直接以四条示范的真实观测输入该策略，起始点云中每帧可辨认的球面点在起步阶段最少为 436 个，前 54 步的右腕预测目标误差中位数为 97.0–104.0 mm。下一项有依据的诊断是动作预测与条件输入的对应，而非延长物理评估。数据、训练与测量文件位于 `benchmarks/ball-simulation-policy/at-20hz/`，离线诊断为 `pointnet-20hz-teacher-state-probe.json`。
