@@ -1005,11 +1005,15 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 从标准腕位控制实际退丝后的积分态撤手，再在高位调整右手指形并限速接近。食指和拇指首次相向抬盖约 11.98 mm。用这一实测夹持接续上提，盖子在无瓶身支撑时累计上移约 21.3 mm，其侧壁随后重新触到瓶颈。按实际接触法向侧向退出后，瓶颈接触短时消失，双指仍有载荷，继续移动时滑脱。取盖仍未完成右侧放置。逐步受力与实际积分态见数据盘 `benchmarks/tea-bottle-native/after-scaled-trough/after-standard-release/` 的 `tea-standard-cap-quiet-extraction.json`、`tea-standard-cap-carry-live-tilt.json` 和 `tea-standard-cap-unhook-and-carry.json`。
 
+从上述真实脱离瓶颈的积分态，右手继续快速侧移。盖子脱手后在托盘上滚动，最终在右侧静止，世界坐标约 `[0.35188, -0.01172, 0.01099] m`。末态托盘承载约 0.247 N，双手和瓶颈均已脱离盖子，`cap_unthreaded=true`、`cap_on_right=true`，无物理警告。该段使用实际关节执行器的延续试验，从独立验证的标准退丝回放接续。右侧静置的积分状态与动作记录为 `tea-south-cap-transfer-south_direct.npz`、`tea-right-cap-supported-actions.npz`，逐步结果为 `tea-right-cap-supported-checkpoint.json`，同在上述数据盘目录。
+
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
 从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
 
 在上述高位支点沿原路径上撤左腕 60 mm，右手仍悬持纸带。合并进入、保持、撤腕为 465 步，通过标准 EGL 从同一初态独立回放。纸带与剪刀的峰值抬升分别为 57.41 和 28.38 mm，机械臂、双手间接触步数为零，无物理警告。剪刀最后在托盘侧边支点约 50.08 mm 高处静止。回放断键为 0，切纸长度为 0。HDF5 和 EGL 汇总在同一目录的 `standard223-middle-waypoint2-roll7-elevated-position-reference.hdf5` 与 `standard223-middle-waypoint2-roll7-elevated-position-egl.json`。
+
+从真实高位支点改走固定柄侧推。左食指先在完整网格上接触固定环，随后分三段向托盘内侧施力，使剪刀主体过托盘边沿中心线约 2.12 mm。主动撤去食指后，连续 1.082 s 无柄载，沿推动轴回弹约 0.085 mm，终态坐标约 `[0.40045, 0.19797, 0.06984] m`，纸带仍离托。无物理警告或记录到的非目标碰撞。稳定态和逐步输出在同一数据目录的 `second-support-index-release-settle-final-state.npz`、`second-support-index-release-settle.json`，可从这里继续入环。
 
 擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。逐步复算确认海绵在盘坐标的法向高度仅变化约 −0.003 mm，而切向位移约 15.5 mm，盘本身同时平移和倾转。按实际斑块反向转动，法向开口约增加 1.03 mm，最深接触仍约 0.74 mm，载荷增至约 3.78 N。下一次接触调整从第一笔更早的轻载状态开始。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
 
