@@ -297,6 +297,16 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 对蓝积木种子 5 的 400 步重复评估添加实际接触力记录。第 27 步有且仅有一个目标采样检测到不同手指实测相向承力，食指与中指组合的法线点积约 −0.743，成对法向载荷的较小值最高约 8.30 N。第 28 步两指已失去物件接触，积木与盒心仍相距数十厘米。含接触力记录的实际评估与原配对试验完全一致。报告和第 27 步积分态位于 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-physical-grasp-trace.json` 和 `blue-block-seed5-grip-checkpoint.npz`。
 
+纸板显色校准后的完整评估已结束。各物件的种子 1–5、初始摆放、公开 HDF5 和现有 SetXF 第 3000 轮权重与旧材质批次逐一配对，仍为每回合 400 动作。
+
+| 物件组 | 抓起后脱手 | 入盒 | 合盖 | 完整成功 |
+| --- | ---: | ---: | ---: | ---: |
+| 训练物件 | 3/30 | 0/30 | 6/30 | 0/30 |
+| 未见物件 | 5/45 | 0/45 | 10/45 | 0/45 |
+| 合计 | 8/75 | 0/75 | 16/75 | 0/75 |
+
+与旧材质配对比较，右手接触物件的回合由 27 增至 37，抓起后脱手由 6 增至 8，有机械臂接触的回合由 20 降至 11，合盖由 22 降至 16。75 轮无物理警告或越限终止。实际评估仍未产生入盒。汇总、逐回合引用和合并脚本位于数据盘 `benchmarks/packaging-material-calibrated-setxf/` 的 `all-objects-summary.json`、`summarize-material-rollouts.py`。
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
