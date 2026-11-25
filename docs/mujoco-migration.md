@@ -1299,6 +1299,27 @@ python -m simulation.rollout "$sponge/default-three-pad-clean-pick-reference.hdf
 
 上述各摆放的原参考从各自抓取通道起步。固定起点试验改用一对共同的实际腕位与手形，在完整双臂模型中先上提约 60 mm、移向该摆放的高位通道，再沿原动作抓取。各用 185 个 50 ms 腕位目标进入原参考。种子 19 首次接续在起升时食指与拇指失载，仅抬升约 32.8 mm。将原轨迹第 355 步后的拇指闭合目标提前平滑提高 0.01 rad，并在原第 430–439 步平滑回接，最终实际抬升约 345.68 mm。20 个种子均从共同初始姿态单独通过标准 EGL 的 717 步回放，实际抬升约 305.13–368.15 mm，无机械臂、双手间、同手碰撞、越限或物理警告。逐回合 HDF5、结果与种子 19 的修正轨迹位于数据盘 `benchmarks/sponge-seeded-reference/common-start/fixed-start-egl-summary.json` 指向的文件。种子 1、16 重新逐 50 ms 采集，各保留 844 帧 RGB-D 点云及关节、腕位与动作，见同目录 `controller-rate/sponge-seed-{01,16}.{hdf5,json}`。
 
+### 捡海绵的 20 Hz 数据、闭环和视觉对照
+
+在 16 个实测通过的固定初态参考上，每个 50 ms 控制周期采集一次 RGB-D 点云和机器人本体状态，配对当期的实际腕位和手指命令。每条 844 帧。训练种子 1–12 共 10,128 帧，验证种子 13–16 共 3,376 帧。留出种子 17–20 不参与训练或模型选择。数据和启动脚本在 `/data/dexcap-repro/benchmarks/sponge-seeded-reference/common-start/controller-rate/`，合并 HDF5 为 `sponge-20hz-seeds-01-16.hdf5`。
+
+使用现有 PointNet 扩散配置从头训练 30 轮，每轮 100 个更新。第 30 轮验证损失约 0.02862。关闭辅助后，从同一初态对种子 17–20 各执行 900 个策略动作，四回合抬升均为 0，未出现机械臂、双手间接触或物理警告。同一只手的最大穿透为 5.91–9.34 mm。把标准参考的控制命令转换为训练使用的 float32 坐标，再按策略入口每次推进 50 ms，种子 1、17、20 仍各抬升超过 305 mm，且接触指标为零。模型读入真实示范观测时，所测右腕平移目标的分段误差中位数为 58–104 mm。见同目录 `pointnet-epoch30-heldout-*.json`、`pointnet-epoch30-direct-observation.json` 及 `oracle-seed-*-flat_20hz.json`。
+
+视觉对照仅用初始 EGL XYZRGB 观测估计海绵中心。它从训练组的 12 条轨迹中按相机估计的距离排序，在估计位置用同一个完整 MuJoCo 模型逐条预演，选取无碰撞且预演可抬升 305 mm 以上的方案，随后在实际评估场景从共同初态执行。种子 17–20 和额外未生成过参考的 21–24 实测 **8/8** 通过，抬升约 **303.75–370.56 mm**，机器人碰撞、手部越限及物理警告均为零。这些动作选自训练轨迹，由视觉定位和物理预演生成，扩散策略的成绩仍为上段的 0/4。验证种子 13 的 12 条候选均未达到预演门限，最佳抬升 258.82 mm，因此这一版未在正式场景执行。脚本和报告为同目录 `sponge-visible-planned.py`、`sponge-visible-planned-seed-*.json`。
+
+90 轮训练使用同一组数据。已保存检查点中第 90 轮验证损失最低，为 0.01393。真实示范观测上的分段右腕平移误差中位数为 23–59 mm。种子 17–20 从共同初态各跑满 900 步，抬升仍为 0，最大同手穿透为 1.81–2.56 mm，机械臂、双手间接触及物理警告均为零。逐回合报告为同目录 `pointnet-epoch90-heldout-*.json`。
+
+```bash
+w=/data/dexcap-repro/benchmarks/sponge-seeded-reference/common-start/controller-rate
+export MUJOCO_GL=egl MUJOCO_EGL_DEVICE_ID=0 CUDA_VISIBLE_DEVICES=0
+export LD_LIBRARY_PATH="$PWD/data/mujoco-gl/usr/lib/x86_64-linux-gnu"
+export PYTHONPATH="$PWD:$PWD/DexCap/STEP3_train_policy" OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
+envs/train/bin/python -m robomimic.scripts.train --config "$w/pointnet-20hz-config-90.json"
+envs/train/bin/python "$w/sponge-visible-planned.py" "$w" 21
+```
+
+独立行为克隆对照用训练组的海绵相对动作中位数作参考，学习腕位和手形残差。输入为初始相机估计位置、50 ms 周期相位和每步实际本体观测，模型运行时持续使用本体反馈。训练 60 轮，用验证组损失选第 16 轮权重。种子 17–20 各运行 900 步，17、18、20 分别真实抬升 312.82、333.03、311.21 mm 且无机器人碰撞，种子 19 无抬升并发生约 2.18 mm 的同手穿透。代码、权重和逐回合报告位于同一数据目录的 `sponge-camera-residual-bc*`。该网络是独立的视觉行为克隆对照，扩散模型的成绩单独记录。
+
 ### 捡球的 20 个随机摆放标准复放
 
 初始收拢无名指后，中指与球的法向载荷曾从约 0.38 N 降至零，导致搬运中滑脱。调整中指的两关节目标，在第 96–140 个动作间逐步增加 0.03 rad，并依据实际持球位置规划两段搬运。闲置左手张开，左腕沿 y 轴移出搬运区 120 mm。第 20 个种子按实测腕位误差额外补偿搬运终点 `[15, -40] mm`。保留各动作实际执行的控制周期数。
@@ -1358,3 +1379,15 @@ python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" 
 使用同一 45 轮 BC 配置对照两种右、左腕位表示。绝对目标在种子 17、21 的各 650 步无辅助闭环中均未触球，两回合腕位最低均在 318 mm 以上。以相对当前本体观测的平移作为目标时，种子 17 未触球，种子 21 采样到 31 次手球接触，两回合均未抬球或落篮。只变化动作前六个平移分量。数据及结果位于 `history-ablation/ball-camera-with-assisted{,-relative}.hdf5`、`assisted-training-seed-{07,10}.json` 和 `bc-camera-assisted{,-relative}-epoch45-rollout-{17,21}.json`。
 
 以同一相对腕位数据再加 20 Hz 的经过时间观测，保持其余模型配置、训练划分和运行控制周期。两个无辅助回合各 650 步，种子 17、21 的指尖最近分别离球约 14.0、123.2 mm，均未触球。种子 21 出现 276 个有机械臂接触的控制周期。结果为 `bc-camera-relative-clock-epoch45-rollout-{17,21}.json`。
+
+### 胶带座箱沿翻转与持盘接触方向
+
+胶带座先搭住无盒盖的一侧箱沿，箱沿实际承力约 1.13–1.49 N。右手逐渐松开后，胶带座靠重力翻入箱内。末态胶带座最高点距箱底 63.62 mm，低于 76.50 mm 的盖板平面，纸盒承力约 1.177 N，右手完全脱离，机械臂、双手间接触和物理警告均为零。翻落瞬间的盒体接触峰值约 173.28 N，穿透约 2.05 mm。165 个接续动作从真实积分态独立复放，积分态最大差为零。低位姿和复放记录见数据盘 `benchmarks/packaging-unseen-replay/tape-dispenser/dispenser-overbox-rim-regrasp-{route1.npz,verify.json}`。
+
+从固定初态把真实推盒居中、撑盖、抓取、翻落和合盖的控制段拼接后，标准 EGL 入口独立执行 **10,416 步**，确认胶带座释放在居中盒内、盖板合上、双手合盖判据通过。机械臂与双手间接触、手部越限和物理警告均为零，早期左手最大同手穿透仍为 3.05 mm。可直接用标准 `simulation.rollout --task packaging --object tape-dispenser` 回放同目录 `dispenser-overbox-rim-close-route1-full-reference.hdf5`，标准报告为 `dispenser-overbox-rim-close-route1-full-rollout.json`。原 4,265 步版本的起点在已推盒居中之后，标准初态缺少该状态。完整回放前置了真实记录的 6,151 步推盒动作。
+
+擦盘早期夹盘的独立对照在左手消除自碰后加入右拇指反滚支撑。连续 2.35 s 保持右拇指约 0.50–0.70 N 和左食指至少 14.62 N，逐 2 ms 检查下无手内或手间穿透。实测支撑力表明两手都在向下压盘，桌面仍承重。同步抬腕 15 mm 时，右拇指在约 3 mm 命令量即近乎卸载，盘只上升 0.109 mm。后续起盘动作需要新增真实向上受力的指垫接触。数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/first-wipe-right-support-{handoff-a,pickup-force}.json`。
+
+黄布在右手实际夹持下沿竖直方向移动 45 mm，远边一处底层离桌 37.34 mm，右食指与拇指仍承担约 1.86 N 和 7.33 N，逐 2 ms 无机器人碰撞。继续升至 55 mm 时食指失载，远边落回桌面。用真实 45 mm 积分态对左手抓取做几何检验，精度最佳的指垫目标仍会使左右手发生逾 20 mm 的干涉，因此未执行左手接入。记录在数据盘 `benchmarks/packaging-yellow-cloth-complete/sponge-guided/yellow-cloth-right-present-*`。
+
+剪纸从剪刀仍由托盘承托、右手未持纸时执行大幅撤腕。实测右腕上抬约 99.96 mm、向外撤约 99.77 mm，剪刀保有约 0.316 N 托盘支撑，纸仍在原托盘位置。在新真实状态上沿完整左手入环路线筛查，左拇指与右手最小净空 56.76 mm，当前首个阻挡是左拇指与剪刀活动环约 0.50 mm 的几何干涉。数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/scissor-early-right-stow-*`。
