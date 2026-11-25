@@ -21,6 +21,7 @@ from simulation.packaging_objects import (
 TABLE_HEIGHT = -0.030
 BOX_HALF_XY = (0.149, 0.095)
 BOX_PANEL_HALF_THICKNESS = 0.0015
+BOX_INNER_HALF_XY = np.asarray(BOX_HALF_XY) - 2 * BOX_PANEL_HALF_THICKNESS
 BOX_CONTACT_TOLERANCE_M = 0.0001
 BOX_TOP = 0.078
 BOX_YAW = np.deg2rad(-62.8)
@@ -321,7 +322,7 @@ def add_packaging_scene(spec: mujoco.MjSpec, object_xy, object_name=DEFAULT_OBJE
 
 
 class PackagingMetrics:
-    """Score placement and coordinated lid closure from the actual contacts."""
+    """Score centering, placement, and coordinated lid closure."""
 
     def __init__(self, model: mujoco.MjModel, object_name: str):
         if object_name not in PACKAGING_OBJECTS and object_name not in PACKAGING_UNSEEN_OBJECTS:
@@ -368,6 +369,7 @@ class PackagingMetrics:
         self.minimum_center_distance = self.initial_center_distance
         self.ever_grasped = False
         self.released_in_box = False
+        self.placed_in_centered_box = False
         self.bimanual_lid_closure = False
 
     def _body_geoms(self, body_id, collidable_only=False):
@@ -440,7 +442,7 @@ class PackagingMetrics:
 
     def _object_in_box(self, data):
         # Settled soft contacts can overlap the inner wall by micrometers.
-        inner_half = np.asarray(BOX_HALF_XY) - 2 * BOX_PANEL_HALF_THICKNESS + BOX_CONTACT_TOLERANCE_M
+        inner_half = BOX_INNER_HALF_XY + BOX_CONTACT_TOLERANCE_M
         if self.object_flex >= 0:
             box_position = data.xpos[self.box_body]
             box_rotation = data.xmat[self.box_body].reshape(3, 3)
@@ -510,7 +512,15 @@ class PackagingMetrics:
         object_released = self.ever_grasped and not object_grasped
         self.ever_grasped |= object_grasped
         object_in_box = self._object_in_box(data)
-        self.released_in_box |= object_in_box and object_released and not right_object
+        if object_grasped:
+            self.released_in_box = False
+            self.placed_in_centered_box = False
+            self.bimanual_lid_closure = False
+        elif not self.released_in_box and object_in_box and object_released and not right_object:
+            self.released_in_box = True
+            box_axes_xy = data.xmat[self.box_body].reshape(3, 3)[:2, :2]
+            local_center = (WORKSPACE_CENTER - box_xy) @ box_axes_xy
+            self.placed_in_centered_box = bool(np.all(np.abs(local_center) <= BOX_INNER_HALF_XY))
         lid_angle = data.qpos[self.lid_qpos]
         lid_closed = abs(lid_angle - np.pi) <= LID_CLOSED_TOLERANCE
         return {
@@ -522,7 +532,9 @@ class PackagingMetrics:
             "object_grasped": bool(object_grasped),
             "object_released": bool(object_released),
             "object_in_box": object_in_box,
+            "placed_in_centered_box": self.placed_in_centered_box,
             "lid_closed": bool(lid_closed),
             "bimanual_lid_closure": self.bimanual_lid_closure,
-            "sim_success": bool(object_in_box and lid_closed and self.bimanual_lid_closure),
+            "sim_success": bool(self.placed_in_centered_box and object_in_box
+                                and lid_closed and self.bimanual_lid_closure),
         }

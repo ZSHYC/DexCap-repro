@@ -247,7 +247,7 @@ python -m simulation.rollout "$blue/blue-block-complete-reference.hdf5" \
   --task packaging --object blue-block --output "$blue/blue-block-complete-egl.json"
 ```
 
-随后把右食指稳盒的接触点下移到箱壁局部高度约 32 mm，避开盒盖的实际翻转区域。按实际接触力调节右腕位置，同时用左手合盖。**1,977 步**标准 EGL 回放完成入盒、合盖与双腕撤离。每 2 ms 的物理记录显示，右食指顶箱壁、左手接触盒盖连续同时承力 2,116 个子步，为 **4.232 s**。右食指峰值 2.61 N，右手未接触盖板。终态仍为 `sim_success=true`，机械臂、双手间和同手采样碰撞均为零，无物理警告。回放数据为 `blue-block-bimanual-reference.hdf5`，结果与逐子步受力汇总为 `blue-block-bimanual-egl.json`、`blue-block-bimanual-egl-contacts.json`，均位于上述目录。
+随后把右食指稳盒的接触点下移到箱壁局部高度约 32 mm，避开盒盖的实际翻转区域。按实际接触力调节右腕位置，同时用左手合盖。**1,977 步**标准 EGL 回放完成入盒、合盖与双腕撤离。每 2 ms 的物理记录显示，右食指顶箱壁、左手接触盒盖连续同时承力 2,116 个子步，为 **4.232 s**。右食指峰值 2.61 N，右手未接触盖板。按当时未包含移盒居中的计分，终态为 `sim_success=true`。机械臂、双手间和同手采样碰撞均为零，无物理警告。回放数据为 `blue-block-bimanual-reference.hdf5`，结果与逐子步受力汇总为 `blue-block-bimanual-egl.json`、`blue-block-bimanual-egl-contacts.json`，均位于上述目录。
 
 绿罐采用校正后的 68 mm 全高和 120 g 质量。首次实物动作放入后，盒底单点接触使罐子持续摇摆。在相同运动末态上，MuJoCo 原生多点碰撞检测将盒底最大接触贯入从约 3.15 mm 减至约 0.105 mm，罐子随即稳定在盒底。多点检测在包含圆柱零件的 Packaging 场景装配时启用，已有尺寸、质量与任务计分条件保持原值。数据盘 `benchmarks/packaging-green-current/corrected-height/green-can-collision-manifolds.json` 记录了该对照。 [MuJoCo 多点碰撞说明](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#option-flag-multiccd)
 
@@ -309,21 +309,23 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 与旧材质配对比较，右手接触物件的回合由 27 增至 37，抓起后脱手由 6 增至 8，有机械臂接触的回合由 20 降至 11，合盖由 22 降至 16。75 轮无物理警告或越限终止。实际评估仍未产生入盒。汇总、逐回合引用和合并脚本位于数据盘 `benchmarks/packaging-material-calibrated-setxf/` 的 `all-objects-summary.json`、`summarize-material-rollouts.py`。
 
-蓝积木的种子 5 另做了从实际 SetXF 抓持状态开始的物理接续。保留原 27 个策略动作，后续用有限力腕位与指关节目标调整夹持，右手再抬升约 96.6 mm。左手沿已抓住的箱壁向工作区中心拖盒，右手在约 5.4 s 的移盒、松手及撤离阶段始终持物。盒体实测平移约 164.2 mm，移盒过程中最接近中心约 2.7 mm，撤手后距中心 26.2 mm。76 步标准 EGL 复放得到相同物理末态，无机械臂触碰、双手碰撞或物理警告。原策略前 27 步有约 15.36 mm 的采样同手最大穿透，复放继承了该过程。HDF5 与标准报告在 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-center-and-lift-{reference.hdf5,egl.json}`。这组接续使用仿真状态选择动作。让左臂短程撤开并绕右末关节的实际轴调整腕姿后，另一段 **115 步**标准 EGL 回放把积木运至 `[0.5444, -0.0345, 0.1315] m`，终态仍有两个不同手指相向承力，较小的接触力为 7.69 N，右末关节限位余量 0.323 rad，机械臂和双手间碰撞为零。积木包络距完全跨入盒口仍差约 63.7 mm。复放与逐步试算见同目录 `blue-block-seed5-centered-transfer-{reference.hdf5,egl.json}` 和 `blue-block-seed5-joint7-reclamp-1-12mm.json`。
+蓝积木的种子 5 另做了从实际 SetXF 抓持状态开始的物理接续。保留原 27 个策略动作，后续用有限力腕位与指关节目标调整夹持，右手再抬升约 96.6 mm。左手沿已抓住的箱壁向工作区中心拖盒，右手在约 5.4 s 的移盒、松手及撤离阶段始终持物。盒体实测平移约 164.2 mm，移盒过程中最接近中心约 2.7 mm，撤手后距中心 26.2 mm。76 步标准 EGL 复放得到相同物理末态，无机械臂触碰、双手碰撞或物理警告。原策略前 27 步有约 15.36 mm 的采样同手最大穿透，复放继承了该过程。HDF5 与标准报告在 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-center-and-lift-{reference.hdf5,egl.json}`。这组接续使用仿真状态选择动作。让左臂短程撤开并绕右末关节的实际轴调整腕姿后，另一段 **115 步**标准 EGL 回放把积木运至 `[0.5444, -0.0345, 0.1315] m`，终态仍有两个不同手指相向承力，较小的接触力为 7.69 N，右末关节限位余量 0.323 rad，机械臂和双手间碰撞为零。积木包络距完全跨入盒口仍差约 63.7 mm。复放与逐步试算见同目录 `blue-block-seed5-centered-transfer-{reference.hdf5,egl.json}` 和 `blue-block-seed5-joint7-reclamp-1-12mm.json`。 随后在上缘脱手前调整食指和闲置无名指，闭环积分中的最近包络由距盒口约 63.7 mm 降至 10.2 mm。接续向盒内送腕并松开食指、中指，蓝积木在真实重力和盒底碰撞下平躺并稳定。**223 步**标准 EGL 回放得到 `object_released=true`、`placed_in_centered_box=true`、`object_in_box=true`，机械臂、双手间碰撞和物理警告均为零。轨迹、报告及最终积分状态在同目录的 `blue-block-seed5-centered-placement-{reference.hdf5,egl.json,egl.npz}`。
 
 ### 包装整轮计分
 
-放入物件后，整轮判据要求在同一 2 ms 物理子步里，一只手接触箱体，另一只手接触正向闭合的盒盖或挂片，两处法向载荷均超过 0.05 N。终态还要求物件仍在盒内、盖板已合上。入盒与合盖继续单独记录。上文单手参考轨迹的整轮结果采用当时的终态判据。 [论文包装流程](https://arxiv.org/html/2403.07788v2#A1.SS6)
+包装整轮要求放下物件时，工作区中心 `[0.4, 0.0] m` 落在按实际朝向计算的纸盒内底投影内。论文规定先把盒子移到桌子中间，未给出距离阈值，本项目用实际内底尺寸定义该区域。放置后还要求在同一 2 ms 物理子步里，一只手接触箱体，另一只手接触正向闭合的盒盖或挂片，两处法向载荷均超过 0.05 N。最后物件必须仍在盒内、盖板已合上。独立字段继续记录入盒、合盖和双手承力。 [论文包装流程](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
-以相同 MuJoCo 和 EGL 入口复放四条动作。蓝积木的 1,977 步和红纸盒的 8,364 步双手参考均计为整轮成功。蓝积木的 1,237 步及绿罐的 1,322 步单手参考均入盒并合盖，双手闭盖字段为假。四次复放均无物理警告。报告在数据盘 `benchmarks/packaging-bimanual-score/`。上文 75 轮 SetXF 结果全部未入盒，因此使用新判据时完整成功数仍为 0。
+在加入移盒居中条件前，以相同 MuJoCo 和 EGL 入口复放四条动作。蓝积木的 1,977 步和红纸盒的 8,364 步双手参考均计为整轮成功。蓝积木的 1,237 步及绿罐的 1,322 步单手参考均入盒并合盖，双手闭盖字段为假。四次复放均无物理警告。报告在数据盘 `benchmarks/packaging-bimanual-score/`。上文 75 轮 SetXF 结果全部未入盒，因此使用新判据时完整成功数仍为 0。
 
-在绿罐实测入盒后，让右食指顶住箱体低处，左手带动盖板。盖板转到约 62.03° 后，右手向外斜上撤离，再让左手跨过盖板的闭合中点。这段撤离避免了早期试验在 136–144° 发生的机械臂接触。用标准 EGL 入口从默认初态复放 **2,076 步**，罐子仍在盒内，盒盖闭合，`bimanual_lid_closure` 和 `sim_success` 均为真。每 2 ms 的接触审计记录双手连续承力最长 0.384 s、累计 1.484 s，右食指峰值 3.58 N、左手对盖板峰值 8.43 N，右手未碰盖。没有机械臂、双手间或同手碰撞和物理警告。这段绿罐参考用默认外盒摆放，盒体仅平移约 0.47 mm。数据盘 `benchmarks/packaging-green-current/corrected-height/` 保存了 `green-can-bimanual-reference.hdf5`、标准报告 `green-can-bimanual-egl.json` 和逐物理步汇总 `green-can-bimanual-egl-contacts.json`。
+按加入居中条件前的计分，在绿罐实测入盒后，让右食指顶住箱体低处，左手带动盖板。盖板转到约 62.03° 后，右手向外斜上撤离，再让左手跨过盖板的闭合中点。这段撤离避免了早期试验在 136–144° 发生的机械臂接触。用标准 EGL 入口从默认初态复放 **2,076 步**，罐子仍在盒内，盒盖闭合，`bimanual_lid_closure` 和 `sim_success` 均为真。每 2 ms 的接触审计记录双手连续承力最长 0.384 s、累计 1.484 s，右食指峰值 3.58 N、左手对盖板峰值 8.43 N，右手未碰盖。没有机械臂、双手间或同手碰撞和物理警告。这段绿罐参考用默认外盒摆放，盒体仅平移约 0.47 mm。数据盘 `benchmarks/packaging-green-current/corrected-height/` 保存了 `green-can-bimanual-reference.hdf5`、标准报告 `green-can-bimanual-egl.json` 和逐物理步汇总 `green-can-bimanual-egl-contacts.json`。
 
 ```bash
 green=/data/dexcap-repro/benchmarks/packaging-green-current/corrected-height
 python -m simulation.rollout "$green/green-can-bimanual-reference.hdf5" \
   --task packaging --object green-can --output "$green/green-can-bimanual-replay.json"
 ```
+
+用现行判据再从初态复放三条双手合盖参考。8,364 步红纸盒在盒底投影覆盖工作区中心时放置，最终 `sim_success=true`。固定盒位的 1,977 步蓝积木和 2,076 步绿罐均通过入盒和双手合盖子项，`placed_in_centered_box=false`。数据盘 `benchmarks/packaging-center-placement-score/` 保存三个报告。
 
 ## Ball Collecting
 
@@ -951,7 +953,7 @@ python -m simulation.rollout data/derived/packaging-red-carton-supported-deposit
   --task packaging --object red-box --output runs/packaging-red-carton-supported-deposit-rollout.json
 ```
 
-**现行完整双臂红盒回放。** 从同一次默认摆放开始，左手先推移外盒，右手用包装中段的相向夹点拾起红盒并运到盒口。腕位翻转后，红盒在盒底以宽面稳定，上缘距盒底约 38 mm。右手撤高并停到安全位置，左手通过折舌使盖板越过竖直位置，再沿盖沿完成合盖和撤离。7,665 个动作的标准回放得到 `object_in_box=true`、`lid_closed=true` 和 `sim_success=true`。终态外盒平移 81.10 mm，距工作区中心最近时缩短 59.48 mm。撤手后盖角约 180.31°。机械臂碰撞、双手碰撞与物理警告均为 0。该回放覆盖红银包装的固定参考摆放。完整指标在数据盘 `benchmarks/runs/packaging-red-carton-complete-standard.json`，收尾接触及逐步盖角在同目录 `box-flat-carton-live-closure.json`。
+**红盒早期闭盖回放。** 从同一次默认摆放开始，左手先推移外盒，右手用包装中段的相向夹点拾起红盒并运到盒口。腕位翻转后，红盒在盒底以宽面稳定，上缘距盒底约 38 mm。右手撤高并停到安全位置，左手通过折舌使盖板越过竖直位置，再沿盖沿完成合盖和撤离。7,665 个动作的标准回放得到 `object_in_box=true`、`lid_closed=true` 和 `sim_success=true`。终态外盒平移 81.10 mm，距工作区中心最近时缩短 59.48 mm。撤手后盖角约 180.31°。机械臂碰撞、双手碰撞与物理警告均为 0。该回放覆盖红银包装的固定参考摆放。完整指标在数据盘 `benchmarks/runs/packaging-red-carton-complete-standard.json`，收尾接触及逐步盖角在同目录 `box-flat-carton-live-closure.json`。
 
 ```bash
 python -m simulation.rollout data/derived/packaging-red-carton-complete-mujoco-reference.hdf5 \

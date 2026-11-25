@@ -14,7 +14,7 @@ from simulation.packaging_objects import PACKAGING_OBJECTS, PACKAGING_UNSEEN_OBJ
 
 @unittest.skipIf(mujoco is None, "MuJoCo is not installed in this Python environment")
 class MujocoPackagingTest(unittest.TestCase):
-    def make_scene(self, object_name="red-box"):
+    def make_scene(self, object_name="red-box", *, box_xy=(0., 0.)):
         from simulation.mujoco_packaging import PackagingMetrics, add_packaging_scene
 
         spec = mujoco.MjSpec()
@@ -27,7 +27,7 @@ class MujocoPackagingTest(unittest.TestCase):
             size=[1, 1, 0.01],
             friction=[1, 0.01, 0.001],
         )
-        add_packaging_scene(spec, np.array([[0.0, 0.0], [0.45, 0.0]]), object_name)
+        add_packaging_scene(spec, np.array([box_xy, [0.45, 0.0]]), object_name)
         model = spec.compile()
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
@@ -198,10 +198,12 @@ class MujocoPackagingTest(unittest.TestCase):
             self.assertTrue(metrics.update(data)["object_grasped"])
 
     def test_full_score_requires_loaded_bimanual_closing_after_a_grasp_and_placement(self):
-        model, data, metrics = self.make_scene()
+        from simulation.mujoco_packaging import WORKSPACE_CENTER
+
+        model, data, metrics = self.make_scene(box_xy=WORKSPACE_CENTER)
         object_qpos = model.jnt_qposadr[model.joint("packaging_object_free").id]
         lid_joint = model.joint("packaging_lid_hinge")
-        data.qpos[object_qpos:object_qpos + 7] = [0, 0, 0.14, 1, 0, 0, 0]
+        data.qpos[object_qpos:object_qpos + 7] = [*WORKSPACE_CENTER, 0.14, 1, 0, 0, 0]
         for _ in range(1500):
             mujoco.mj_step(model, data)
         self.assertTrue(metrics.update(data)["object_in_box"])
@@ -247,7 +249,35 @@ class MujocoPackagingTest(unittest.TestCase):
 
         data.qpos[lid_joint.qposadr[0]] = np.pi
         mujoco.mj_forward(model, data)
-        self.assertTrue(metrics.update(data)["sim_success"])
+        report = metrics.update(data)
+        self.assertTrue(report["placed_in_centered_box"])
+        self.assertTrue(report["sim_success"])
+
+    def test_centering_after_placement_does_not_count_for_full_success(self):
+        from simulation.mujoco_packaging import WORKSPACE_CENTER
+
+        model, data, metrics = self.make_scene()
+        object_qpos = model.joint("packaging_object_free").qposadr[0]
+        box_qpos = model.joint("packaging_box_free").qposadr[0]
+        lid_qpos = model.joint("packaging_lid_hinge").qposadr[0]
+        data.qpos[object_qpos:object_qpos + 7] = [0, 0, 0.14, 1, 0, 0, 0]
+        for _ in range(1500):
+            mujoco.mj_step(model, data)
+        metrics.ever_grasped = True
+        self.assertTrue(metrics.update(data)["object_in_box"])
+        self.assertTrue(metrics.released_in_box)
+
+        for qpos in (object_qpos, box_qpos):
+            data.qpos[qpos:qpos + 2] += WORKSPACE_CENTER
+        data.qpos[lid_qpos] = np.pi
+        mujoco.mj_forward(model, data)
+        metrics.bimanual_lid_closure = True
+
+        report = metrics.update(data)
+        self.assertTrue(report["object_in_box"])
+        self.assertTrue(report["lid_closed"])
+        self.assertFalse(report["sim_success"])
+        self.assertFalse(report["placed_in_centered_box"])
 
     def test_metrics_use_settled_object_contact_and_physical_lid_angle(self):
         model, data, metrics = self.make_scene()
@@ -284,7 +314,8 @@ class MujocoPackagingTest(unittest.TestCase):
             {
                 "right_object_contacts", "left_lid_contacts", "left_box_contacts",
                 "box_displacement_m", "box_center_progress_m", "object_grasped",
-                "object_released", "object_in_box", "lid_closed", "bimanual_lid_closure", "sim_success",
+                "object_released", "object_in_box", "placed_in_centered_box",
+                "lid_closed", "bimanual_lid_closure", "sim_success",
             },
         )
 
