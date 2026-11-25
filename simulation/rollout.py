@@ -19,7 +19,7 @@ from simulation import (
     mujoco_wiping,
 )
 from simulation.mujoco_control import CONTROL_INTERVAL
-from simulation.mujoco_scene import MAX_CONTROL_CYCLES, MujocoScene, PHYSICS_STEP, rig_base_positions
+from simulation.mujoco_scene import MAX_CONTROL_CYCLES, MujocoScene, rig_base_positions
 
 
 PROPRIOCEPTION = ("robot0_eef_pos", "robot0_eef_quat", "robot0_eef_hand")
@@ -240,17 +240,19 @@ def rollout(args):
             }
         if export_path is not None:
             partial_path.replace(export_path)
-        return report
+        return report, float(scene.model.opt.timestep)
 
     results = []
     first_seed = args.first_seed or 1
     for seed in range(first_seed, first_seed + args.trials):
         if not randomized:
-            results.append(episode(int(replay_seed) if replay_seed is not None else seed, reference_xy))
+            report, physics_step = episode(int(replay_seed) if replay_seed is not None else seed, reference_xy)
+            results.append(report)
         else:
             positions = task.sample_object_xy(np.random.default_rng(seed))
             placements = dict(zip(position_keys, positions.tolist()))
-            results.append({"seed": seed, **placements, **episode(seed, positions)})
+            report, physics_step = episode(seed, positions)
+            results.append({"seed": seed, **placements, **report})
             label = object_name if packaging else args.task
             completed = seed - first_seed + 1
             print(f"{label}: completed trial {completed}/{args.trials} (seed {seed})",
@@ -265,7 +267,7 @@ def rollout(args):
         "engine": "mujoco",
         "engine_version": mujoco.__version__,
         "arm_base_positions_m": rig_base_positions(frames).tolist(),
-        "physics_step_s": PHYSICS_STEP,
+        "physics_step_s": physics_step,
         "control_interval_s": CONTROL_INTERVAL,
         "max_control_cycles": MAX_CONTROL_CYCLES,
     }

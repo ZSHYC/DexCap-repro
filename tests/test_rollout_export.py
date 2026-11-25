@@ -18,6 +18,7 @@ class ObservationExportTest(unittest.TestCase):
         second[0] = 0.0100000001
         raw_actions = np.stack((pose, second))
         scene = Mock()
+        scene.model.opt.timestep = 0.001
         scene.data = SimpleNamespace(time=0.0, warning=SimpleNamespace(number=np.zeros(1)))
         scene.control.tracking_error.return_value = (np.zeros(2), np.zeros(2))
         scene.same_hand_max_penetration_pair = None
@@ -59,6 +60,7 @@ class ObservationExportTest(unittest.TestCase):
                 "simulation.rollout.observe", side_effect=observation
             ):
                 report = rollout(args)
+            self.assertEqual(report["physics_step_s"], 0.001)
             self.assertEqual(report["source_actions"], 2)
             self.assertEqual(report["trials"][0]["executed_steps"], 3)
             self.assertEqual([call.kwargs["control_cycles"] for call in scene.step.call_args_list], [2, 1])
@@ -78,6 +80,7 @@ class ObservationExportTest(unittest.TestCase):
                 "simulation.rollout.observe", side_effect=observation
             ):
                 replay = rollout(args)
+            self.assertEqual(replay["physics_step_s"], 0.001)
             self.assertAlmostEqual(replay["simulation_time_s"], 0.15)
             self.assertEqual([call.kwargs["control_cycles"] for call in scene.step.call_args_list], [2, 1])
             np.testing.assert_array_equal([call.args[0] for call in scene.step.call_args_list], raw_actions)
