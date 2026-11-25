@@ -207,7 +207,14 @@ class MujocoWipingTest(unittest.TestCase):
         hits[1].frame *= -1
         self.assertFalse(metrics.update(sample)["sponge_grasped"])
         hits[1].geom = (model.geom("left_hand_1").id, -1)
-        self.assertTrue(metrics.update(sample)["sponge_grasped"])
+        result = metrics.update(sample)
+        self.assertTrue(result["sponge_grasped"])
+        self.assertTrue(result["sponge_held"])
+
+        sample.ncon += 1
+        released = metrics.update(sample)
+        self.assertTrue(released["sponge_grasped"])
+        self.assertFalse(released["sponge_held"])
 
     def test_wipes_are_measured_in_a_vertical_plate_frame(self):
         spec = base_spec()
@@ -240,6 +247,12 @@ class MujocoWipingTest(unittest.TestCase):
         self.assertEqual(held["wipe_passes"], 2)
         self.assertGreater(held["wipe_distance"], 0.12)
         self.assertTrue(held["sim_success"])
+
+        self.assertTrue(held["plate_held"])
+        self.assertTrue(held["sponge_held"])
+        unheld_again = metrics.update(data)
+        self.assertTrue(unheld_again["plate_grasped"])
+        self.assertFalse(unheld_again["plate_held"])
 
     def test_sampler_matches_paper_areas_and_keeps_objects_apart(self):
         rng = np.random.default_rng(4)

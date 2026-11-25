@@ -1503,3 +1503,7 @@ Packaging 采用同一个 20 Hz 导出入口保存当前场景逐步点云。重
 备茶续段在瓶盖保持右置时真实移开并释放瓶体，瓶子主要沿桌面 −Y 移动约 12.7 mm，落稳后手部载荷为零，托盘承重约 1.07 N。保留茶粒，原来设想的左手壶抓取路径仍被瓶颈挡住。数据盘 `benchmarks/tea-bottle-native/tea-park-bottle-corridor-*`。
 
 对第 614 号的 2 ms 接触做定位，右臂第 4 轴从起升后逐渐折到下限，随后右臂第 2 段几何碰到右手掌与手指，峰值载荷分别约 11.94 N 和 2.29 N。在原有靠近底座的补偿区域边缘，控制器现在按实际第 4 轴余量触发沿底座外侧的 35 mm 平滑腕位偏移。第 614 号起升仍达约 311 mm，机械臂接触从 59 周期降到零。冻结补偿后，八个新的同一区域初始摆放都达到 30 cm，机械臂零接触从 **5/8 提升到 8/8**。原有同手接触峰值不变，这批中最大约 0.108 mm。标准入口结果位于捡海绵数据目录 `left-workspace/elbow-guard-paired-summary.json`。
+
+Wiping 的标准输出增加 `plate_held` 和 `sponge_held`。两项报告当前采样的离桌条件和相向接触，与擦拭计分使用同一判断。`plate_grasped` 和 `sponge_grasped` 仍记录本回合是否曾夹持。新字段可区分进入盘面前哪一侧先失去持物。
+
+从共同初态用标准 EGL 复放双持前缀 3,135 步。最后 0.5 s 的 250 个物理子步，双手各有至少两个同时受力的接触几何，盘和海绵没有桌面支撑，标准输出两项当前持物均为真。复放无机械臂接触、双手间碰撞和数值警告，第 205 步前保留约 1.71 mm 同手接触。接近路线 D 在第 3,186 步海绵触桌，标准输出 `sponge_held=false`、`plate_held=true`。路线 E 的海绵实际载荷落在半径 133.57–134.00 mm 的盘外缘，最后盘先触桌，`plate_held=false`、`sponge_held=true`。未产生内盘接触。HDF5、标准 EGL 输出和接触记录位于 `benchmarks/wiping-coordinated-grasp/stroke-support/first-wipe-plate-torque-support-{fast-c,reapproach-d,reapproach-e}-independent-*`。

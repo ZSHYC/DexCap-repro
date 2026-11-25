@@ -36,6 +36,8 @@ SUMMARY_KEYS = (
     "wipe_passes",
     "plate_grasped",
     "sponge_grasped",
+    "plate_held",
+    "sponge_held",
     "sim_success",
 )
 
@@ -251,6 +253,8 @@ class WipingMetrics:
             "wipe_passes": self.wipe_passes,
             "plate_grasped": self.plate_grasped,
             "sponge_grasped": self.sponge_grasped,
+            "plate_held": bool(plate_held),
+            "sponge_held": bool(sponge_held),
             "sim_success": self.wipe_passes >= 2 and self.plate_grasped and self.sponge_grasped,
         }
 
