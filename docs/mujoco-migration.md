@@ -375,6 +375,10 @@ python -m simulation.rollout "$bricks/stacked-bricks-centered-complete-reference
 
 **狮子摆件完整居中回放。** 右食指和拇指夹持躯干，将物件越过已居中的盒沿，在空中旋腕把物件转到侧躺方向。按实测腕位重新对齐后松手，物件在盒底静置，竖向包络上界约 47.5 mm。独立 EGL 复放 **9,249 步**，通过抓起后释放、居中入盒和双手闭盖。双手连续承力 **1.330 s**，盖板约 **180.00°**。机械臂接触与双手间穿透均为零，最大同手采样穿透约 0.53 mm，无求解器警告。数据盘 `benchmarks/packaging-unseen-replay/lion/` 下的 `lion-centered-complete-reference.hdf5`、标准报告 `lion-centered-complete-egl.json` 和接触审计 `lion-centered-complete-egl-contacts.json` 保留实测记录。
 
+**长颈鹿摆件入盒。** 按实测已居中纸盒与摆放重新拟合右腕入场，使用原生腕位目标跨越合适的关节路径。食指和拇指相向夹持躯干，物件离桌抬升约 39.0 mm，随后搬入居中纸盒、松手并由箱底支撑。独立的分段控制验证 `object_released=true`、`object_in_box=true`、`placed_in_centered_box=true`，未出现机械臂、双手间、同手碰撞或求解器警告。落稳后箱坐标最高约 154.2 mm，仍妨碍盖板闭合。数据盘 `benchmarks/packaging-unseen-replay/giraffe/` 下的 `giraffe-centered-lift-4-1-0-1-0.*` 与 `giraffe-side-carry-4-1-0-1-0-3-0.*` 为已通过的分段。
+
+**胶带座接近与盒盖运动。** 由右手从桌面受支撑的状态推近胶带座，四条路线均有真实位移。最初一条约 132 mm 路线使纸盒移动，盖板自约 −0.15° 转至约 105°，再抓持时自由盖板已转到约 180°。随后的两指抓持、搬运和释放把胶带座留在盖板上，四个盖板触点合计约 1.18 N。将桌面接近终点留在盒壁外后，四条物理路线分别前移约 53–92 mm，均保持盖板打开、无盒壁接触。开盖状态的反侧再抓仍在末端腕位误差及单侧接触处失败。实测动作、状态及接触读数均在数据盘 `benchmarks/packaging-unseen-replay/tape-dispenser/`，包括 `dispenser-stage-near-box-0.*`、`dispenser-stage-near-box-4..7` 和 `dispenser-drop-stage-0-4-0-10-0-0-0-14-1-support.log`。
+
 **弹簧夹活动关节。** 复用原有外形和 120 g 总质量。销轴和一侧夹臂随自由物体主体运动，另一侧通过一个相对铰链连接。夹臂和夹嘴仍与桌面、手指和箱体发生碰撞。全部九块实体表面参与抓持和盒内包络判断，铰链运动也参与静置判据。最大开角 44° 参照同尺寸夹具的约 65 mm 开口选取，预紧、0.30 N·m/rad 弹簧刚度和 0.01 N·m·s/rad 阻尼为估计值。两手柄分别施加 5 N 相向载荷，实测最大开角约 **24.93°**，卸载后回到距零位约 **0.022°**，无物理警告。隔离物理试验见数据盘 `benchmarks/packaging-spring-clamp/measure-spring-clamp-handle-response.json`。 [同尺寸夹具参考](https://ronixtools.com/en/product/6-inch-spring-clamp/) · [MuJoCo 铰链与弹簧](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
 弹簧夹的 580 步独立标准 EGL 回放验证了右手张开下探、相向闭合和抬升。峰值质心抬升 **45.04 mm**，其中 4 个动作实际满足抓持，保持抓持时最高 **41.56 mm**。随后夹具脱手，机械臂、双手间、同手碰撞和求解器警告均为零。动作 `spring-clamp-approach-reference.hdf5` 和报告 `spring-clamp-approach-{egl,contact-audit}.json` 在上述数据目录。当前活动关节模型使用相同 SetXF 权重和种子 1–5 执行每轮 400 步，种子 5 曾抓起后脱手，完整入盒为 0/5。逐轮报告为 `spring-clamp-final-policy-seed-{1..5}.json`。
@@ -1114,6 +1118,8 @@ python -m simulation.rollout data/derived/packaging-red-carton-bimanual-closure-
 
 第一笔后让右腕沿实测盘法向外移约 1.6 mm，可将海绵和盘的载荷从 1.776 N 降至 0.694 N，连续保持双手夹持四个控制周期。用刚完成第一笔的实际世界位移反向，海绵实际只反向约 0.75 mm 后，反向载荷使右手中的盘滚转，盘下净空从约 58 mm 降到 29–36 mm。左腕跟踪误差小于 1.3 mm，第二笔仍未成立。记录见 `benchmarks/wiping-coordinated-grasp/stroke-support/left-return-{outboard-unload-second,early-world-reverse}.json`。
 
+当前生产模型已从原始初态独立 EGL 复放一条 3,259 步第一笔参考。计数为 **1**、有效距离 **70.62 mm**，当时双手各自真实夹持盘与海绵，峰值擦拭力 1.252 N。该路径的采样最大同手穿透约 **14.4 mm**，机械臂、双手间接触和求解器警告均为零。数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/left-return-first-counted-current-model.hdf5` 及同前缀 `-egl.json` 为标准入口的数据和证据。反向续作在早段第 14 个目标观察到左中指海绵接触力约从 1.63 N 降至 0，拇指仍约 5.27 N，是当前反向失持的具体位置。
+
 把右手入场时的盘沿抓点提早转动约 4°，右食指的盘局部抓点由约 `[47, -62] mm` 移到 `[39, -65] mm`。3,266 个目标的实际回放记录了 92.47 mm 的第一笔。后续先卸载约 0.8 mm 再开始回程，腕位反向目标累计到 8.5 mm 时仍保持双手持物，累计计分的有效擦拭距离增至 98.85 mm。反向目标到 9 mm 时左手海绵脱夹，右手仍持盘。第二笔尚未计分。实际联合接触和动作位于同目录的 `left-return-shifted-rim-pickup-4deg-early.*` 和 `left-return-shifted-rim-reverse.*`。
 
 将左食指触点加入第一笔的原生轨迹后，食指确实提供抗滚作用，实测峰值约 2.92 N、最大反向力矩约 0.073 N·m。回程约 7 mm 时左中指主斑块滑离，盘仍在右手中。食指原触点在掌坐标只漂移约 1.53 mm，补偿这段漂移和滚转未能恢复夹持，第二笔仍未计分。数据盘同目录 `left-return-shifted-index-tripod-native-f.*` 与 `left-return-shifted-index-follow-i.*` 保存实际动作和接触记录。
@@ -1292,3 +1298,5 @@ python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" 
 固定起点的 16 条轨迹已导出 6,384 帧。仍按种子 1–12 训练、13–16 验证，训练 30 轮后从已保存的检查点中按验证损失选第 20 轮，损失约 0.15069。种子 17–20 从同一固定腕位分别跑满 400 个闭环动作，每次实测 20.0 s，无机械臂接触、双手碰撞、手指越限或物理警告，四回合均未触球。数据、配置、训练日志、权重与测试输出在 `benchmarks/ball-simulation-policy/neutral/`。下一批训练数据按实际 50 ms 控制周期采集观测，保留原轨迹中的真实保持时间。
 
 按每个真实 50 ms 控制周期采集的数据已独立完成 16 条轨迹的抬球与落篮，训练种子 1–12 共 7,245 帧，验证种子 13–16 共 2,284 帧。验证损失最低的已保存检查点为第 30 轮，损失 0.11876。四个留出种子 17–20 各执行 1,000 个动作并推进 50 s，均无机械臂接触、双手碰撞、手指越限或物理警告，右手触球次数均为 0。直接以四条示范的真实观测输入该策略，起始点云中每帧可辨认的球面点在起步阶段最少为 436 个，前 54 步的右腕预测目标误差中位数为 97.0–104.0 mm。下一项有依据的诊断是动作预测与条件输入的对应，而非延长物理评估。数据、训练与测量文件位于 `benchmarks/ball-simulation-policy/at-20hz/`，离线诊断为 `pointnet-20hz-teacher-state-probe.json`。保持同一权重和输入，将 DDIM 推理步数由 10 增至 50，四条示范的早段右腕目标误差中位数仍在 87.7–125.2 mm，未获得一致改善。记录为 `pointnet-20hz-teacher-state-50steps.json`。
+
+同一收球数据上的时序对照保持三帧观测和 20 目标预测窗，将训练样本开端改为以真实过去帧对齐，并给冷启动样本补齐首帧。30 轮时未降低前 54 帧的离线右腕目标误差。延长原对齐到 90 轮后，四条示范的该误差中位数由约 97–104 mm 降至 37–57 mm。验证噪声损失从 0.11749 升至 0.17494。沿用 20 Hz 和固定初态，原诊断种子 17 与新种子 21–24 的五次闭环均执行完整 1,000 步、无机械臂或双手碰撞、无越限，触球仍为 0。对种子 17 的实际物理提取显示，参考第 7.15 s 首次触球，策略前 15 s 的最近指尖仍距球约 59.3 mm，右腕最低约 234 mm，参考最低约 125 mm。相关对照、闭环和指尖读数位于 `benchmarks/ball-simulation-policy/at-20hz/history-ablation/`。
