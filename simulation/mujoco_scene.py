@@ -145,7 +145,7 @@ class MujocoScene:
             self.same_hand_max_penetration_pair = tuple(self.model.geom(g).name for g in pair)
         return arm_contact, interhand_peak > 0
 
-    def step(self, targets, *, control_cycles=None):
+    def step(self, targets, *, control_cycles=None, on_cycle=None):
         count = MAX_CONTROL_CYCLES if control_cycles is None else control_cycles
         arm_contact = hand_collision = False
 
@@ -163,6 +163,8 @@ class MujocoScene:
             self.hand_collision_steps += int(hand_collision or hands_touch)
             arm_contact = hand_collision = False
             metrics = self.metrics.update(self.data)
+            if on_cycle is not None:
+                on_cycle(wrist_position_error, wrist_angle_error)
             if self.invalid_hand_motion:
                 metrics["sim_success"] = False
                 break

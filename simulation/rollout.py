@@ -60,6 +60,7 @@ def rollout(args):
     object_name = (args.object or mujoco_packaging.DEFAULT_OBJECT) if packaging else None
     demo_name = "demo_0"
     reference_xy, object_yaw = task.DEMO_OBJECT_XY, None
+    replay_seed = None
     if packaging and args.checkpoint is None and object_name in task.PACKAGING_OBJECTS:
         demo_name = task.object_reference(object_name)
         if not randomized:
@@ -67,10 +68,21 @@ def rollout(args):
     frames, initial, camera, actions = load_demo(args.dataset, demo_name)
 
     with h5py.File(args.dataset, "r") as source:
-        attributes = source[f"data/{demo_name}"].attrs
+        demo = source[f"data/{demo_name}"]
+        attributes = demo.attrs
         frame_quaternion = attributes["frame_0_eef_quat"]
         robot_frame = attributes.get("robot_frame", "dexcap")
         control_cycles = attributes.get("control_cycles_per_action") if args.checkpoint is None else None
+        if args.checkpoint is None and "replay" in demo:
+            replay = demo["replay"]
+            actions = replay["actions"][:]
+            control_cycles = replay["control_cycles"][:]
+            initial = replay.attrs["reset_action"]
+            robot_frame = "mujoco_world"
+            if not randomized:
+                reference_xy = attributes["object_xy"]
+                object_yaw = attributes.get("object_yaw")
+                replay_seed = attributes.get("source_seed")
     if robot_frame not in ("dexcap", "mujoco_world"):
         raise ValueError(f"Unknown robot frame: {robot_frame}")
     if control_cycles is not None:
@@ -97,11 +109,8 @@ def rollout(args):
     if export_path is not None:
         if policy is not None or args.trials != 1 or control_cycles is None:
             raise ValueError("Observation export requires one recorded episode with explicit control cycle counts")
-        source_actions = steps
         counts = control_cycles if control_cycles.ndim == 0 else control_cycles[:steps]
-        actions = np.repeat(actions[:steps], counts, axis=0)
-        steps = len(actions)
-        control_cycles = np.array(1)
+        export_ticks = steps * int(counts) if counts.ndim == 0 else int(counts.sum())
         partial_path = export_path.with_suffix(export_path.suffix + ".partial")
 
     def episode(seed, object_xy):
@@ -123,22 +132,40 @@ def rollout(args):
                     robot_frame="dexcap", control_cycles_per_action=1,
                     source_reference=str(args.dataset), source_task=args.task, object_xy=object_xy,
                 )
-                if randomized:
+                if randomized or replay_seed is not None:
                     recording.attrs["source_seed"] = seed
+                if object_yaw is not None:
+                    recording.attrs["object_yaw"] = object_yaw
                 recorded_obs = {}
                 for key, value in observation.items():
                     chunks = {"chunks": (1, *value.shape), "compression": "lzf"} if key == "pointcloud" else {}
                     recorded_obs[key] = recording.create_dataset(
-                        f"obs/{key}", shape=(steps, *value.shape), maxshape=(None, *value.shape),
+                        f"obs/{key}", shape=(export_ticks, *value.shape), maxshape=(None, *value.shape),
                         dtype=np.float32, **chunks,
                     )
                 recorded_actions = recording.create_dataset(
-                    "actions", shape=(steps, 46), maxshape=(None, 46), dtype=np.float32,
+                    "actions", shape=(export_ticks, 46), maxshape=(None, 46), dtype=np.float32,
                 )
             max_position_error = initial_error.copy()
             max_angle_error = initial_angle.copy()
             position_errors = []
             physics_warnings = {}
+            if recording is not None:
+                native_targets, native_counts = [], []
+
+                def record_cycle(position_error, angle_error):
+                    nonlocal observation, max_position_error, max_angle_error
+                    index = len(position_errors)
+                    for key, value in observation.items():
+                        recorded_obs[key][index] = value
+                    recorded_actions[index] = recorded_target
+                    position_errors.append(position_error)
+                    max_position_error = np.maximum(max_position_error, position_error)
+                    max_angle_error = np.maximum(max_angle_error, angle_error)
+                    if (index + 1 < export_ticks and not scene.invalid_hand_motion
+                            and not scene.data.warning.number.any()):
+                        observation = observe(scene, frames, rng)
+
             if policy is not None:
                 torch.manual_seed(seed)
                 policy.start_episode()
@@ -155,13 +182,16 @@ def rollout(args):
                 if control_cycles is not None:
                     cycles = int(control_cycles[i] if control_cycles.ndim else control_cycles)
                 if recording is not None:
-                    for key, value in observation.items():
-                        recorded_obs[key][i] = value
-                    recorded_actions[i] = frames.from_world(targets)
-                info, position_error, angle_error = scene.step(targets, control_cycles=cycles)
-                position_errors.append(position_error)
-                max_position_error = np.maximum(max_position_error, position_error)
-                max_angle_error = np.maximum(max_angle_error, angle_error)
+                    recorded_target = frames.from_world(targets)
+                    previous_ticks = len(position_errors)
+                    info, _, _ = scene.step(targets, control_cycles=cycles, on_cycle=record_cycle)
+                    native_targets.append(targets)
+                    native_counts.append(len(position_errors) - previous_ticks)
+                else:
+                    info, position_error, angle_error = scene.step(targets, control_cycles=cycles)
+                    position_errors.append(position_error)
+                    max_position_error = np.maximum(max_position_error, position_error)
+                    max_angle_error = np.maximum(max_angle_error, angle_error)
                 if scene.data.warning.number.any():
                     physics_warnings = {
                         mujoco.mjtWarning(index).name: int(count)
@@ -172,16 +202,18 @@ def rollout(args):
                     break
                 if scene.invalid_hand_motion:
                     break
-                if i + 1 < steps:
-                    if policy is not None:
-                        history.append(observe(scene, frames, rng))
-                    elif recording is not None:
-                        observation = observe(scene, frames, rng)
+                if i + 1 < steps and policy is not None:
+                    history.append(observe(scene, frames, rng))
             if recording is not None:
                 count = len(position_errors)
                 for series in (*recorded_obs.values(), recorded_actions):
                     series.resize(count, axis=0)
                 recording.attrs.update(num_samples=count, sim_success=info["sim_success"])
+                # Keep the original wrist interpolation boundaries for an exact native replay.
+                replay = recording.create_group("replay")
+                replay.attrs["reset_action"] = start
+                replay.create_dataset("actions", data=np.stack(native_targets))
+                replay.create_dataset("control_cycles", data=np.asarray(native_counts))
                 destination["data"].attrs["total"] = count
                 recording.create_dataset("states", data=np.repeat(camera.reshape(1, 16), count, axis=0))
                 rewards = recording.create_dataset("rewards", (count,), dtype=np.float32)
@@ -214,7 +246,7 @@ def rollout(args):
     first_seed = args.first_seed or 1
     for seed in range(first_seed, first_seed + args.trials):
         if not randomized:
-            results.append(episode(seed, reference_xy))
+            results.append(episode(int(replay_seed) if replay_seed is not None else seed, reference_xy))
         else:
             positions = task.sample_object_xy(np.random.default_rng(seed))
             placements = dict(zip(position_keys, positions.tolist()))
@@ -229,7 +261,7 @@ def rollout(args):
         "dataset": str(args.dataset),
         "demo": demo_name,
         "checkpoint": args.checkpoint,
-        "steps": steps,
+        "steps": export_ticks if export_path is not None else steps,
         "engine": "mujoco",
         "engine_version": mujoco.__version__,
         "arm_base_positions_m": rig_base_positions(frames).tolist(),
@@ -238,10 +270,10 @@ def rollout(args):
         "max_control_cycles": MAX_CONTROL_CYCLES,
     }
     if export_path is not None:
-        result.update(exported_observations=str(export_path), source_actions=source_actions)
+        result.update(exported_observations=str(export_path), source_actions=steps)
     if native_recording:
         result["robot_frame"] = robot_frame
-    if policy is not None:
+    if policy is not None or export_path is not None:
         result["control_cycles_per_action"] = 1
     elif control_cycles is not None:
         result["control_cycles_per_action"] = control_cycles.tolist()

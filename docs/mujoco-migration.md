@@ -1507,3 +1507,7 @@ Packaging 采用同一个 20 Hz 导出入口保存当前场景逐步点云。重
 Wiping 的标准输出增加 `plate_held` 和 `sponge_held`。两项报告当前采样的离桌条件和相向接触，与擦拭计分使用同一判断。`plate_grasped` 和 `sponge_grasped` 仍记录本回合是否曾夹持。新字段可区分进入盘面前哪一侧先失去持物。
 
 从共同初态用标准 EGL 复放双持前缀 3,135 步。最后 0.5 s 的 250 个物理子步，双手各有至少两个同时受力的接触几何，盘和海绵没有桌面支撑，标准输出两项当前持物均为真。复放无机械臂接触、双手间碰撞和数值警告，第 205 步前保留约 1.71 mm 同手接触。接近路线 D 在第 3,186 步海绵触桌，标准输出 `sponge_held=false`、`plate_held=true`。路线 E 的海绵实际载荷落在半径 133.57–134.00 mm 的盘外缘，最后盘先触桌，`plate_held=false`、`sponge_held=true`。未产生内盘接触。HDF5、标准 EGL 输出和接触记录位于 `benchmarks/wiping-coordinated-grasp/stroke-support/first-wipe-plate-torque-support-{fast-c,reapproach-d,reapproach-e}-independent-*`。
+
+20 Hz 导出现在沿原始控制周期推进，每个周期写入动作前点云和本体观测。原生目标精度、初态和持续周期另存于导出 HDF5 的 `replay` 组。标准回放读取这组数据和原始物体摆放，避免固定腕位过渡被重新触发。训练仍直接读取 20 Hz 的 `actions` 与 `obs`。
+
+蓝积木种子 5 的完整参考共有 1,586 个腕位目标、1,928 个实际控制周期。旧导出每周期重复重启腕位插值，本次实测未入盒。修正后，在当前完整模型上对常规回放、开启导出时的物理回放、读取导出 HDF5 再回放三者进行配对。居中入盒、双手合盖与正常结束的物理指标一致。这个全程对照为验证物理，复用精简点云。另从前 27 个原始目标实际渲染导出 193 帧 `10000 × 6` 点云，记录还原相同初始摆放和物理末态，robomimic 可读出三个点云观察和六个动作。文件在 `benchmarks/packaging-material-calibrated-setxf/observations-20hz/`。种子 5 是测试摆放。
