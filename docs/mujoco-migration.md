@@ -1443,3 +1443,7 @@ envs/train/bin/python "$ball/ball-layout-primitive-egl.py" 41 feedback07
 备茶远置瓶盖后实际执行了工具入场，工具在抓取前自然沉降。双垫有实际载荷，但最佳接触法向点积约 +0.51，镊子仍由外部支撑。尝试用单侧下压形成翘起支点时，拇指先被托盘唇挡住。详见 `benchmarks/tea-bottle-native/tea-far-cap-tool-native-*` 和 `tea-tool-lip-pivot-*`。
 
 打包长颈鹿用真实盒沿支点滚转，最小瞬时竖直包络约 77.85 mm。物体当时仍架在盒沿，顶部实际高 113.62 mm，比闭盖面高 37.12 mm，随后两个夹垫均失载。进一步侧推仍有部分物体越过盒口。数据盘 `benchmarks/packaging-unseen-replay/giraffe/giraffe-rim-reorient-*`。
+
+备茶改为单食指作支点，闲指收拢并转腕 60°。在完整模型中实测对工具最大施力约 2.93 N，镊子绕木托旋转约 20.99°，桥端升高 12.12 mm。桥底距托盘沿顶部约 9.33 mm，工具仍由木托和食指支撑，盖始终在右侧。记录在备茶数据目录 `tea-tool-single-pad-pivot-execute*`。
+
+剪纸的放宽姿态约束方案另做实际分段接续。中指保持严格在固定环内的最后实测状态是 step 141，拇指与活动环仍距约 86.10 mm，剪刀漂移约 0.058 mm。随后中指失去占位并停止，未产生拇指载荷。最后有效状态与原生目标见 `scissor-middle-region-active-result.npz`，可用于继续规划。
