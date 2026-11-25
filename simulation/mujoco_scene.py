@@ -124,28 +124,44 @@ class MujocoScene:
         if self.task_physics_step is not None and not self.invalid_hand_motion:
             self.task_physics_step(data)
 
+    def _record_robot_contacts(self, data):
+        if not data.ncon:
+            return False, False
+        geometries = data.contact.geom[:data.ncon]
+        valid = geometries >= 0
+        arm_contact = bool(self.arm_geoms[geometries[valid]].any())
+        valid_pairs = np.all(valid, axis=1)
+        rigid_pairs = geometries[valid_pairs]
+        sides = self.hand_sides[rigid_pairs]
+        side_pairs = sides[:, 0] * sides[:, 1]
+        penetration = -data.contact.dist[:data.ncon][valid_pairs]
+        interhand_peak = float(np.max(penetration[side_pairs < 0], initial=0))
+        self.hand_max_penetration_m = max(self.hand_max_penetration_m, interhand_peak)
+        same_hand = np.where(side_pairs > 0, penetration, 0.0)
+        peak = float(np.max(same_hand, initial=0))
+        if peak > self.same_hand_max_penetration_m:
+            self.same_hand_max_penetration_m = peak
+            pair = rigid_pairs[same_hand.argmax()]
+            self.same_hand_max_penetration_pair = tuple(self.model.geom(g).name for g in pair)
+        return arm_contact, interhand_peak > 0
+
     def step(self, targets, *, control_cycles=None):
         count = MAX_CONTROL_CYCLES if control_cycles is None else control_cycles
-        cycles = self.control.track(targets, count, physics_step=self.physics_step)
+        arm_contact = hand_collision = False
+
+        def sample_physics(data):
+            nonlocal arm_contact, hand_collision
+            self.physics_step(data)
+            arm_touch, hands_touch = self._record_robot_contacts(data)
+            arm_contact |= arm_touch
+            hand_collision |= hands_touch
+
+        cycles = self.control.track(targets, count, physics_step=sample_physics)
         for wrist_position_error, wrist_angle_error in cycles:
-            geometries = self.data.contact.geom[:self.data.ncon]
-            rigid_contacts = geometries[geometries >= 0]
-            self.arm_contact_steps += int(self.arm_geoms[rigid_contacts].any())
-            if self.data.ncon:
-                valid_pairs = np.all(geometries >= 0, axis=1)
-                rigid_pairs = geometries[valid_pairs]
-                sides = self.hand_sides[rigid_pairs]
-                side_pairs = sides[:, 0] * sides[:, 1]
-                distances = self.data.contact.dist[:self.data.ncon][valid_pairs]
-                penetration = float(np.max(-distances[side_pairs < 0], initial=0))
-                self.hand_collision_steps += int(penetration > 0)
-                self.hand_max_penetration_m = max(self.hand_max_penetration_m, penetration)
-                same_hand = np.where(side_pairs > 0, -distances, 0.0)
-                peak = float(np.max(same_hand, initial=0))
-                if peak > self.same_hand_max_penetration_m:
-                    self.same_hand_max_penetration_m = peak
-                    pair = rigid_pairs[same_hand.argmax()]
-                    self.same_hand_max_penetration_pair = tuple(self.model.geom(g).name for g in pair)
+            arm_touch, hands_touch = self._record_robot_contacts(self.data)
+            self.arm_contact_steps += int(arm_contact or arm_touch)
+            self.hand_collision_steps += int(hand_collision or hands_touch)
+            arm_contact = hand_collision = False
             metrics = self.metrics.update(self.data)
             if self.invalid_hand_motion:
                 metrics["sim_success"] = False

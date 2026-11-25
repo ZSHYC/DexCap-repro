@@ -35,7 +35,7 @@ class RigCalibrationTest(unittest.TestCase):
         pose = np.zeros(2)
         scene.control.track.return_value = iter([(pose, pose)] * 10)
         scene.step("reachable")
-        scene.control.track.assert_called_once_with("reachable", 10, physics_step=scene.metrics.physics_step)
+        self.assertEqual(scene.control.track.call_args.args, ("reachable", 10))
         scene.metrics.update.assert_called_once_with(scene.data)
 
         scene.metrics.update.reset_mock()
@@ -47,7 +47,7 @@ class RigCalibrationTest(unittest.TestCase):
         scene.control.track.reset_mock()
         scene.control.track.return_value = iter([(pose, pose)] * 2)
         scene.step("recorded", control_cycles=2)
-        scene.control.track.assert_called_once_with("recorded", 2, physics_step=scene.metrics.physics_step)
+        self.assertEqual(scene.control.track.call_args.args, ("recorded", 2))
         self.assertEqual(scene.metrics.update.call_count, 2)
 
         scene.data.contact.geom = np.array([[1, 2], [1, -1], [3, 1], [0, 2]])
@@ -66,6 +66,31 @@ class RigCalibrationTest(unittest.TestCase):
         scene.step("opposite hand separated", control_cycles=2)
         self.assertEqual(scene.hand_collision_steps, 2)
         self.assertAlmostEqual(scene.hand_max_penetration_m, .0038)
+
+        # The first cycle has contact during physics integration, but both
+        # contacts are already gone when the controller yields its observation.
+        scene.arm_contact_steps = scene.hand_collision_steps = 0
+        scene.data.contact.dist[:] = [-.006, -.12, -.06, -.01]
+        scene.data.ncon = 0
+
+        def track_transient_contacts(action, count, *, physics_step):
+            scene.data.ncon = 4
+            physics_step(scene.data)
+            physics_step(scene.data)
+            scene.data.ncon = 0
+            physics_step(scene.data)
+            yield pose, pose
+            physics_step(scene.data)
+            yield pose, pose
+
+        scene.control.track.side_effect = track_transient_contacts
+        scene.step("transient contacts", control_cycles=2)
+        self.assertEqual(scene.arm_contact_steps, 1)
+        self.assertEqual(scene.hand_collision_steps, 1)
+        self.assertAlmostEqual(scene.hand_max_penetration_m, .006)
+        self.assertAlmostEqual(scene.same_hand_max_penetration_m, .06)
+        self.assertEqual(scene.same_hand_max_penetration_pair, ("geom_3", "geom_1"))
+        scene.control.track.side_effect = None
 
         scene.metrics.update.reset_mock()
         scene.data.warning.number[0] = 1
@@ -86,7 +111,7 @@ class RigCalibrationTest(unittest.TestCase):
         scene.metrics.update.return_value = {"sim_success": True}
         scene.task_physics_step = Mock()
         scene.arm_geoms = np.zeros(0, dtype=bool)
-        scene.arm_contact_steps = 0
+        scene.arm_contact_steps = scene.hand_collision_steps = 0
         scene.hand_qpos = np.array([0])
         scene.hand_lower = np.array([-1.0])
         scene.hand_upper = np.array([1.0])
