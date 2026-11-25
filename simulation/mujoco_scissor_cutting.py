@@ -286,7 +286,7 @@ class ScissorCuttingMetrics:
         self.tray_geoms = self._geoms("cutting_tray_")
         self.fixed_handle = self._geoms("scissor_fixed_handle_")
         self.moving_handle = self._geoms("scissor_moving_handle_")
-        self.movable_geoms = self._geoms("scissor_") | self.paper_geoms
+        self.scissor_geoms = self._geoms("scissor_")
         self.support_geoms = self.tray_geoms | {
             geom for geom in range(model.ngeom)
             if model.geom(geom).name in ("table", "room_floor_surface")
@@ -350,14 +350,16 @@ class ScissorCuttingMetrics:
                 return True
         return False
 
-    def _held_for_cut(self, data):
+    def _hand_holds(self, data):
+        scissors_supported = paper_supported = False
         thumb_engaged = fixed_engaged = False
-        paper_normals = ([], [])
+        paper_loads = np.zeros((2, 3))
         force = np.zeros(6)
         for index, contact in enumerate(data.contact[:data.ncon]):
             pair = {contact.geom1, contact.geom2}
-            if pair & self.support_geoms and pair & self.movable_geoms:
-                return False
+            if pair & self.support_geoms:
+                scissors_supported |= bool(pair & self.scissor_geoms)
+                paper_supported |= bool(pair & self.paper_geoms)
             if pair & self.moving_handle and pair & self.left_thumb:
                 mujoco.mj_contactForce(self.model, data, index, force)
                 thumb_engaged |= force[0] > GRASP_CONTACT_FORCE_N
@@ -367,12 +369,19 @@ class ScissorCuttingMetrics:
             if pair & self.paper_geoms and (pads := pair & self.right_pads.keys()):
                 pad = next(iter(pads))
                 mujoco.mj_contactForce(self.model, data, index, force)
-                if force[0] > GRASP_CONTACT_FORCE_N:
-                    normal = contact.frame[:3] if contact.geom1 == pad else -contact.frame[:3]
-                    paper_normals[self.right_pads[pad]].append(normal.copy())
+                normal = contact.frame[:3] if contact.geom1 == pad else -contact.frame[:3]
+                paper_loads[int(self.right_pads[pad])] += force[0] * normal
+        scissors_held = not scissors_supported and thumb_engaged and fixed_engaged
+        index_load, thumb_load = np.linalg.norm(paper_loads, axis=1)
+        paper_held = (
+            not paper_supported and min(index_load, thumb_load) > GRASP_CONTACT_FORCE_N
+            and paper_loads[0] @ paper_loads[1] < -.25 * index_load * thumb_load
+        )
+        return scissors_held, paper_held
+
+    def _held_for_cut(self, data):
         return (
-            thumb_engaged and fixed_engaged
-            and any(a @ b < -.25 for a in paper_normals[0] for b in paper_normals[1])
+            all(self._hand_holds(data))
             and self._finger_in_opening(data, self.left_thumb, self.moving_opening)
             and self._finger_in_opening(data, self.left_index, self.fixed_opening)
             and self._finger_in_opening(data, self.left_middle, self.fixed_opening)
@@ -444,10 +453,13 @@ class ScissorCuttingMetrics:
                 data.eq_active[equality] = 0
 
     def update(self, data: mujoco.MjData) -> dict:
-        scissor_lift = float(data.xpos[self.scissor_body, 2] - self.initial_scissor_z)
-        paper_lift = float(np.mean(data.xpos[self.paper_bodies, 2]) - self.initial_paper_z)
-        self.max_scissor_lift = max(self.max_scissor_lift, scissor_lift)
-        self.max_paper_lift = max(self.max_paper_lift, paper_lift)
+        scissors_held, paper_held = self._hand_holds(data)
+        if scissors_held:
+            scissor_lift = float(data.xpos[self.scissor_body, 2] - self.initial_scissor_z)
+            self.max_scissor_lift = max(self.max_scissor_lift, scissor_lift)
+        if paper_held:
+            paper_lift = float(np.mean(data.xpos[self.paper_bodies, 2]) - self.initial_paper_z)
+            self.max_paper_lift = max(self.max_paper_lift, paper_lift)
         broken = [length for equality, length in self.bond_lengths.items()
                   if not data.eq_active[equality]]
         return {

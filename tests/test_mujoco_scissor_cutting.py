@@ -137,6 +137,19 @@ class MujocoScissorCuttingTest(unittest.TestCase):
         self.assertTrue(np.isfinite(data.qpos).all())
         self.assertTrue(np.isfinite(data.qvel).all())
 
+    def test_height_change_without_hand_support_does_not_count_as_a_lift(self):
+        model, data, metrics = self.make_scene()
+        free = model.joint("scissor_free").qposadr[0]
+        data.qpos[free + 2] = metrics.initial_scissor_z + 0.025
+        for body in metrics.paper_bodies:
+            joint = model.body_jntadr[body]
+            data.qpos[model.jnt_qposadr[joint] + 2] += 0.025
+        mujoco.mj_forward(model, data)
+
+        result = metrics.update(data)
+        self.assertFalse(result["scissors_lifted"])
+        self.assertFalse(result["paper_lifted"])
+
     def test_handle_collision_preserves_the_intended_oval_opening(self):
         from simulation.mujoco_scissor_cutting import (
             THUMB_OPENING_XY, TWO_FINGER_OPENING_XY, _add_handle,
