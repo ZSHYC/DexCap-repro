@@ -1537,3 +1537,17 @@ Wiping 的标准输出增加 `plate_held` 和 `sponge_held`。两项报告当前
 ### 剪纸的标准控制前缀
 
 右手先接触活动柄、将剪刀落稳在原托盘支点上，然后撤回。左食指从新的物理支撑姿态进入固定环。将该分段控制通过 Panda 正向运动学转为仓库原有的 20 Hz 腕位与手指目标，标准入口从共同初态回放共 458 步。几何诊断确认末 18 个周期左食指严格占孔，无机械臂接触、双手接触、同手穿透或求解器警告。另在真实状态下减轻食指锚点载荷、从侧面接近后，拇指仍触到活动环下缘，尚未同时进入两个环。文件位于数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/scissor-right-present-osc20-*`。
+
+### 收球的留出闭环与新示范
+
+PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,040 个控制周期，整轮通过 **0/4**。3001–3003 未抬球，3004 抬起并释放，但球没有进入篮底。使用同样摆放、同一相机与模型，启用腕位与 Panda 关节限位预演的视觉参考控制通过 **4/4**。两组都未记录到机械臂或双手间碰撞、手指越限或物理警告。配对评估位于 `benchmarks/ball-simulation-policy/at-20hz/pointnet-epoch1500-evaluation/paired-pointnet-1500-versus-retarget-summary.json`。
+
+另外从独立训练种子 9001–9012 采集已实际执行的 20 Hz 腕位和手指目标。参考控制成功且全程无机器人碰撞的 **11/12** 条轨迹才写入原生 HDF5，9004 没有抬球，被剔除。原生轨迹、采集脚本和完整判据记录位于 `benchmarks/ball-simulation-policy/at-20hz/retarget-augmentation/`，逐条用标准入口导出点云并复核落篮。
+
+### 左手海绵示范的训练对照
+
+7023、7040、7123、7180 四条左手轨迹用真实 EGL 点云独立复放并通过，在现有 12 条右手训练轨迹后合并成 **16 条训练、4 条原验证轨迹，共 16,917 帧**。保留验证与独立闭环摆放。沿用 PointNet 网络、批量和训练配置，使用扩展训练集的归一化从头训练至第 1,500 轮，再与原 PointNet 配对。数据、配置和权重位于 `benchmarks/sponge-seeded-reference/common-start/controller-rate/left-augmentation-20hz/`。
+
+### 绿梨和卷尺完整点云
+
+使用当前包装模型和标准 20 Hz 导出入口，绿梨写入 8,982 帧，卷尺写入 9,023 帧；每帧 `10000 × 6`，每步 46 维动作。两份导出报告均为入盒并合盖的完整成功，机械臂和双手间接触步数均为零，同手穿透峰值约 0.56 mm，无关节越限或物理警告。文件位于 `benchmarks/packaging-controller-rate/{green-pear,tape-measure}.{hdf5,json}`。
