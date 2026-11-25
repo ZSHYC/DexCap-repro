@@ -385,6 +385,8 @@ python -m simulation.rollout "$bricks/stacked-bricks-centered-complete-reference
 
 接着先沿盒坐标 y 偏移避开左手，右手通过盒盖摆扫范围后解除撑盖。左手再移开 25 mm 并升高 25 mm，给右手让出回到盒中心的走廊。追加 601 个实际目标后右手在盒内松开。四处盒底接触合计约 1.177 N。独立标准 EGL 从初态执行 8,210 步，复现抓取后释放、在居中纸盒内落稳，生成 `10000 × 6` 点云，无臂及双手间接触、越限或物理警告。盒盖仍开且物体包络最高约 144.9 mm，需要在盒内侧放后才能尝试合盖。见 `dispenser-braced-in-box-reference.hdf5`、`dispenser-braced-in-box-egl{,-lid}.json` 和 `braced-lift-lateral-route2.{npz,json}`。
 
+盒内重抓在盒底承托时把厚轴的平面方向误差从约 68.5° 降至 4.53°。反向翻转时实测第七关节到达上限，腕位跟踪偏差约 28 mm，随后物体短暂失去盒底承托。以实际关节态求替代分支，能覆盖 0–12° 倾斜的分支起点需改变约 0.224 rad。保持实测腕位让原 OSC 回中，三周期内第七关节仅回退约 1.2 mrad，已有一侧指垫失载。见同目录 `dispenser-in-box-flat-route6.json`、`dispenser-flat-elbow-diagnostic.json` 和 `dispenser-flat-elbow-nullspace.json`。下一次使用壳体高处实体推倒，绕开原双指闭链的腕位限制。
+
 **弹簧夹活动关节。** 复用原有外形和 120 g 总质量。销轴和一侧夹臂随自由物体主体运动，另一侧通过一个相对铰链连接。夹臂和夹嘴仍与桌面、手指和箱体发生碰撞。全部九块实体表面参与抓持和盒内包络判断，铰链运动也参与静置判据。最大开角 44° 参照同尺寸夹具的约 65 mm 开口选取，预紧、0.30 N·m/rad 弹簧刚度和 0.01 N·m·s/rad 阻尼为估计值。两手柄分别施加 5 N 相向载荷，实测最大开角约 **24.93°**，卸载后回到距零位约 **0.022°**，无物理警告。隔离物理试验见数据盘 `benchmarks/packaging-spring-clamp/measure-spring-clamp-handle-response.json`。 [同尺寸夹具参考](https://ronixtools.com/en/product/6-inch-spring-clamp/) · [MuJoCo 铰链与弹簧](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
 弹簧夹的 580 步独立标准 EGL 回放验证了右手张开下探、相向闭合和抬升。峰值质心抬升 **45.04 mm**，其中 4 个动作实际满足抓持，保持抓持时最高 **41.56 mm**。随后夹具脱手，机械臂、双手间、同手碰撞和求解器警告均为零。动作 `spring-clamp-approach-reference.hdf5` 和报告 `spring-clamp-approach-{egl,contact-audit}.json` 在上述数据目录。当前活动关节模型使用相同 SetXF 权重和种子 1–5 执行每轮 400 步，种子 5 曾抓起后脱手，完整入盒为 0/5。逐轮报告为 `spring-clamp-final-policy-seed-{1..5}.json`。
@@ -1320,3 +1322,17 @@ python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" 
 同一检查点在两个新种子 21、22 的 650 步闭环没有触球，最小指尖间隙分别为 10.7、55.7 mm。另用同样的三帧 BC Transformer 对照 RGB-D 定位，输入由已有 XYZRGB 观测提取的篮筐和球初始位置、可见球的实时位置及可见性，加上原双手本体状态。训练与闭环都用相同提取代码，策略未读取模拟器的物体状态。16 条训练及验证轨迹的首帧定位误差最大约 2.91 mm（篮）、0.031 mm（球），9,529 帧中 8,774 帧获得球的拟合。第 45 轮在种子 17、21 各跑 650 步，分别采样到 211、374 个接触。两轮都只沿桌面移动了球，未抬起或落篮。文件为同目录 `ball_camera_geometry.py`、`bc-camera-geometry.json` 和 `bc-camera-geometry-epoch45-rollout-{17,21}.json`。
 
 用训练种子 1–12 的低位接近动作估计右腕相对球的平面偏移约 `[11.42, -19.55] mm`。只在右腕接近时利用当前 RGB-D 球位置纠正平面目标，保留策略的指令形状。种子 17、21 各 550 步，指尖到球的最小间隙分别由不纠偏时的几何接触变为 1.33、0.81 mm，球保持原摆放，未触球。末态腕位约 132.0、129.6 mm，高于种子 17 物理参考的首次触球腕位约 125.1 mm。对照输出为 `bc-camera-aligned-{rollout,approach}-{17,21}.json`。
+
+### 额外收球摆放与腕位恢复
+
+种子 21–24 从固定机器人初态独立执行 399 步标准 EGL 参考，四回合均抬球、释放并在实际篮底静置，机械臂、双手、同手碰撞计数及物理警告为零。种子 23 原两段搬运在 Panda 关节限位处到达不了篮心，保持同一真实三指夹持，用绕世界 x 轴 24° 的逐步转腕将球移动到腕前，随后达到篮心。参考在数据盘 `benchmarks/ball-simulation-policy/neutral-ball-seed-{21..24}.hdf5`，报告在 `at-20hz/extra-layout-reference/`。这些新布局用于对照评估，没有加入训练。
+
+在相同 RGB-D 平面纠正基础上，下探时用训练示范的低位目标 124.37 mm 继续同一策略的手指动作。种子 17、21 的球最高分别上升约 26.60、27.16 mm。前 15 s 中分别有 84、83 个采样同时满足离桌且真实相向承力，三个接触几何为食指末节、中指和拇指末节。两组均未达到 30 mm 任务阈值，也未入篮。控制脚本与采样在 `history-ablation/trace-relocated-wrist-low-policy.py` 和 `bc-camera-aligned-low-{approach,grip,rollout}-*.json`。
+
+同一模型的独立训练对照另采集了六次实际腕位偏移后的恢复段，来自既有训练种子 1–6。先以完整机械臂执行偏移，再记录纠正目标、当前 RGB-D 几何和本体状态，扰动目标不作为监督。六段最终均通过物理落篮，腕位初始误差范围约 20.8–313.5 mm，进入接近通道时误差约 0.16–21.75 mm。记录的 1,350 帧只加入训练，目标验证集保留原种子 13–16。配置、合并数据和生成记录位于 `history-ablation/bc-camera-recovery.json`、`ball-20hz-camera-with-recovery.hdf5` 和 `recovery/`。
+
+在实测无桌面承托后，加入 36 个周期的短程上提目标，手指动作仍由同一权重预测。两个 650 步回合分别实际升高 46.43、45.85 mm 并通过抬球判据，均未入篮，无机械臂或双手间碰撞、手指越限或物理警告。文件为同目录 `bc-camera-aligned-lift-{approach,rollout}-{17,21}.json`。
+
+在恢复数据上用原 BC 配置训练 45 轮，完全关闭腕位辅助后，种子 17、21 的 650 步闭环分别采样 596 次和 0 次触球，均无抬球和落篮。直接干净动作扩散对照的第 60 轮在验证种子 13、16 的接触阶段，右腕目标误差中位数分别为 11.4、12.9 mm。对照文件为 `bc-camera-recovery-epoch45-rollout-{17,21}.json`、`diffusion-camera-recovery-epoch60-wrists.json`。
+
+从上述短程上提结束时的真实三指抓持继续，以实际抓持相对位姿、机械臂关节范围和篮网几何求搬运路径。保持当时策略输出的有限力手形，实际越过篮沿后用训练示范的张手目标释放。种子 17 保持腕朝向，种子 21 绕世界 x 轴逐步转腕 24°。两个 560 步回合均完成抬球、释放与物理篮底静置。保存实际执行的 20 Hz 命令后，从同一初态用标准 EGL 入口独立复放，均推进 28.0 s，产生 `10000 × 6` 点云，触球采样数与原回合一致，均无臂、双手间、同手碰撞、越限或物理警告。这里验证的是用学习策略产生抓持手形并辅助腕位和搬运的执行。工件为同目录 `bc-camera-assisted-transfer-{rollout,replay}-{17,21}.json`、`bc-camera-assisted-transfer-reference-{17,21}.hdf5` 及搬运的轨迹规划记录。
