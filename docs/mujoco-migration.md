@@ -7,6 +7,20 @@
 用 Menagerie 的 Franka Panda 机械臂和本项目已有的 LEAP 关节定义构建完整机器人。仿真中的实际腕位和 32 个手指关节值转回发布数据的坐标及数值格式，沿用 46 维动作和三帧点云观测。用腕位目标驱动机械臂，在物理子步内执行力矩或受限力控制。手指通过关节目标和有限驱动力运动。任务物体通过碰撞、摩擦和重力移动。基座位置、法兰到掌座的变换以及物体材料参数需要对照公开标定和原始示范验证。
 
 
+### 导出 20 Hz 训练观测
+
+六个任务的 `simulation.rollout` 共用 `--export-observations`。输入为提供 `control_cycles_per_action` 的原生或 DexCap 坐标参考。逐目标展开明确的控制周期数，再按策略闭环使用的方式，每个目标实际执行一个 50 ms 周期。每周期执行前采集真实 EGL XYZRGB、双腕与手指状态，并记录当期 46 维目标。输出沿用训练 HDF5 的 `obs`、`actions`、`states`、`rewards` 和 `dones`，保留初始腕位目标及参考摆放。终点奖励来自实际仿真结果，导出报告记录碰撞与物理警告。原分组回放仍由默认入口执行；`--steps` 如果提供，计入原参考动作数。
+
+```bash
+ball=/data/dexcap-repro/benchmarks/ball-simulation-policy
+envs/train/bin/python -m simulation.rollout "$ball/neutral-ball-seed-17.hdf5" \
+  --task ball-collecting --first-seed 17 \
+  --export-observations "$ball/at-20hz/ball-retarget-cli/export-full-seed17.hdf5" \
+  --output "$ball/at-20hz/ball-retarget-cli/export-full-seed17.json"
+```
+
+在完整收球示范上，399 个原参考目标展开为 624 个实际控制周期，推进 31.20 s，记录 `624 × 10000 × 6` 点云。在正常入口重新读回该 HDF5，从相同初态再次完成落篮，无机器人碰撞或物理警告。训练加载器从同一 HDF5 完成了三个优化步的接入验证。胶带座的短片段也通过该入口写入真实场景点云。上述输出和日志在数据盘 `benchmarks/ball-simulation-policy/at-20hz/ball-retarget-cli/`。
+
 ### 碰撞统计的物理采样
 
 每个 50 ms 控制周期记录其中任意 2 ms 子步出现的机械臂或双手间接触，单个周期最多计一次。同手、双手间的最大穿透也跨全部子步取峰值。任务判据沿用原控制周期采样。旧版本只读取每个控制周期末端的接触，旧报告中的碰撞计数和峰值对应当时的采样。

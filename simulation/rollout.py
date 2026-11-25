@@ -1,5 +1,6 @@
 import argparse
 from collections import deque
+from contextlib import ExitStack
 import json
 from pathlib import Path
 import sys
@@ -37,7 +38,9 @@ def load_demo(dataset, name="demo_0"):
     with h5py.File(dataset, "r") as source:
         demo = source[f"data/{name}"]
         frames = ActionFrames(demo.attrs["frame_0_eef_quat"])
-        initial = np.concatenate([demo[f"obs/{key}"][0] for key in PROPRIOCEPTION])
+        initial = demo.attrs.get("reset_action")
+        if initial is None:
+            initial = np.concatenate([demo[f"obs/{key}"][0] for key in PROPRIOCEPTION])
         camera = demo["states"][0].reshape(4, 4)
         return frames, initial, camera, demo["actions"][:]
 
@@ -50,6 +53,7 @@ def observe(scene, frames, rng):
 
 
 def rollout(args):
+    export_path = getattr(args, "export_observations", None)
     packaging = args.task == "packaging"
     randomized = args.trials > 1 or args.first_seed is not None
     task, position_keys = TASKS[args.task]
@@ -64,6 +68,7 @@ def rollout(args):
 
     with h5py.File(args.dataset, "r") as source:
         attributes = source[f"data/{demo_name}"].attrs
+        frame_quaternion = attributes["frame_0_eef_quat"]
         robot_frame = attributes.get("robot_frame", "dexcap")
         control_cycles = attributes.get("control_cycles_per_action") if args.checkpoint is None else None
     if robot_frame not in ("dexcap", "mujoco_world"):
@@ -89,16 +94,47 @@ def rollout(args):
     native_recording = robot_frame == "mujoco_world"
     start = initial if native_recording else frames.to_world(initial)
     steps = min(len(actions), args.steps or len(actions)) if policy is None else args.steps or 400
+    if export_path is not None:
+        if policy is not None or args.trials != 1 or control_cycles is None:
+            raise ValueError("Observation export requires one recorded episode with explicit control cycle counts")
+        source_actions = steps
+        counts = control_cycles if control_cycles.ndim == 0 else control_cycles[:steps]
+        actions = np.repeat(actions[:steps], counts, axis=0)
+        steps = len(actions)
+        control_cycles = np.array(1)
+        partial_path = export_path.with_suffix(export_path.suffix + ".partial")
 
     def episode(seed, object_xy):
         rng = np.random.default_rng(seed)
         scene = MujocoScene(
             args.assets, frames, camera, args.task, object_xy, object_name, object_yaw=object_yaw,
         )
-        try:
+        with ExitStack() as cleanup:
+            cleanup.callback(scene.close)
             scene.reset(start)
             initial_error, initial_angle = scene.control.tracking_error(start)
             observation = observe(scene, frames, rng)
+            recording = None
+            if export_path is not None:
+                destination = cleanup.enter_context(h5py.File(partial_path, "w"))
+                recording = destination.create_group(f"data/{demo_name}")
+                recording.attrs.update(
+                    frame_0_eef_quat=frame_quaternion, reset_action=frames.from_world(start),
+                    robot_frame="dexcap", control_cycles_per_action=1,
+                    source_reference=str(args.dataset), source_task=args.task, object_xy=object_xy,
+                )
+                if randomized:
+                    recording.attrs["source_seed"] = seed
+                recorded_obs = {}
+                for key, value in observation.items():
+                    chunks = {"chunks": (1, *value.shape), "compression": "lzf"} if key == "pointcloud" else {}
+                    recorded_obs[key] = recording.create_dataset(
+                        f"obs/{key}", shape=(steps, *value.shape), maxshape=(None, *value.shape),
+                        dtype=np.float32, **chunks,
+                    )
+                recorded_actions = recording.create_dataset(
+                    "actions", shape=(steps, 46), maxshape=(None, 46), dtype=np.float32,
+                )
             max_position_error = initial_error.copy()
             max_angle_error = initial_angle.copy()
             position_errors = []
@@ -118,6 +154,10 @@ def rollout(args):
                 cycles = 1 if policy is not None else None
                 if control_cycles is not None:
                     cycles = int(control_cycles[i] if control_cycles.ndim else control_cycles)
+                if recording is not None:
+                    for key, value in observation.items():
+                        recorded_obs[key][i] = value
+                    recorded_actions[i] = frames.from_world(targets)
                 info, position_error, angle_error = scene.step(targets, control_cycles=cycles)
                 position_errors.append(position_error)
                 max_position_error = np.maximum(max_position_error, position_error)
@@ -132,9 +172,23 @@ def rollout(args):
                     break
                 if scene.invalid_hand_motion:
                     break
-                if policy is not None and i + 1 < steps:
-                    history.append(observe(scene, frames, rng))
-            return {
+                if i + 1 < steps:
+                    if policy is not None:
+                        history.append(observe(scene, frames, rng))
+                    elif recording is not None:
+                        observation = observe(scene, frames, rng)
+            if recording is not None:
+                count = len(position_errors)
+                for series in (*recorded_obs.values(), recorded_actions):
+                    series.resize(count, axis=0)
+                recording.attrs.update(num_samples=count, sim_success=info["sim_success"])
+                destination["data"].attrs["total"] = count
+                recording.create_dataset("states", data=np.repeat(camera.reshape(1, 16), count, axis=0))
+                rewards = recording.create_dataset("rewards", (count,), dtype=np.float32)
+                dones = recording.create_dataset("dones", (count,), dtype=np.uint8)
+                rewards[-1] = int(info["sim_success"])
+                dones[-1] = 1
+            report = {
                 "pointcloud_shape": list(observation["pointcloud"].shape),
                 "initial_wrist_error_m": initial_error.tolist(),
                 "median_wrist_error_m": np.median(position_errors, axis=0).tolist(),
@@ -152,8 +206,9 @@ def rollout(args):
                 "simulation_time_s": float(scene.data.time),
                 **info,
             }
-        finally:
-            scene.close()
+        if export_path is not None:
+            partial_path.replace(export_path)
+        return report
 
     results = []
     first_seed = args.first_seed or 1
@@ -182,6 +237,8 @@ def rollout(args):
         "control_interval_s": CONTROL_INTERVAL,
         "max_control_cycles": MAX_CONTROL_CYCLES,
     }
+    if export_path is not None:
+        result.update(exported_observations=str(export_path), source_actions=source_actions)
     if native_recording:
         result["robot_frame"] = robot_frame
     if policy is not None:
@@ -221,6 +278,8 @@ def main():
     parser.add_argument("--trials", type=int, default=1, help="Sample placements for policy evaluation")
     parser.add_argument("--first-seed", type=int, help="Start policy trials or replay one recorded layout at this seed")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--export-observations", type=Path, metavar="HDF5",
+                        help="Replay explicit controller ticks at 20 Hz and save live XYZRGB and robot state")
     args = parser.parse_args()
     if args.steps is not None and args.steps < 1:
         parser.error("--steps must be positive")
@@ -232,6 +291,15 @@ def main():
         parser.error("Multiple trials require a policy checkpoint")
     if args.object is not None and args.task != "packaging":
         parser.error("--object applies to Packaging")
+    if args.export_observations is not None:
+        if args.checkpoint is not None or args.trials != 1:
+            parser.error("--export-observations requires one recorded episode")
+        if args.export_observations.resolve() == args.dataset.resolve():
+            parser.error("The observation export must use a different file from the reference")
+        if args.output is not None and args.output.resolve() in (
+            args.dataset.resolve(), args.export_observations.resolve(),
+        ):
+            parser.error("The JSON report must use a different file from the HDF5 files")
     result = json.dumps(rollout(args), indent=2)
     if args.output is not None:
         args.output.write_text(result + "\n")
