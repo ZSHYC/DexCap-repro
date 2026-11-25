@@ -327,6 +327,14 @@ python -m simulation.rollout "$green/green-can-bimanual-reference.hdf5" \
 
 用现行判据再从初态复放三条双手合盖参考。8,364 步红纸盒在盒底投影覆盖工作区中心时放置，最终 `sim_success=true`。固定盒位的 1,977 步蓝积木和 2,076 步绿罐均通过入盒和双手合盖子项，`placed_in_centered_box=false`。数据盘 `benchmarks/packaging-center-placement-score/` 保存三个报告。
 
+**种子 5 蓝积木完整回放。** 从上述 223 步居中入盒状态接续，把红盒的双手合盖动作变换到当前实测箱体坐标。右食指先稳住箱壁，左手拉动折舌；盖板到约 62.62° 时撤开右手，左手继续完成合盖。**1,586 步**标准 EGL 回放从种子 5 初态复现整轮成功，机械臂和双手间碰撞为零，无物理警告。逐 2 ms 审计在盖板沿闭合方向运动时记录 721 个双手承力子步，连续最长 601 个，即 1.202 s；右手箱壁与左手盖板法向载荷峰值分别约 2.59 N、6.60 N。前 27 步采自 SetXF，其余为仿真辅助选择的执行器目标。记录保留了前 27 步约 15.36 mm 的最大同手穿透。报告与接触审计为下方数据目录的 `blue-block-seed5-centered-complete-egl{,-contacts}.json`。
+
+```bash
+ref=/data/dexcap-repro/benchmarks/packaging-material-calibrated-setxf
+python -m simulation.rollout "$ref/blue-block-seed5-centered-complete-reference.hdf5" \
+  --task packaging --object blue-block --first-seed 5 --output "$ref/blue-block-seed5-centered-complete-replay.json"
+```
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
