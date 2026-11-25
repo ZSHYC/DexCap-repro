@@ -1548,6 +1548,19 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 
 7023、7040、7123、7180 四条左手轨迹用真实 EGL 点云独立复放并通过，在现有 12 条右手训练轨迹后合并成 **16 条训练、4 条原验证轨迹，共 16,917 帧**。保留验证与独立闭环摆放。沿用 PointNet 网络、批量和训练配置，使用扩展训练集的归一化从头训练至第 1,500 轮，再与原 PointNet 配对。数据、配置和权重位于 `benchmarks/sponge-seeded-reference/common-start/controller-rate/left-augmentation-20hz/`。
 
-### 绿梨和卷尺完整点云
+### 绿梨、卷尺和绿罐完整点云
 
-使用当前包装模型和标准 20 Hz 导出入口，绿梨写入 8,982 帧，卷尺写入 9,023 帧；每帧 `10000 × 6`，每步 46 维动作。两份导出报告均为入盒并合盖的完整成功，机械臂和双手间接触步数均为零，同手穿透峰值约 0.56 mm，无关节越限或物理警告。文件位于 `benchmarks/packaging-controller-rate/{green-pear,tape-measure}.{hdf5,json}`。
+使用当前包装模型和标准 20 Hz 导出入口，绿梨写入 8,982 帧，卷尺写入 9,023 帧。每帧 `10000 × 6`，每步 46 维动作。两份导出报告均为入盒并合盖的完整成功，机械臂和双手间接触步数均为零，同手穿透峰值约 0.56 mm，无关节越限或物理警告。文件位于 `benchmarks/packaging-controller-rate/{green-pear,tape-measure}.{hdf5,json}`。
+
+绿罐完整居中参考写入 9,182 帧 `10000 × 6` 点云和 46 维动作。标准入口从该导出 HDF5 再次重放 9,182 个周期，通过居中入盒和双手合盖，无机械臂或双手间碰撞、关节越限及物理警告。文件及报告为 `benchmarks/packaging-controller-rate/green-can-centered{.hdf5,.json,-readback.json}`。
+
+### 备茶接收壶清障
+
+备茶改用左手从外侧接触接收壶，实测壶在托盘上保留约 8.51 mm 横移，倾角约 0.034°，瓶盖留在右侧。镊子先稳定靠在木托上。随后由右手使镊子桥上升约 2.26 mm，转过 8.43°，木托仍支撑工具。当前高位食指和中指夹取路径已清除壶嘴阻挡，但两指闭合时出现相互碰撞，尚未取得镊子。分段位于 `benchmarks/tea-bottle-native/tea-pot-outward-{clear,pivot,index-middle-high-entry-v2}.*`。
+
+
+### 擦盘抬高续段
+
+从第 3,259 个目标的已验证单笔前缀接续，两腕同时抬高并保持海绵与盘内接触。标准 EGL 从共同初态复放全部 3,275 个目标，盘和海绵在终点均被持住，盘未触桌，内盘接触力 1.875 N。累计擦拭路径从约 71.84 mm 增至 86.83 mm，**仍只完成一笔**。全段无机械臂或双手间碰撞、关节越限及物理警告。前缀最大同手穿透约 1.71 mm。
+
+下一周期的真实物理试验记录到右拇指和左食指之间约 0.29 mm 穿透，盘和海绵仍在手中。证据位于 `benchmarks/wiping-coordinated-grasp/stroke-support/wiping-inplane-lift-both-clean-prefix-{reference.hdf5,standard.json}` 和同目录 `wiping-inplane-next-contact.json`。
