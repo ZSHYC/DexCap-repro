@@ -1615,3 +1615,11 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 ### 备茶支撑槽的场景偏差
 
 对照公开视频，现模型的槽宽 95 mm，约是镊子宽臂跨度的 2.23 倍。当前初始姿态的桥端和宽臂分别仅高出导轨 0.5、0.8 mm，而公开视频可见桥端越过浅槽、指腹在外露木臂上建立夹持。公开材料缺少可靠的侧视标尺，校准报告区分了当前模型的精确尺寸和视频支持的定性几何关系。证据在数据盘 `runs/mujoco/tea-fidelity-cradle-audit.json`。 [DexCap 公开视频](https://dex-cap.github.io/#results-after-finetuning---tea-preparing)
+
+### 剪刀支撑姿态的影像核对
+
+按官方视频帧的可见参考尺度估算，固定环约 `76±12 × 37±8 mm`，活动环约 `35±7 × 34±7 mm`。现模型的 `80×40 / 40×37 mm` 均在估计范围内。视频中的两柄投影夹角约 54–68°，现模型自由静置后约 19.05°。孔底相对托盘沿的高度，视频条件估计为固定环 23–43 mm、活动环 14–33 mm，模型实测为 6.41、5.63 mm。尺度和投影误差较大，尚不能把视频夹角视作实测铰链角。原尺寸的三指端点拟合中存在 15–24 mm 台面干涉，优先验证由实际托盘产生的抬高与张开支撑，保留完整手和指环。测量在数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/fidelity-audit-official/`。 [DexCap 公开视频](https://dex-cap.github.io/#results-after-finetuning---scissor-cutting)
+
+### 黄布的较小物理步长试验
+
+已排除几种不能维持实测折布高度或接触会失稳的 2 ms 薄壳原型。保持 20 Hz 动作层不变，在原型中单独比较 1 ms 与 0.5 ms 的物理积分。三个 10 层候选都通过初始 0.1 s 的接触冲击检查，后续仍需验证 4 s 静置形状和折边受力。候选和过程输出在 `benchmarks/packaging-yellow-cloth-complete/step-*/`。
