@@ -275,7 +275,7 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 ### 校正模型的 Packaging SetXF 闭环评估
 
-在 MuJoCo 3.6.0 的完整双臂场景执行现有 SetXF 权重 `model_epoch_3000.pth`，使用公开 Packaging HDF5、真实 EGL 点云输入和相同的五组种子摆放。六个训练物件 30 轮，九个未见物件 45 轮，每轮实际执行 400 个策略步。
+在 MuJoCo 3.6.0 的完整双臂场景执行现有 SetXF 权重 `model_epoch_3000.pth`，使用公开 Packaging HDF5、真实 EGL 点云输入和相同的五组种子摆放。六个训练物件 30 轮，九个未见物件 45 轮，每轮实际执行 400 个策略步。这批结果采用后续纸板显色校准前的材质。
 
 | 物件组 | 右手接触物件 | 抓起后失去抓持 | 入盒 | 合盖 | 完整成功 |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -290,6 +290,8 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 仿真 RGB-D 按作者数据处理在拼入 LEAP 手部点之前，去除超过 1 m 的场景深度。EGL 回归场景把约 1.15 m 远的盒面排除，近处几何仍正常投影。在上述 39 组配对输入中，裁剪前后的腕位预测相同。逐样本对照位于数据盘 `benchmarks/packaging-paired-depth-ablation.json`。
 
 另对五个物件的 45 个录制时点，按实际渲染几何分区测量。逐组计算仿真点到录制点的最近邻距离，再取各组中位数的中位数，得到手部约 4.2 mm、纸盒盒盖 11.3 mm、盒身 18.4 mm、目标物 13.2 mm。45 个时点中有 19 个在最终点云里留有桌面点。盒身点每帧中位数约 2,755。红盒原始深度的六帧在固定盒心坐标处拟合到约 −41 至 −31 mm 的桌高，在物件处约 −29 至 −19 mm。盒边点云差异还受视角和录制中物件运动影响，单帧测量不足以确定一个公共桌高偏移。区域结果、原始深度拟合分别见 `benchmarks/packaging-paired-surface-regions.json`、`benchmarks/packaging-source-table-planes.json`。
+
+在三份示范的同一组 39 个输入上，用 24 mm 内的近邻仅替换仿真点的 RGB，右腕和左腕误差中位数从 21.07、15.13 mm 降至 6.16、5.76 mm。该替换仅用于定位输入差异。生产渲染根据红盒原始 RGB-D 中同一视角的真实盒底和展开盒盖校准纸板材质。盒底逐通道绝对误差中位数从 `[0.035, 0.118, 0.204]` 降至 `[0.035, 0.027, 0.024]`，颜色范围为 0–1。采用此材质直接渲染，39 组输入的腕位误差中位数为右 9.65 mm、左 10.44 mm。对照在数据盘 `benchmarks/packaging-paired-{color-ablation,material-test}.json`，原始图像比对在 `benchmarks/packaging-current-noncylinder-policy/raw-material-{comparison,current-source}.log`。
 
 ## Ball Collecting
 
@@ -1043,6 +1045,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 将更高一组抬升目标用于同一抓持，瓶身最高离初始支撑位置约 **162 mm**，两指仍承力；倾斜后拇指卸载，入壶 0 粒。从抬升段保存的另一积分态，实际收起左中指，同时保留左拇指与食指对瓶的夹持。选中路线连续至少 0.576 s 实测两指有载、第三指和托盘无载荷，末态两指约承力 1.67 和 1.35 N。该状态用于给右手腾出受力空间，记录见 `tea-staged-lift-tip-clear-162-+0.json` 和 `tea-staged-left-middle-clear-2.{json,npz}`。
 
+在抬升茶瓶时提前把右手移到预抓位，收起左中指后由右食指实际接触瓶侧。双手共同承力且瓶身未获托盘承托的最长连续段为 **0.726 s**。一个保存点的右食指载荷约 1.25 N，绕世界 y 轴朝倾倒方向的实测力矩约 +0.0231 N·m，左拇指和食指约承力 1.63、1.16 N。该点还测到右食指与左中指轻触。后续同步转腕时右手曾失载，跟随路线则遇到双食指靠近，入壶仍为 0 粒。接续态和结果见 `tea-staged-bilateral-right-ahead-load-0-.37{,-best}.*`、`tea-staged-lift-tip-bilateral-live-follow-*.json`。
+
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
 从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
@@ -1066,6 +1070,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 右食指从镊子桥的外露端沿实测间隙方向推压，镊子桥首次与托盘 x 正向边沿接触并承力。边沿承力超过 0.02 N 持续 0.384 s，末态约 0.032 N，同时木托仍承力约 0.302 N。随后推动自由木托，其实际横移约 0.93 mm 后镊子脱离盘沿，重量仍由木托承担。实测记录和接续积分态在 `benchmarks/tea-tool-source-model/scaledTrough/source-tool-right-tool-to-rim-tip-summary.md`。
 
 另用 3,138 个动作从原始场景复放，左无名指、中指和拇指在盘与海绵双持的端点分别承力约 1.64、3.92 和 3.65 N。指间网格间距约 10.85 mm。下一周期无名指卸载，固定左腕与指形或暂停 40 个周期均没有恢复支撑。这次验证覆盖接触盘面前的阶段，第二笔未完成。端点和复放结果见 数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-ring-inner-stable-prefix.npz` 和 `left-return-ring-inner-stable-prefix-verification.json`。
+
+擦盘另试无名指先远离、再从海绵下方接近。真实执行中盘和海绵连续双持 80 周期，无物理警告。海绵相对手的变形和位移使无名指一直在上侧，结束时离目标下表面约 19.2 mm，继续接近时原夹持滑脱。该路线没有新增计分。可复放的 3,196 个动作和结果见 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-ring-under-stable-route-prefix.npz` 和 `left-return-ring-under-free-run-f.json`。
 
 ### 捡海绵随机摆放的物理基线
 

@@ -30,7 +30,8 @@ LID_TAB_HALF_XY = (0.145, 0.035)
 LID_CLOSED_TOLERANCE = np.deg2rad(6)
 DEFAULT_OBJECT = "red-box"
 RED_BOX_YAW = np.deg2rad(61.5)
-CARDBOARD = (0.62, 0.42, 0.22, 1.0)
+# Calibrated against the box floor and open lid in the source RGB-D frame.
+CARDBOARD = (0.62, 0.54, 0.43, 1.0)
 RED_BOX_TOP_COLOR = (0.93, 0.20, 0.06, 1.0)
 WORKSPACE_CENTER = np.array([0.4, 0.0])
 CLOTH_OBJECT = "yellow-cloth"
