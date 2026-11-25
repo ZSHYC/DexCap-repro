@@ -379,6 +379,10 @@ python -m simulation.rollout "$bricks/stacked-bricks-centered-complete-reference
 
 **胶带座接近与盒盖运动。** 由右手从桌面受支撑的状态推近胶带座，四条路线均有真实位移。最初一条约 132 mm 路线使纸盒移动，盖板自约 −0.15° 转至约 105°，再抓持时自由盖板已转到约 180°。随后的两指抓持、搬运和释放把胶带座留在盖板上，四个盖板触点合计约 1.18 N。将桌面接近终点留在盒壁外后，四条物理路线分别前移约 53–92 mm，均保持盖板打开、无盒壁接触。开盖状态的反侧再抓仍在末端腕位误差及单侧接触处失败。实测动作、状态及接触读数均在数据盘 `benchmarks/packaging-unseen-replay/tape-dispenser/`，包括 `dispenser-stage-near-box-0.*`、`dispenser-stage-near-box-4..7` 和 `dispenser-drop-stage-0-4-0-10-0-0-0-14-1-support.log`。 短侧重抓另得到四组两指承力约 2.4–3.3 N 的状态，指垫接触法向点积为 0.64–0.89，桌面仍承力约 16.6–19.7 N。该路线把胶带座压在桌上，未形成离桌夹持。见同目录 `dispenser-short-bridge-lift-4-4-1-10-*.json`。
 
+用左手无名指的实际接触保持盖板后，原模式 1 的右手推近、松开和撤离完成 955 个 50 ms 控制周期，盖角维持在约 −2.13 至 −0.15°，胶带座末态约为 `[0.469, -0.093] m`。撤离段在右手对盖板施加约 4.40 N 时，左手对向承力约 1.75 N，盖角仍约 −0.86°。该回放未出现机械臂、双手间接触或物理警告，起始动作已有约 2.89 mm 同手穿透。证据为同目录 `left-lid-brace-case-0-mode-1.{npz,json}` 和 `left-lid-brace-case-0-right-contact-open.{npz,json}`，尚未完成重抓、入盒与合盖。 从场景初态拼接前 6,151 步移盒动作和这段撑盖动作，独立 EGL 回放执行 7,106 步，复现相同末态角度、位置和整段撑盖角度范围，生成 `10000 × 6` 点云。标准 HDF5 与结果见 `dispenser-braced-open-reference.hdf5` 和 `dispenser-braced-open-egl{,-lid}.json`。
+
+撑盖后续用以前验证的右手抓型，按实测物体起点修正抓取位置。追加 503 个实际目标后，食指和拇指持续相向抓持 28 个控制周期，约 2.43、2.37 N，桌面不再承力。物体离桌约 59 mm，盒盖终值 −0.36°。独立标准 EGL 从初态执行 7,609 步，`object_grasped=true`，复现胶带座末态高度约 56.5 mm、盖角 −0.36°，无机械臂、双手间接触、越限或求解器警告。前缀已有约 2.89 mm 同手穿透。第一次继续过盒口时右无名指与左拇指相碰，因此仍待验证搬运和放置。工作盘同目录下的 `dispenser-braced-lift-reference.hdf5`、`dispenser-braced-lift-egl{,-lid}.json`、`braced-lift-stage0-case0.{npz,json}` 保存了结果。
+
 **弹簧夹活动关节。** 复用原有外形和 120 g 总质量。销轴和一侧夹臂随自由物体主体运动，另一侧通过一个相对铰链连接。夹臂和夹嘴仍与桌面、手指和箱体发生碰撞。全部九块实体表面参与抓持和盒内包络判断，铰链运动也参与静置判据。最大开角 44° 参照同尺寸夹具的约 65 mm 开口选取，预紧、0.30 N·m/rad 弹簧刚度和 0.01 N·m·s/rad 阻尼为估计值。两手柄分别施加 5 N 相向载荷，实测最大开角约 **24.93°**，卸载后回到距零位约 **0.022°**，无物理警告。隔离物理试验见数据盘 `benchmarks/packaging-spring-clamp/measure-spring-clamp-handle-response.json`。 [同尺寸夹具参考](https://ronixtools.com/en/product/6-inch-spring-clamp/) · [MuJoCo 铰链与弹簧](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
 弹簧夹的 580 步独立标准 EGL 回放验证了右手张开下探、相向闭合和抬升。峰值质心抬升 **45.04 mm**，其中 4 个动作实际满足抓持，保持抓持时最高 **41.56 mm**。随后夹具脱手，机械臂、双手间、同手碰撞和求解器警告均为零。动作 `spring-clamp-approach-reference.hdf5` 和报告 `spring-clamp-approach-{egl,contact-audit}.json` 在上述数据目录。当前活动关节模型使用相同 SetXF 权重和种子 1–5 执行每轮 400 步，种子 5 曾抓起后脱手，完整入盒为 0/5。逐轮报告为 `spring-clamp-final-policy-seed-{1..5}.json`。
@@ -1304,3 +1308,11 @@ python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" 
 同一收球数据上的时序对照保持三帧观测和 20 目标预测窗，将训练样本开端改为以真实过去帧对齐，并给冷启动样本补齐首帧。30 轮时未降低前 54 帧的离线右腕目标误差。延长原对齐到 90 轮后，四条示范的该误差中位数由约 97–104 mm 降至 37–57 mm。验证噪声损失从 0.11749 升至 0.17494。沿用 20 Hz 和固定初态，原诊断种子 17 与新种子 21–24 的五次闭环均执行完整 1,000 步、无机械臂或双手碰撞、无越限，触球仍为 0。对种子 17 的实际物理提取显示，参考第 7.15 s 首次触球，策略前 15 s 的最近指尖仍距球约 59.3 mm，右腕最低约 234 mm，参考最低约 125 mm。相关对照、闭环和指尖读数位于 `benchmarks/ball-simulation-policy/at-20hz/history-ablation/`。
 
 在相同的 9,529 帧训练及验证数据上，用现有 SetXF 编码器训练 90 轮。相同四条示范的前 54 步右腕误差中位数为 30.1–53.5 mm。固定初态的种子 17、21 经标准 EGL 策略入口各完成 400 步，两次均未触球、抬球或落篮，无手指越限及物理警告。报告为同目录 `setxf-epoch90-chunk10.json` 和 `setxf-epoch90-rollout-{17,21}.json`。
+
+用种子 17 对照相同初态的真实腕位。参考在 7.15 s 首次触球，腕位最低约 124.9 mm。SetXF 前 11.5 s 的实际腕位最低约 280.0 mm，最近的手部碰撞面距球约 111.9 mm。以同一示范的真实观测直接推理，把预计接触阶段的坐标转换分开计算，SetXF 的平移分量中位误差约 62.5 mm，由腕向变化和安装偏移引入的分量约 2.1 mm。PointNet 同一段分别为 50.8、1.6 mm。实际指尖距离和分阶段误差见同目录 `setxf-epoch90-approach.json` 及 `{pointnet,setxf}-epoch90-error-source.json`。
+
+同一数据使用现有 BC Transformer 直接回归动作。第 30 轮用种子 17 示范观测预测时，初段、接近、接触和抓取段的右腕误差中位数分别为 7.7、10.7、12.0、12.1 mm。用该权重从固定初态跑种子 17、21，各 650 步均未触球。种子 17 的腕位最终停在约 `[0.462, -0.219, 0.316] m`，同场参考触球时为约 `[0.575, -0.209, 0.125] m`。该试验位于同目录 `bc-transformer-epoch30-{error-source,rollout-17,rollout-21,approach-17,approach-21}.json`。
+
+在相同 PointNet 网络和数据上另做直接预测干净动作的扩散对照，加入噪声的方法、输入和控制周期均保持一致。第 30 轮在种子 17 的闭环中于 4.35 s 触球，650 步累计 248 个采样接触，腕位最低约 124.7 mm。球沿桌面移动约 102 mm，未抬起。首触时腕部相对球的 x 偏移约 38.7 mm，参考首触约 11.5 mm。在该策略闭环的前 11.5 s 采样中，右食指仅一个采样承力超过 0.02 N。虽有 54 个相向接触采样，全部仍有桌面载荷；参考到其第 210 个目标共测得 81 个无桌面载荷的相向接触采样。诊断与训练源位于同目录 `diffusion-clean-action-epoch30-{rollout-17,approach-17,grip-17}.json`、`teacher-grip-17.json` 及 `clean-action-source/`。
+
+同一检查点在两个新种子 21、22 的 650 步闭环没有触球，最小指尖间隙分别为 10.7、55.7 mm。另用同样的三帧 BC Transformer 对照 RGB-D 定位，输入由已有 XYZRGB 观测提取的篮筐和球初始位置、可见球的实时位置及可见性，加上原双手本体状态。训练与闭环都用相同提取代码，策略未读取模拟器的物体状态。16 条训练及验证轨迹的首帧定位误差最大约 2.91 mm（篮）、0.031 mm（球），9,529 帧中 8,774 帧获得球的拟合。第 45 轮在种子 17、21 各跑 650 步，分别采样到 211、374 个接触。两轮都只沿桌面移动了球，未抬起或落篮。文件为同目录 `ball_camera_geometry.py`、`bc-camera-geometry.json` 和 `bc-camera-geometry-epoch45-rollout-{17,21}.json`。
