@@ -48,6 +48,31 @@ class MuJoCoCameraTest(unittest.TestCase):
         self.assertLess(abs(np.median(points[:, 1])), 2e-3)
         self.assertTrue(np.any(points[:, 3:] > 0))
 
+    def test_capture_crops_the_simulated_support_plane_without_erasing_objects(self):
+        camera_to_world = np.diag([1.0, -1.0, -1.0, 1.0])
+        camera_to_world[:3, 3] = [0., 0., 0.62]
+        spec = self._spec(camera_to_world)
+        tilt = np.deg2rad(7) / 2
+        spec.worldbody.add_geom(
+            name="table", type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=[0., 0., -.012], size=[.36, .24, .012],
+            quat=[np.cos(tilt), np.sin(tilt), 0., 0.], rgba=[.8, .1, .1, 1.],
+        )
+        spec.worldbody.add_geom(
+            name="object", type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=[0., 0., .045], size=[.11, .085, .04], rgba=[.1, .8, .1, 1.],
+        )
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        camera = DexCapCamera(model, np.eye(4), world_from_mocap=camera_to_world)
+        self.addCleanup(camera.close)
+
+        points = camera.capture(data, np.random.default_rng(2))
+
+        self.assertEqual(points.shape, (10_000, 6))
+        self.assertTrue(np.all(points[:, 4] > points[:, 3]))
+
     def test_capture_replaces_hand_and_discards_arm_pixels(self):
         # This catches rendering robot pixels instead of the training-time LEAP atlas.
         spec = self._spec()

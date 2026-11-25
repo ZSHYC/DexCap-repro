@@ -1642,6 +1642,8 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 
 按仿真桌面的真实高度与录制区域的留白重新裁剪后，10,000 点采样中通过同一黄色阈值的点从 926 降为 276，中位高度只从 38.03 降为 37.46 mm。按原始分割深度面匹配稀疏点，新的几何 P05 从 19.61 降至 8.63 mm，说明低处像素进入了采样，但同一策略输入的布面密度也下降了。该对照保存在 `benchmarks/packaging-yellow-cloth-complete/camera-plane-alignment/`。
 
+仿真相机现使用本场景桌面的真实位姿为裁剪基准，先保留台面上方 1 mm 的点，前景不足时沿用录制流程的裁剪余量。发布数据的处理入口和坐标不变。相同 81 步 EGL 导出的末帧中，经深度分割几何匹配的布面 P05/P50/P95 从 19.63/37.81/46.82 mm 变为 **7.59/30.41/46.81 mm**，裸桌面匹配点从 49 降至 0。收球视觉参考在相同种子仍为 19/20，捡海绵配对 4/4 均通过，两组无机械臂或双手碰撞及物理警告。旧裁剪结果对应 `3e9fb7a`，新标准导出和配对试验位于数据盘 `benchmarks/packaging-yellow-cloth-complete/{production-foreground-plane-replay,camera-foreground-plane}/`。
+
 ### 剪纸的展露高度与抓持计分
 
 官方视频上部纸面条带约为前壁高度的 2.31 倍。按 105 mm 壁高、底端落在槽内估算，候选为约 345 × 49 mm，投影存在不确定性。该尺寸在旧黏结力学下先弯曲并翻落。使用实体 6 mm 槽底、可切黏结网格、较高弯曲刚度和 0.25 ms 子步后，完整双臂 EGL 回放 101 步。纸条稳定露出约 237 mm，448 条黏结保持完整，由槽底和侧沿承重，无数值警告。剪刀初始支点仍会移动到托盘另一处，完整取剪、持纸与实际剪断仍待验证，候选场景未替换默认布局。数据在 `runs/mujoco/scissors-paper-gravity-diagnosis/full-source-grid20x12/`。 [MuJoCo 黏结约束](https://mujoco.readthedocs.io/en/stable/XMLreference.html#equality-weld)
@@ -1652,7 +1654,9 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 
 ### 当前木托版本的备茶退丝
 
-从默认满瓶、闭盖重跑 50 ms 受力反馈控制，执行 2,297 周期，约 114.85 s。末态 1.995159 圈、螺纹已解除，全程无机械臂接触、双手间接触或物理警告。右放瓶盖、工具辅助和饮用容器进茶尚未在这条连续回放中完成。日志、末态、动作 HDF5 和独立标准回放目录为 `runs/mujoco/tea-source-shallow-trough/committed-adaptive-uncap/`。
+从默认满瓶、闭盖重跑 50 ms 受力反馈控制，执行 2,297 周期，约 114.85 s。末态 1.995159 圈、螺纹已解除，全程无机械臂接触、双手间接触或物理警告。独立 EGL 正常入口复放同样 2,297 步和 1.995159 圈，成功脱扣，无机器人碰撞或求解器警告。日志、末态、动作 HDF5 和标准回放目录为 `runs/mujoco/tea-source-shallow-trough/committed-adaptive-uncap/`。
+
+从上述脱扣态以真实关节执行器接续，取盖从瓶颈脱离，瓶盖搬运期间仍双指承力。朝托盘内侧搬运的候选在目标区上方滑脱，随后用 64 个 50 ms 周期等待自然落稳。最后 59 个周期保持 `cap_on_right=true`，末态世界坐标约 [0.3772, −0.0753, 0.0080] m，无机械臂接触、双手间接触、同手穿透或物理警告。受控落放、镊子辅助和倒茶仍需验证。分段保存态和报告位于数据盘 `runs/mujoco/tea-source-shallow-trough/committed-adaptive-uncap/extract-and-park/south-transfer-setdown/`。
 
 ### 捡海绵示范观测诊断
 

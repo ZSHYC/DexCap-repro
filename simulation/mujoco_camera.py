@@ -2,7 +2,7 @@ import mujoco
 import numpy as np
 import trimesh
 
-from DexCap.STEP2_build_dataset.pointcloud_crop import table_point_mask
+from DexCap.STEP2_build_dataset.pointcloud_crop import _TABLE_GAPS
 from simulation.frames import WORLD_FROM_MOCAP, HAND_MESH_OFFSETS, LEAP_TO_HAND
 
 
@@ -13,6 +13,7 @@ CAMERA_NAME = "dexcap_camera"
 POINTS = 10_000
 HAND_POINTS = 80_000
 MAX_DEPTH_M = 1.0  # DexCap discards raw depth above 1000 mm before adding hand points.
+FOREGROUND_ABOVE_TABLE_M = 0.001
 
 
 def _camera_pose(mocap_from_camera, world_from_mocap):
@@ -101,6 +102,7 @@ class DexCapCamera:
         self.world_from_mocap = np.asarray(world_from_mocap, dtype=float)
         self.mocap_from_world = np.linalg.inv(self.world_from_mocap)
         self.camera_id = model.camera(CAMERA_NAME).id
+        self.table_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "table")
         self.renderer = mujoco.Renderer(
             model, height=int(IMAGE_SIZE[1]), width=int(IMAGE_SIZE[0])
         )
@@ -173,6 +175,21 @@ class DexCapCamera:
         world = np.concatenate(clouds)
         return world @ self.mocap_from_world[:3, :3].T + self.mocap_from_world[:3, 3]
 
+    def _foreground_indices(self, data, xyz):
+        if self.table_id >= 0:
+            normal = data.geom_xmat[self.table_id].reshape(3, 3)[:, 2]
+            top = data.geom_xpos[self.table_id] + normal * self.model.geom_size[self.table_id, 2]
+            rotation = self.world_from_mocap[:3, :3]
+            origin = self.world_from_mocap[:3, 3]
+            heights = xyz @ (normal @ rotation) + (origin - top) @ normal
+            # Keep the recorded crop's relaxation when the view has few foreground points.
+            for gap in _TABLE_GAPS:
+                threshold = FOREGROUND_ABOVE_TABLE_M - (gap - _TABLE_GAPS[0])
+                visible = np.flatnonzero(heights >= threshold)
+                if len(visible) > POINTS:
+                    return visible
+        return np.arange(len(xyz))
+
     def capture(self, data, rng):
         """Capture the current scene as 10,000 XYZRGB points in mocap coordinates."""
         rgb_image, depth, segmentation = self._render(data)
@@ -196,7 +213,7 @@ class DexCapCamera:
             colors = np.concatenate((colors, np.zeros_like(hands)))
         if not len(xyz):
             raise RuntimeError("Camera has no surfaces in the DexCap observation")
-        visible = np.flatnonzero(table_point_mask(xyz, POINTS))
+        visible = self._foreground_indices(data, xyz)
         indices = rng.choice(visible, POINTS, replace=len(visible) < POINTS)
         return np.concatenate((xyz[indices], colors[indices]), axis=1).astype(np.float32)
 
