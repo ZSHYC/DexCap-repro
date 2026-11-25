@@ -1575,3 +1575,17 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 另将剪刀移位、右手撤离、抓纸和送纸从共同初态在一个 MuJoCo 实例连续重放。前段为 6,913 个 2 ms 原生关节目标，后段为 423 个 20 Hz OSC 腕位目标。复放过程中没有恢复中间状态，纸始终完整，末态无托盘支撑并保持约 0.089 N 的实际夹持。最后约 1 s 剪刀漂移 0.014 mm，无非目标碰撞或物理警告。入口和全部原生目标位于同目录 `scissor-wallpark-paper-fullchain-common-replay.{py,npz,json}`。
 
 弹簧夹加入右拇指和食指的实时法向补偿后，完整 709 个原生目标复放确认右手持续承载至少 0.50 s。该区间夹具抬升不低于 64.26 mm，食指和拇指载荷均不低于 1.71 N，桌面载荷为零。全程无机器人碰撞、关节越限或物理警告。抓取参考位于 `benchmarks/packaging-spring-clamp/clamp-thumb-retention-route2.{py,npz,json}`，仍待完成入盒和合盖。
+
+### 四条包装完整示范的训练对照
+
+红银包装的数据包含 8,736 个 20 Hz 周期和 8,364 个原生目标。从导出的 HDF5 独立重放保留了原控制分组，物体实际居中入盒并双手合盖，无机械臂或双手间碰撞、关节越限或物理警告。文件及结果为 `benchmarks/packaging-controller-rate/red-box{.hdf5,.json,-readback.json}`。
+
+使用同一 SetXF 配置、随机种子、批量和 6,000 个优化步，从头训练两组。两组均使用公开包装数据中的 480 个示范、57,916 帧。增强组另使用红银包装、绿梨、绿罐、卷尺四条通过完整仿真的示范，共 35,923 帧。两训练均已产出第 30 轮权重。测试按四种物体各两个同样的随机摆放运行 400 个物理动作。蓝积木种子 5 和未见物体未加入合成训练数据。这一对照没有增加离线验证集，训练与测试产物保存在 `benchmarks/packaging-controller-rate/setxf-physical-paired/`。
+
+### 擦盘右拇指失载的逐子步测量
+
+从左无名指已加入撑海绵的物理前缀回放，首个失盘周期中，右拇指在前约 16–24 ms 由 4.6 N 降到零，随后右食指和无名指卸载，当时盘仍离桌。只补偿指关节法向力，或先让海绵离开盘面的几条路线，都未稳定保住盘。记录位于 `benchmarks/wiping-coordinated-grasp/stroke-support/wiping-ring-right-pad-loss.json` 和同目录 `wiping-ring-plate-load-feedback-*`、`wiping-dual-hold-unload-*`。这次测量用于定位接触拓扑的缺口，计分仍是一笔。
+
+### 黄布原始表面轮廓
+
+从公开 `demo_250` 的帧 0、5、10、14，以邻近台面校正高度，得到真实折布 P95 高度中位数 45.44 mm，P95 和 P05 之间的起伏中位数 36.95 mm。约三分之一可见表面低于 20 mm。当前 6×6×3 体网格静置 4 s 后，最高约 45.81 mm，但整个顶面起伏仅约 0.029 mm，36 个底层柱均由桌面支撑。RGB-D 直接约束可见轮廓，隐藏布沿的形状需要明确建模假设。校准脚本及报告位于 `benchmarks/packaging-yellow-cloth-complete/sponge-guided/yellow-cloth-fidelity-audit.{py,json}`。
