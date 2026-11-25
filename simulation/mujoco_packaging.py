@@ -28,6 +28,7 @@ LID_OPEN_ANGLE = np.deg2rad(3.35)
 LID_TAB_ANGLE = np.deg2rad(26)
 LID_TAB_HALF_XY = (0.145, 0.035)
 LID_CLOSED_TOLERANCE = np.deg2rad(6)
+LID_CONTACT_FORCE_N = .05
 DEFAULT_OBJECT = "red-box"
 RED_BOX_YAW = np.deg2rad(61.5)
 # Calibrated against the box floor and open lid in the source RGB-D frame.
@@ -320,7 +321,7 @@ def add_packaging_scene(spec: mujoco.MjSpec, object_xy, object_name=DEFAULT_OBJE
 
 
 class PackagingMetrics:
-    """Accumulate legacy report fields from contacts and generalized coordinates."""
+    """Score placement and coordinated lid closure from the actual contacts."""
 
     def __init__(self, model: mujoco.MjModel, object_name: str):
         if object_name not in PACKAGING_OBJECTS and object_name not in PACKAGING_UNSEEN_OBJECTS:
@@ -330,6 +331,8 @@ class PackagingMetrics:
         self.box_joint = model.joint("packaging_box_free").id
         self.lid_body = model.body("packaging_lid").id
         self.lid_joint = model.joint("packaging_lid_hinge").id
+        self.lid_qpos = model.jnt_qposadr[self.lid_joint]
+        self.lid_dof = model.jnt_dofadr[self.lid_joint]
         self.floor_geom = model.geom("packaging_box_floor").id
         self.table_geom = model.geom("table").id
         self.object_flex = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_FLEX, "packaging_object")
@@ -364,6 +367,8 @@ class PackagingMetrics:
         self.initial_center_distance = np.linalg.norm(self.initial_box_xy - WORKSPACE_CENTER)
         self.minimum_center_distance = self.initial_center_distance
         self.ever_grasped = False
+        self.released_in_box = False
+        self.bimanual_lid_closure = False
 
     def _body_geoms(self, body_id, collidable_only=False):
         start = self.model.body_geomadr[body_id]
@@ -457,6 +462,37 @@ class PackagingMetrics:
         settled = np.linalg.norm(data.qvel[dof:dof + 6]) < 0.05
         return bool(inside and supported and settled)
 
+    def physics_step(self, data: mujoco.MjData) -> None:
+        if (self.bimanual_lid_closure or not self.released_in_box
+                or data.qvel[self.lid_dof] <= 0
+                or data.qpos[self.lid_qpos] >= np.pi - LID_CLOSED_TOLERANCE):
+            return
+        supporting_hands = set()
+        lid_hands = set()
+        force = np.empty(6)
+        for index, contact in enumerate(data.contact[:data.ncon]):
+            first, second = contact.geom1, contact.geom2
+            if second in self.box_geoms or second in self.lid_geoms:
+                hand, surface = first, second
+            elif first in self.box_geoms or first in self.lid_geoms:
+                hand, surface = second, first
+            else:
+                continue
+            if hand in self.right_geoms:
+                side = 1
+            elif hand in self.left_geoms:
+                side = -1
+            else:
+                continue
+            mujoco.mj_contactForce(self.model, data, index, force)
+            if force[0] <= LID_CONTACT_FORCE_N:
+                continue
+            if surface in self.box_geoms:
+                supporting_hands.add(side)
+            else:
+                lid_hands.add(side)
+        self.bimanual_lid_closure = any(-side in lid_hands for side in supporting_hands)
+
     def update(self, data: mujoco.MjData) -> dict:
         right_object = self._object_contacts(data, self.right_geoms)
         left_lid = self._contacts(data, self.left_geoms, self.lid_geoms)
@@ -474,7 +510,8 @@ class PackagingMetrics:
         object_released = self.ever_grasped and not object_grasped
         self.ever_grasped |= object_grasped
         object_in_box = self._object_in_box(data)
-        lid_angle = data.qpos[self.model.jnt_qposadr[self.lid_joint]]
+        self.released_in_box |= object_in_box and object_released and not right_object
+        lid_angle = data.qpos[self.lid_qpos]
         lid_closed = abs(lid_angle - np.pi) <= LID_CLOSED_TOLERANCE
         return {
             "right_object_contacts": self.contact_counts[0],
@@ -486,5 +523,6 @@ class PackagingMetrics:
             "object_released": bool(object_released),
             "object_in_box": object_in_box,
             "lid_closed": bool(lid_closed),
-            "sim_success": bool(object_in_box and lid_closed),
+            "bimanual_lid_closure": self.bimanual_lid_closure,
+            "sim_success": bool(object_in_box and lid_closed and self.bimanual_lid_closure),
         }

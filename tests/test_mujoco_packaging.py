@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -196,6 +197,58 @@ class MujocoPackagingTest(unittest.TestCase):
         with patch.object(metrics, "_contacts", side_effect=[opposed, [], [], [], []]):
             self.assertTrue(metrics.update(data)["object_grasped"])
 
+    def test_full_score_requires_loaded_bimanual_closing_after_a_grasp_and_placement(self):
+        model, data, metrics = self.make_scene()
+        object_qpos = model.jnt_qposadr[model.joint("packaging_object_free").id]
+        lid_joint = model.joint("packaging_lid_hinge")
+        data.qpos[object_qpos:object_qpos + 7] = [0, 0, 0.14, 1, 0, 0, 0]
+        for _ in range(1500):
+            mujoco.mj_step(model, data)
+        self.assertTrue(metrics.update(data)["object_in_box"])
+
+        right, left = model.ngeom, model.ngeom + 1
+        metrics.right_geoms = {right}
+        metrics.left_geoms = {left}
+        support = SimpleNamespace(geom1=next(iter(metrics.box_geoms)), geom2=right)
+        push = SimpleNamespace(geom1=left, geom2=next(iter(metrics.lid_geoms)))
+        sample = SimpleNamespace(ncon=2, contact=[support, push],
+                                 qvel=data.qvel.copy(), qpos=data.qpos.copy())
+        sample.qpos[lid_joint.qposadr[0]] = np.pi / 2
+        sample.qvel[lid_joint.dofadr[0]] = 0.5
+
+        forces = [1.0, 0.6]
+
+        def set_force(_model, _sample, index, destination):
+            destination[0] = forces[index]
+
+        with patch.object(mujoco, "mj_contactForce", side_effect=set_force):
+            metrics.physics_step(sample)
+            self.assertFalse(metrics.update(data)["bimanual_lid_closure"])
+
+            metrics.ever_grasped = True
+            self.assertTrue(metrics.update(data)["object_released"])
+            forces[0] = 0
+            metrics.physics_step(sample)
+            self.assertFalse(metrics.update(data)["bimanual_lid_closure"])
+
+            forces[0] = 1.0
+            sample.qvel[lid_joint.dofadr[0]] = -0.5
+            metrics.physics_step(sample)
+            self.assertFalse(metrics.update(data)["bimanual_lid_closure"])
+
+            sample.qvel[lid_joint.dofadr[0]] = 0.5
+            push.geom1 = right
+            metrics.physics_step(sample)
+            self.assertFalse(metrics.update(data)["bimanual_lid_closure"])
+
+            push.geom1 = left
+            metrics.physics_step(sample)
+            self.assertTrue(metrics.update(data)["bimanual_lid_closure"])
+
+        data.qpos[lid_joint.qposadr[0]] = np.pi
+        mujoco.mj_forward(model, data)
+        self.assertTrue(metrics.update(data)["sim_success"])
+
     def test_metrics_use_settled_object_contact_and_physical_lid_angle(self):
         model, data, metrics = self.make_scene()
         self.assertAlmostEqual(metrics.update(data)["box_center_progress_m"], 0)
@@ -215,13 +268,13 @@ class MujocoPackagingTest(unittest.TestCase):
         mujoco.mj_forward(model, data)
         closed_info = metrics.update(data)
         self.assertTrue(closed_info["lid_closed"])
-        self.assertTrue(closed_info["sim_success"])
+        self.assertFalse(closed_info["sim_success"])
 
         inner_edge = model.geom("packaging_box_wall_4").pos[1] - model.geom("packaging_box_wall_4").size[1]
         lower = np.array([-0.02, -0.02, 0.001])
         wall_contact = np.array([0.02, inner_edge + 0.000002, 0.04])
         with patch.object(metrics, "_geom_extent_in_box", return_value=(lower, wall_contact)):
-            self.assertTrue(metrics.update(data)["sim_success"])
+            self.assertTrue(metrics.update(data)["object_in_box"])
         beyond_wall = wall_contact + [0, 0.003, 0]
         with patch.object(metrics, "_geom_extent_in_box", return_value=(lower, beyond_wall)):
             self.assertFalse(metrics.update(data)["object_in_box"])
@@ -231,7 +284,7 @@ class MujocoPackagingTest(unittest.TestCase):
             {
                 "right_object_contacts", "left_lid_contacts", "left_box_contacts",
                 "box_displacement_m", "box_center_progress_m", "object_grasped",
-                "object_released", "object_in_box", "lid_closed", "sim_success",
+                "object_released", "object_in_box", "lid_closed", "bimanual_lid_closure", "sim_success",
             },
         )
 

@@ -307,6 +307,12 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 与旧材质配对比较，右手接触物件的回合由 27 增至 37，抓起后脱手由 6 增至 8，有机械臂接触的回合由 20 降至 11，合盖由 22 降至 16。75 轮无物理警告或越限终止。实际评估仍未产生入盒。汇总、逐回合引用和合并脚本位于数据盘 `benchmarks/packaging-material-calibrated-setxf/` 的 `all-objects-summary.json`、`summarize-material-rollouts.py`。
 
+### 包装整轮计分
+
+放入物件后，整轮判据要求在同一 2 ms 物理子步里，一只手接触箱体，另一只手接触正向闭合的盒盖或挂片，两处法向载荷均超过 0.05 N。终态还要求物件仍在盒内、盖板已合上。入盒与合盖继续单独记录。上文单手参考轨迹的整轮结果采用当时的终态判据。 [论文包装流程](https://arxiv.org/html/2403.07788v2#A1.SS6)
+
+以相同 MuJoCo 和 EGL 入口复放四条动作。蓝积木的 1,977 步和红纸盒的 8,364 步双手参考均计为整轮成功。蓝积木的 1,237 步及绿罐的 1,322 步单手参考均入盒并合盖，双手闭盖字段为假。四次复放均无物理警告。报告在数据盘 `benchmarks/packaging-bimanual-score/`。上文 75 轮 SetXF 结果全部未入盒，因此使用新判据时完整成功数仍为 0。
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
