@@ -1015,6 +1015,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 放盖后，右腕实测撤至世界坐标约 `[0.4405,-0.1820,0.3022] m`。左手按瓶的实际新位置进入，相向拇指与食指建立抓持。初次抬升约 6.88 mm 时，食指与中指发生接触并触发停止。让闲置中指随实测间隙外让后，同一积分态接续实测抓持离托盘最高 **57.07 mm**，峰值时食指与拇指仍分别承力约 1.28 和 0.62 N，托盘和右手承力均为零，`bottle_used=true`、`cap_on_right=true`。继续上提后瓶身滑脱。保留了 25、35、45、50 mm 带载积分态供转运倒茶接续，记录为 `tea-after-right-cap-separated-lift-lift.json` 与 `tea-after-right-cap-separated-lift-*mm.npz`。本段尚未倒入茶叶。
 
+为让右食指及时接住仍由左手夹持的茶瓶，右手在左手提瓶期间接近。按实测指垫间距分段减速建立侧向接触，连续 **2.256 s** 实测两手均有载荷且托盘承力为零。从保存的积分态继续实际转运，左拇指与食指保持相向接触、右食指仍承力，在 **2.932 s** 连续带载段内瓶身沿世界 x 正向移动约 **86.5 mm**、y 负向约 44.9 mm。最高位移处右食指法向载荷约 2.38 N，托盘承力为零。另一次接续将带载瓶身移到世界 x 约 0.570 m，左指接触法线转为近正交，仍未倒入茶叶。结果与实测积分状态见 `tea-side-support-distance-rate-3.json`、`tea-range-supported-translation{,-second}.json` 和 `tea-range-supported-translation-best.npz`。
+
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
 从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
@@ -1045,7 +1047,7 @@ python -m simulation.rollout "$sponge/default-three-pad-clean-pick-reference.hdf
   --task sponge-picking --output "$sponge/default-three-pad-clean-pick-egl.json"
 ```
 
-三个代表性随机摆放也已用真实 EGL 独立回放。种子 1、7、19 分别抬升 **304.27、324.12、318.00 mm**，均为 532 个动作和 659 个控制周期，机械臂、双手间、同手及手部越限计数均为零。种子 1 修正接近海绵的腕位，种子 7 重定向抬升通道，种子 19 在抬升后段逐步调整拇指闭合和腕位。各自的 HDF5 和 `*-egl.json` 在相同数据目录的 `seed-{01,07,19}-three-pad-clean-*`。其余 17 个随机摆放尚待在这一无穿透参考上复验。
+三个代表性随机摆放也已用真实 EGL 独立回放。种子 1、7、19 分别抬升 **304.27、324.12、318.00 mm**，均为 532 个动作和 659 个控制周期，机械臂、双手间、同手及手部越限计数均为零。种子 1 修正接近海绵的腕位，种子 7 重定向抬升通道，种子 19 在抬升后段逐步调整拇指闭合和腕位。各自的 HDF5 和 `*-egl.json` 在相同数据目录的 `seed-{01,07,19}-three-pad-clean-*`。此后扩大到 **17/20** 个随机摆放独立 EGL 通过，均超过 300 mm、无物理警告及上述碰撞和越限。种子 5 和 15 在第 331 个目标后调整了抬升通道。还需验证种子 8、12、13。逐种子 HDF5 和 EGL 记录的路径见 `sponge-clean-egl-summary.json`。
 
 ### 捡球的 20 个随机摆放标准复放
 
