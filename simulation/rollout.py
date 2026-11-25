@@ -56,7 +56,7 @@ def rollout(args):
     object_name = (args.object or mujoco_packaging.DEFAULT_OBJECT) if packaging else None
     demo_name = "demo_0"
     reference_xy, object_yaw = task.DEMO_OBJECT_XY, None
-    if packaging and args.checkpoint is None:
+    if packaging and args.checkpoint is None and object_name in task.PACKAGING_OBJECTS:
         demo_name = task.object_reference(object_name)
         if not randomized:
             reference_xy, object_yaw = task.replay_placement(object_name)
@@ -231,8 +231,6 @@ def main():
         parser.error("Multiple trials require a policy checkpoint")
     if args.object is not None and args.task != "packaging":
         parser.error("--object applies to Packaging")
-    if args.object in mujoco_packaging.PACKAGING_UNSEEN_OBJECTS and args.checkpoint is None:
-        parser.error("Unseen objects require a Packaging policy checkpoint")
     result = json.dumps(rollout(args), indent=2)
     if args.output is not None:
         args.output.write_text(result + "\n")

@@ -327,6 +327,16 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 蓝积木的种子 5 另做了从实际 SetXF 抓持状态开始的物理接续。保留原 27 个策略动作，后续用有限力腕位与指关节目标调整夹持，右手再抬升约 96.6 mm。左手沿已抓住的箱壁向工作区中心拖盒，右手在约 5.4 s 的移盒、松手及撤离阶段始终持物。盒体实测平移约 164.2 mm，移盒过程中最接近中心约 2.7 mm，撤手后距中心 26.2 mm。76 步标准 EGL 复放得到相同物理末态，无机械臂触碰、双手碰撞或物理警告。原策略前 27 步有约 15.36 mm 的采样同手最大穿透，复放继承了该过程。HDF5 与标准报告在 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-center-and-lift-{reference.hdf5,egl.json}`。这组接续使用仿真状态选择动作。让左臂短程撤开并绕右末关节的实际轴调整腕姿后，另一段 **115 步**标准 EGL 回放把积木运至 `[0.5444, -0.0345, 0.1315] m`，终态仍有两个不同手指相向承力，较小的接触力为 7.69 N，右末关节限位余量 0.323 rad，机械臂和双手间碰撞为零。积木包络距完全跨入盒口仍差约 63.7 mm。复放与逐步试算见同目录 `blue-block-seed5-centered-transfer-{reference.hdf5,egl.json}` 和 `blue-block-seed5-joint7-reclamp-1-12mm.json`。 随后在上缘脱手前调整食指和闲置无名指，闭环积分中的最近包络由距盒口约 63.7 mm 降至 10.2 mm。接续向盒内送腕并松开食指、中指，蓝积木在真实重力和盒底碰撞下平躺并稳定。**223 步**标准 EGL 回放得到 `object_released=true`、`placed_in_centered_box=true`、`object_in_box=true`，机械臂、双手间碰撞和物理警告均为零。轨迹、报告及最终积分状态在同目录的 `blue-block-seed5-centered-placement-{reference.hdf5,egl.json,egl.npz}`。
 
+### 留出物件的动作回放
+
+九个未见物件可以用同一个 MuJoCo 入口执行预先记录的控制目标。动作 HDF5 使用 `data/demo_0`，可以用 `--first-seed` 指定与策略评估一致的复位摆放。公开视频仍是物件外观的参考。用蓝杯验证了默认和种子 1 的 3 步原生动作，均产生 `10000 × 6` EGL 点云，无物理警告。该回放验证动作入口，蓝杯完整任务仍需生成并验证。
+
+```bash
+replay=/data/dexcap-repro/benchmarks/packaging-unseen-replay
+python -m simulation.rollout "$replay/blue-mug-native-entry-reference.hdf5" \
+  --task packaging --object blue-mug --first-seed 1 --output "$replay/blue-mug-native-seed1-replay.json"
+```
+
 ### 包装整轮计分
 
 包装整轮要求放下物件时，工作区中心 `[0.4, 0.0] m` 落在按实际朝向计算的纸盒内底投影内。论文规定先把盒子移到桌子中间，未给出距离阈值，本项目用实际内底尺寸定义该区域。放置后还要求在同一 2 ms 物理子步里，一只手接触箱体，另一只手接触正向闭合的盒盖或挂片，两处法向载荷均超过 0.05 N。最后物件必须仍在盒内、盖板已合上。独立字段继续记录入盒、合盖和双手承力。 [论文包装流程](https://arxiv.org/html/2403.07788v2#A1.SS6)
