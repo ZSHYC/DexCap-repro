@@ -1007,6 +1007,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 从上述真实脱离瓶颈的积分态，右手继续快速侧移。盖子脱手后在托盘上滚动，最终在右侧静止，世界坐标约 `[0.35188, -0.01172, 0.01099] m`。末态托盘承载约 0.247 N，双手和瓶颈均已脱离盖子，`cap_unthreaded=true`、`cap_on_right=true`，无物理警告。该段使用实际关节执行器的延续试验，从独立验证的标准退丝回放接续。右侧静置的积分状态与动作记录为 `tea-south-cap-transfer-south_direct.npz`、`tea-right-cap-supported-actions.npz`，逐步结果为 `tea-right-cap-supported-checkpoint.json`，同在上述数据盘目录。
 
+放盖后，右腕实测撤至世界坐标约 `[0.4405,-0.1820,0.3022] m`。左手按瓶的实际新位置进入，相向拇指与食指建立抓持。初次抬升约 6.88 mm 时，食指与中指发生接触并触发停止。让闲置中指随实测间隙外让后，同一积分态接续实测抓持离托盘最高 **57.07 mm**，峰值时食指与拇指仍分别承力约 1.28 和 0.62 N，托盘和右手承力均为零，`bottle_used=true`、`cap_on_right=true`。继续上提后瓶身滑脱。保留了 25、35、45、50 mm 带载积分态供转运倒茶接续，记录为 `tea-after-right-cap-separated-lift-lift.json` 与 `tea-after-right-cap-separated-lift-*mm.npz`。本段尚未倒入茶叶。
+
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
 从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
