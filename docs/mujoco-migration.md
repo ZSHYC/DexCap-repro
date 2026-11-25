@@ -363,6 +363,14 @@ python -m simulation.rollout "$jar/earplug-jar-centered-complete-reference.hdf5"
   --task packaging --object earplug-jar --output "$jar/earplug-jar-centered-complete-replay.json"
 ```
 
+**积木组完整居中回放。** 从默认摆放独立执行 **9,244 步**。左手移盒居中，右中指与拇指夹住黄色积木侧面，实测离桌抬升约 **68.7 mm**。整组积木越过盒沿，在盒内释放并由盒底承托。右手扶盒、左手合盖，逐 2 ms 审计记录双手连续承力 **1.016 s**。盒盖约 **180.00°**，`object_released`、`object_in_box`、`placed_in_centered_box` 和 `sim_success` 均为真。机械臂接触和双手间穿透均为零，采样到的最大同手穿透约 0.53 mm，无物理警告。数据盘 `benchmarks/packaging-unseen-replay/stacked-bricks/` 保存物理分段、标准参考和接触报告。
+
+```bash
+bricks=/data/dexcap-repro/benchmarks/packaging-unseen-replay/stacked-bricks
+python -m simulation.rollout "$bricks/stacked-bricks-centered-complete-reference.hdf5" \
+  --task packaging --object stacked-bricks --output "$bricks/stacked-bricks-centered-complete-replay.json"
+```
+
 **弹簧夹活动关节。** 复用原有外形和 120 g 总质量。销轴和一侧夹臂随自由物体主体运动，另一侧通过一个相对铰链连接。夹臂和夹嘴仍与桌面、手指和箱体发生碰撞。全部九块实体表面参与抓持和盒内包络判断，铰链运动也参与静置判据。最大开角 44° 参照同尺寸夹具的约 65 mm 开口选取，预紧、0.30 N·m/rad 弹簧刚度和 0.01 N·m·s/rad 阻尼为估计值。两手柄分别施加 5 N 相向载荷，实测最大开角约 **24.93°**，卸载后回到距零位约 **0.022°**，无物理警告。隔离物理试验见数据盘 `benchmarks/packaging-spring-clamp/measure-spring-clamp-handle-response.json`。 [同尺寸夹具参考](https://ronixtools.com/en/product/6-inch-spring-clamp/) · [MuJoCo 铰链与弹簧](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
 弹簧夹的 580 步独立标准 EGL 回放验证了右手张开下探、相向闭合和抬升。峰值质心抬升 **45.04 mm**，其中 4 个动作实际满足抓持，保持抓持时最高 **41.56 mm**。随后夹具脱手，机械臂、双手间、同手碰撞和求解器警告均为零。动作 `spring-clamp-approach-reference.hdf5` 和报告 `spring-clamp-approach-{egl,contact-audit}.json` 在上述数据目录。当前活动关节模型使用相同 SetXF 权重和种子 1–5 执行每轮 400 步，种子 5 曾抓起后脱手，完整入盒为 0/5。逐轮报告为 `spring-clamp-final-policy-seed-{1..5}.json`。
