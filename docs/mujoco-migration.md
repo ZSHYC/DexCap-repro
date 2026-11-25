@@ -1031,6 +1031,14 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 使用 305 步、默认摆放可抬升 310.51 mm 的参考，以摆放差平移右腕初态和目标轨迹。在 x 轴 ±0.20 m、y 轴 ±0.35 m 的场景分布内，20 个种子的无相机标准动力学复放完成 10 个任务，重放与生成的物理结果一致。右食指与中指最大采样穿透约 13.49 mm，多个种子右臂与闲置左手接触。这批数据用于定位手指与双腕的调整位置。汇总见 `benchmarks/sponge-seeded-reference/sponge-seeded-reference-summary.json`。
 
+重新安排右食指、中指和拇指接触面，并从真实三指带载状态调整抬升闭合量。默认摆放的标准 EGL 回放执行 **532 个动作**和 **659 个 50 ms 控制周期**，抬升 **305.65 mm**，通过 300 mm 判据。末态由右食指与拇指相向持有，分别约 0.595 N 与 0.557 N，中指在抬升中卸载。机械臂接触、双手间穿透、同手穿透与手部越限均为零，无物理警告，得到 `10000 × 6` 点云。此结果覆盖默认摆放，随机摆放继续按同样的标准复验。
+
+```bash
+sponge=/data/dexcap-repro/benchmarks/sponge-seeded-reference
+python -m simulation.rollout "$sponge/default-three-pad-clean-pick-reference.hdf5" \
+  --task sponge-picking --output "$sponge/default-three-pad-clean-pick-egl.json"
+```
+
 ### 捡球的 20 个随机摆放标准复放
 
 初始收拢无名指后，中指与球的法向载荷曾从约 0.38 N 降至零，导致搬运中滑脱。调整中指的两关节目标，在第 96–140 个动作间逐步增加 0.03 rad，并依据实际持球位置规划两段搬运。闲置左手张开，左腕沿 y 轴移出搬运区 120 mm。第 20 个种子按实测腕位误差额外补偿搬运终点 `[15, -40] mm`。保留各动作实际执行的控制周期数。
