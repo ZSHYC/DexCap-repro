@@ -1051,6 +1051,10 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 另从左手倾斜茶瓶的实测序列保存壶沿受力点。该状态瓶底和瓶壁实际接触壶沿四个斑块，接触法向力合计约 6.19 N，作用于瓶身的垂直分量约 +5.89 N。瓶口仍朝上。完整场景积分态在同目录的 `tea-staged-bottle-over-pot-201.npz`，可从真实壶沿支点接续。
 
+从壶沿承重的物理状态继续转腕，按食指和中指网格净空调节闲置中指，之后用两指夹住茶瓶并越过水平。将瓶口向实际移动后的壶口平移，从 160 号保存状态接续时，第 53 个控制目标首次得到 `tea_deposited_count=1`。实测粒子 83 同时由壶底和壶壁支持，保存点瓶轴倾斜约 **106.5°**，左拇指和食指约承力 **1.06、1.82 N**。壶本身在接触过程中倾斜约 62°。入壶后的茶粒在最后交互末态仍在壶内，末周期未满足静置计分条件。该段没有完成镊子辅助、两件物体归位或整轮计分。
+
+首次入壶结果和实际积分态位于同一数据目录的 `tea-staged-lift-tip-live-mouth-128-49--17-160-32-127.json`、`tea-staged-lift-tip-live-mouth-128-49--17-160-32-127-best.npz`。颗粒身份、速度与接触力审计在 `tea-first-actuated-pour-grain-audit.json`。核对截面接续物理的脚本为 `position-live-tilted-bottle-over-pot.py`。
+
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
 从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
@@ -1060,6 +1064,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 从真实高位支点改走固定柄侧推。左食指先在完整网格上接触固定环，随后分三段向托盘内侧施力，使剪刀主体过托盘边沿中心线约 2.12 mm。主动撤去食指后，连续 1.082 s 无柄载，沿推动轴回弹约 0.085 mm，终态坐标约 `[0.40045, 0.19797, 0.06984] m`，纸带仍离托。无物理警告或记录到的非目标碰撞。稳定态和逐步输出在同一数据目录的 `second-support-index-release-settle-final-state.npz`、`second-support-index-release-settle.json`，可从这里继续入环。
 
 保留现有 40 × 37 mm 活动环后，完整网格能容纳轴向 +15 mm 的拇指薄段。实际从托盘支撑位走向该端点时，拇指先压活动环外侧，使剪刀移位约 7.38 mm 并打开至 0.568 rad。改由外侧拇指保持接触并沿关合方向施力，两段连续实测使铰链从 **0.35252 rad** 降到 **0.33821 rad**。后段持续负向运动约 23.18 s，拇指峰值约 0.114 N。剪刀由原托盘和隔板承托，纸带 85 条粘结均完好，未切断。状态、动作和实测报告位于数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/` 的 `current-outer-friction-close-continue*`。
+
+再从同一个物理状态连续执行右手抓纸、搬运和向刀口进给，同时左拇指对活动柄施力。100 个目标内铰链实测关合约 0.03654 rad，固定刀刃实际触纸。活动刀刃离纸约 1.88 mm，尚未形成双刀刃夹压。纸带仍为 85 条完整粘结。记录见同目录 `current-carry-close-combined.json`、`current-carry-close-combined-state.npz`。
 
 擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。逐步复算确认海绵在盘坐标的法向高度仅变化约 −0.003 mm，而切向位移约 15.5 mm，盘本身同时平移和倾转。按实际斑块反向转动，法向开口约增加 1.03 mm，最深接触仍约 0.74 mm，载荷增至约 3.78 N。下一次接触调整从第一笔更早的轻载状态开始。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
 
