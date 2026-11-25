@@ -51,13 +51,15 @@ def observe(scene, frames, rng):
 
 def rollout(args):
     packaging = args.task == "packaging"
+    randomized = args.trials > 1 or args.first_seed is not None
     task, position_keys = TASKS[args.task]
     object_name = (args.object or mujoco_packaging.DEFAULT_OBJECT) if packaging else None
     demo_name = "demo_0"
     reference_xy, object_yaw = task.DEMO_OBJECT_XY, None
     if packaging and args.checkpoint is None:
         demo_name = task.object_reference(object_name)
-        reference_xy, object_yaw = task.replay_placement(object_name)
+        if not randomized:
+            reference_xy, object_yaw = task.replay_placement(object_name)
     frames, initial, camera, actions = load_demo(args.dataset, demo_name)
 
     with h5py.File(args.dataset, "r") as source:
@@ -155,7 +157,6 @@ def rollout(args):
             scene.close()
 
     results = []
-    randomized = args.trials > 1 or args.first_seed is not None
     first_seed = args.first_seed or 1
     for seed in range(first_seed, first_seed + args.trials):
         if not randomized:
