@@ -271,6 +271,8 @@ python -m simulation.rollout "$pear/green-pear-centered-complete-reference.hdf5"
   --task packaging --object green-pear --output "$pear/green-pear-centered-complete-replay.json"
 ```
 
+在相同绿梨模型上以已训练的 SetXF 第 3,000 轮权重逐一复测种子 1–5。每轮用 EGL 点云闭环执行 400 步。仅种子 5 有右手与梨的接触，共 82 个控制周期。五轮均未抓起或入盒，无物理警告。逐轮报告为同目录的 `green-pear-rolling-floor-policy-seed-{1..5}.json`。
+
 改用高位预抓，下降中首次检测到手与梨接触时，拇指垫最近间隙约 1.49 mm，中指垫仍约 49.3 mm。停在该处单独合拢中指仍未抓起，梨从初始位置移动约 97.7 mm。记录见 `runs/packaging-green-pear-signed-gap-close-b6d8e6d.json`。
 
 从绿梨长轴上方重拟合夹点时，避开桌面的候选仍出现拇指穿入约 2.54 mm，另一指还差约 5.98 mm，接触法线也未相向。随后高位预抓对照中未抓起梨。记录见 `runs/packaging-green-pear-topdown-longaxis-fit-b6d8e6d.json`。
