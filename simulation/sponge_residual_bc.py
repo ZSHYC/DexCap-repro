@@ -269,10 +269,13 @@ def evaluate(reference, checkpoint, first_seed, trials, device, left_reference_d
 
             feature_layout = np.clip(layout, bounds["layout_low"], bounds["layout_high"])
             right_offset = layout - scene.base_positions[0, :2]
-            close_to_right_base = right_offset[1] < 0.217 and np.linalg.norm(right_offset) < 0.31
+            base_distance = np.linalg.norm(right_offset)
+            close_to_right_base = base_distance < 0.31 and right_offset[1] < 0.217
             if targets is not None:
                 steps, metrics = execute_targets(scene, targets)
             else:
+                elbow_escape_start = None
+                right_arm = scene.control.arms[0]
                 for i in range(900):
                     k = min(i, FRAMES - 1)
                     obs = scene.control.observed_action()
@@ -288,6 +291,15 @@ def evaluate(reference, checkpoint, first_seed, trials, device, left_reference_d
                         # Move the held sponge away from the folded elbow after pinch.
                         target[:2] += LIFT_ARC[k]
                         target[18] += MIDDLE_SPLAY[k]
+                    elif base_distance < 0.31:
+                        # At the edge of the base zone the elbow can fold into the palm late in the lift.
+                        if elbow_escape_start is None and 580 <= k <= 700:
+                            elbow_margin = scene.data.qpos[right_arm.pos[3]] - right_arm.lower[3]
+                            if elbow_margin < .18:
+                                elbow_escape_start = k
+                        if elbow_escape_start is not None:
+                            blend = smooth_progress((k - elbow_escape_start) / 46)
+                            target[:2] += .035 * blend * (right_offset / base_distance)
                     metrics, _, _ = scene.step(target, control_cycles=1)
                     if scene.invalid_hand_motion or scene.data.warning.number.any():
                         metrics["sim_success"] = False

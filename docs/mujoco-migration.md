@@ -1493,3 +1493,13 @@ envs/train/bin/python -m simulation.sponge_residual_bc evaluate \
 在八个新远端摆放（468、486、491、498、531、542、568、576）上，右手原策略 **1/8**，加入换手 **8/8**，所有回合均无机器人碰撞或物理警告。七个左手回合抬升约 359.2–360.1 mm，四个保持到末段最后 1 s 结束，三个在末段滑脱。第 576 号保持原右手策略，抬升约 340.6 mm。仓库入口的抬升结果与预先保存的控制实验差异小于 0.001 mm。逐回合结果在捡海绵数据目录 `left-workspace/tracked-hand-choice-summary.json`。
 
 另外对连续种子 601–620 做配对回放，两个入口均为 **20/20** 且逐回合原有指标相同。这批摆放均未触发左手路线。两组都在第 614 号记录到 59 个机械臂接触周期，因此按无机器人碰撞的要求是 **19/20**。数据盘汇总为 `left-workspace/tracked-paired-601-620-summary.json`。
+
+Packaging 采用同一个 20 Hz 导出入口保存当前场景逐步点云。重新打开 `benchmarks/packaging-controller-rate/{green-can,blue-block}.hdf5`，点云分别为 1,558 和 1,473 帧，每帧 `10000 × 6`。两条短参考实测入盒并合盖，旧动作缺少移盒居中及双手合盖，按现行判据均不合格。后续改用 9,182 步的绿罐居中参考录制，红盒、绿梨、卷尺也用完整居中参考。蓝积木种子 5 的完整居中回放来自既有测试摆放，单独导出至 `benchmarks/packaging-material-calibrated-setxf/observations-20hz/`，用于评估，胶带座属于未见物体。
+
+擦盘在新的 3,135 步接续中，盘与海绵同时离桌实测维持 0.5 s。最后十个 50 ms 周期，左手三处海绵接触斑块持续出现，无海绵或盘接触桌面，右无名指每周期 25 个物理子步均接盘，平均法向力约 0.067–0.120 N。双持基于当期接触，仍待完成擦拭。数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/first-wipe-plate-torque-support-fast-c.{json,npz}`。
+
+剪纸从真实入环的拇指接续，食指合法前缀使其到固定环的最短距离从约 113.7 mm 减至 39.5 mm，14,969 个 2 ms 子步均保持拇指在活动环且无非目标碰撞。食指外展关节只余约 0.82 mrad，尚未入固定环。另筛查 20 个拇指留环时的掌位，唯一连续静态合法的轴向滑移候选在真实执行约 0.696 s 后失去拇指占位。数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/scissor-thumb-{held-fixed-ring,anchor-repose}-*`。
+
+备茶续段在瓶盖保持右置时真实移开并释放瓶体，瓶子主要沿桌面 −Y 移动约 12.7 mm，落稳后手部载荷为零，托盘承重约 1.07 N。保留茶粒，原来设想的左手壶抓取路径仍被瓶颈挡住。数据盘 `benchmarks/tea-bottle-native/tea-park-bottle-corridor-*`。
+
+对第 614 号的 2 ms 接触做定位，右臂第 4 轴从起升后逐渐折到下限，随后右臂第 2 段几何碰到右手掌与手指，峰值载荷分别约 11.94 N 和 2.29 N。在原有靠近底座的补偿区域边缘，控制器现在按实际第 4 轴余量触发沿底座外侧的 35 mm 平滑腕位偏移。第 614 号起升仍达约 311 mm，机械臂接触从 59 周期降到零。冻结补偿后，八个新的同一区域初始摆放都达到 30 cm，机械臂零接触从 **5/8 提升到 8/8**。原有同手接触峰值不变，这批中最大约 0.108 mm。标准入口结果位于捡海绵数据目录 `left-workspace/elbow-guard-paired-summary.json`。
