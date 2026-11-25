@@ -84,6 +84,8 @@ python -m simulation.rollout "$dataset" --checkpoint "$checkpoint" --trials 20 \
 
 用 `--first-seed` 可以把多个摆放拆给独立进程。每块按固定种子生成，按种子合并后使用与单进程评估相同的配对。用 `MUJOCO_EGL_DEVICE_ID` 设置渲染卡，用 `CUDA_VISIBLE_DEVICES` 设置策略推理卡。 已完成的配对评估使用 GPU 0–3。
 
+Packaging 的固定示范回放使用各物体录制起点的偏航。带种子的动作回放和策略评估使用任务的同一份初始摆放规则。以蓝积木种子 5 的实际 SetXF 前 27 个目标及其 50 ms 周期数复放。修正前，动作回放多用了示范中的 61.47° 偏航，未复现策略的抓持。修正后，抓持标志、关节与物体积分状态一致。记录和 HDF5 在数据盘 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-prefix-{before,after}-yaw-fix.json` 和 `blue-block-seed5-learned-prefix-reference.hdf5`。
+
 剪纸和备茶的带种子回合也按种子生成场景。剪刀沿托盘支撑线移动 ±8 mm，靠墙纸带沿墙移动 ±35 mm。备茶在托盘坐标下让茶瓶沿 x 移动 0–18 mm、沿 y 移动 −14–0 mm，茶壶两轴各移动 ±12 mm。托盘朝向、镊子和木托架摆放固定。上述范围依据现有模型的物理支撑选取，原文没有公布这两项的具体采样范围。标准评估入口的种子 1、2 已实测生成不同坐标。正式场景在采样边界沉降 0.6 s 后，刀片仍有原支撑，纸带上端高度保持约 82 mm，备茶仍保留 108 颗茶叶且镊子由木托承载。记录位于 `/data/dexcap-repro/benchmarks/seeded-tool-scenes/`。 [论文评估与摆放定义](https://arxiv.org/html/2403.07788v2#S5.SS1)
 
 历史 PyBullet 仿真代码和入口保存在基线提交。当前分支的 `simulation.rollout`、示范图和策略动作诊断均运行 MuJoCo。官方数据重建仍沿用作者的 PyBullet 指尖 IK。 [基线提交](https://github.com/ZSHYC/DexCap-repro/tree/0ee5418)
@@ -307,11 +309,21 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 与旧材质配对比较，右手接触物件的回合由 27 增至 37，抓起后脱手由 6 增至 8，有机械臂接触的回合由 20 降至 11，合盖由 22 降至 16。75 轮无物理警告或越限终止。实际评估仍未产生入盒。汇总、逐回合引用和合并脚本位于数据盘 `benchmarks/packaging-material-calibrated-setxf/` 的 `all-objects-summary.json`、`summarize-material-rollouts.py`。
 
+蓝积木的种子 5 另做了从实际 SetXF 抓持状态开始的物理接续。保留原 27 个策略动作，后续用有限力腕位与指关节目标调整夹持，右手再抬升约 96.6 mm。左手沿已抓住的箱壁向工作区中心拖盒，右手在约 5.4 s 的移盒、松手及撤离阶段始终持物。盒体实测平移约 164.2 mm，移盒过程中最接近中心约 2.7 mm，撤手后距中心 26.2 mm。76 步标准 EGL 复放得到相同物理末态，无机械臂触碰、双手碰撞或物理警告。原策略前 27 步有约 15.36 mm 的采样同手最大穿透，复放继承了该过程。HDF5 与标准报告在 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-center-and-lift-{reference.hdf5,egl.json}`。这组接续使用仿真状态选择动作。
+
 ### 包装整轮计分
 
 放入物件后，整轮判据要求在同一 2 ms 物理子步里，一只手接触箱体，另一只手接触正向闭合的盒盖或挂片，两处法向载荷均超过 0.05 N。终态还要求物件仍在盒内、盖板已合上。入盒与合盖继续单独记录。上文单手参考轨迹的整轮结果采用当时的终态判据。 [论文包装流程](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
 以相同 MuJoCo 和 EGL 入口复放四条动作。蓝积木的 1,977 步和红纸盒的 8,364 步双手参考均计为整轮成功。蓝积木的 1,237 步及绿罐的 1,322 步单手参考均入盒并合盖，双手闭盖字段为假。四次复放均无物理警告。报告在数据盘 `benchmarks/packaging-bimanual-score/`。上文 75 轮 SetXF 结果全部未入盒，因此使用新判据时完整成功数仍为 0。
+
+在绿罐实测入盒后，让右食指顶住箱体低处，左手带动盖板。盖板转到约 62.03° 后，右手向外斜上撤离，再让左手跨过盖板的闭合中点。这段撤离避免了早期试验在 136–144° 发生的机械臂接触。用标准 EGL 入口从默认初态复放 **2,076 步**，罐子仍在盒内，盒盖闭合，`bimanual_lid_closure` 和 `sim_success` 均为真。每 2 ms 的接触审计记录双手连续承力最长 0.384 s、累计 1.484 s，右食指峰值 3.58 N、左手对盖板峰值 8.43 N，右手未碰盖。没有机械臂、双手间或同手碰撞和物理警告。这段绿罐参考用默认外盒摆放，盒体仅平移约 0.47 mm。数据盘 `benchmarks/packaging-green-current/corrected-height/` 保存了 `green-can-bimanual-reference.hdf5`、标准报告 `green-can-bimanual-egl.json` 和逐物理步汇总 `green-can-bimanual-egl-contacts.json`。
+
+```bash
+green=/data/dexcap-repro/benchmarks/packaging-green-current/corrected-height
+python -m simulation.rollout "$green/green-can-bimanual-reference.hdf5" \
+  --task packaging --object green-can --output "$green/green-can-bimanual-replay.json"
+```
 
 ## Ball Collecting
 
@@ -994,6 +1006,8 @@ python -m simulation.rollout data/derived/packaging-red-carton-bimanual-closure-
 
 擦盘的独立回程试验中，右无名指接入后承担第三支点，右食指和拇指继续夹住离桌的盘。无名指入接时峰值约 83.45 N，接触收敛后后段约 4.0–4.7 N。第三支点的连续观测段为 0.65 s。该起点海绵与盘心相距约 293.8 mm，每腕每个 50 ms 周期移动 2 mm。相向推进时左中指逐渐卸载，海绵脱夹前未重新接触盘面。第二笔尚未建立。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/left-return-right-ring-bilateral-approach.json`。
 
+第一笔后让右腕沿实测盘法向外移约 1.6 mm，可将海绵和盘的载荷从 1.776 N 降至 0.694 N，连续保持双手夹持四个控制周期。用刚完成第一笔的实际世界位移反向，海绵实际只反向约 0.75 mm 后，反向载荷使右手中的盘滚转，盘下净空从约 58 mm 降到 29–36 mm。左腕跟踪误差小于 1.3 mm，第二笔仍未成立。记录见 `benchmarks/wiping-coordinated-grasp/stroke-support/left-return-{outboard-unload-second,early-world-reverse}.json`。
+
 ### 剪纸的标准提纸回放
 
 从默认托盘、剪刀及纸带摆放开始，右拇指越过纸带顶边，食指和拇指闭合，随后将完整纸带抬离支撑。223 个标准 46 维目标以 50 ms 周期从同一初始摆放回放，纸带最低段增加约 54.32 mm。实际两指相向夹持且整条纸带没有托盘或桌面支撑的最长连续区间约为 2.25 s。右食指和拇指的峰值载荷约 0.07175 和 0.07149 N，未触发机械臂碰撞、双手碰撞或物理警告。
@@ -1005,6 +1019,10 @@ python -m simulation.rollout \
   runs/scissor_paper_default_pickup_c4d447c/scissor-paper-default-pickup-standard.hdf5 \
   --task scissor-cutting --output runs/scissor-paper-default-pickup-rollout.json
 ```
+
+从左手已经操作剪刀的实际积分状态继续，将右手原取纸路径沿纸带向中心移动约 12 mm。实际食指和拇指跨第 8、9 列持纸。223 步取纸末端夹力为 0.132 N，继续搬运 60 步后为 0.132 N，再下降 40 步至刀口后仍为 0.131 N。定刃和动刃分别接触了不同的纸单元，峰值刀刃载荷约 0.00553 N，85 个接缝保持完整。绕刀尖让纸完全退出后，夹力仍有 0.124 N。此后保持腕姿回送 40 mm，工具侧实际只移约 2 mm，问题转到右臂的进刀方向和腕姿。数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/` 中的 `paper-deeper-column-{pickup,diagonal,descend}.json` 和 `paper-deeper-column-bond31-{fullclear,reinsert-reanchor}.json` 记录了动作与实际接触。
+
+从退出刀尖的实际状态，把右腕空间目标分段执行，每段保持 250 ms。40 mm 目标实测前送约 38 mm，持纸载荷约 0.118 N。此时托盘墙仍在承托纸带中段。沿实际受力继续拉离，经三段后纸带完全脱离托盘和刀刃，夹力 0.138 N。再次回送自由纸带时，活动刃实测接触约 0.00648 N，但纸带曲率改变，固定刃尚未压到同一接缝。85 个接缝仍完整。动作、载荷和关节裕量见同目录的 `fullclear-freewrist-execute.json`、`fullclear-freewrist-peel3-execute.json`、`freepaper-return-execute.json`。
 
 备茶的独立三指提瓶续段按手指原网格的接触间距调整食指和中指。在满载瓶约上移 23.1 mm 时，左三指实际载荷约为 1.07、0.70、0.47 N，托盘和右手载荷均为零。稳定提瓶阶段分别保存约 15、20、23 mm 的积分状态。续段把右腕单独退开时，左食指一度卸载，说明提瓶与倾倒之间仍需连续维持夹持。记录在数据盘 `benchmarks/tea-bottle-native/` 的 `tea-three-pad-current-bottle-lift.json` 和 `tea-three-pad-current-held-*mm.npz`。提瓶起步与右腕退让合并，再补偿实际瓶口位置和两指载荷差。由受限关节动力学实测，夹持下倾角达到约 80.19° 时，拇指和食指约为 0.47、1.74 N，中指约 0.16 N，瓶口距壶中心平面约 12 mm。此时拇指末轴在 −1.34 rad 止挡附近，拇指触点已从瓶侧滑到瓶口上缘。再倾倒失去夹持，未有茶粒沉降在壶内。保存的 `tea-pour-balanced-held-80deg.npz` 有三个指垫的实际受力，完整记录为 `tea-balanced-bottle-pour-three-pad-balanced-wrist.json`。
 
@@ -1110,6 +1128,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 擦盘另试无名指先远离、再从海绵下方接近。真实执行中盘和海绵连续双持 80 周期，无物理警告。海绵相对手的变形和位移使无名指一直在上侧，结束时离目标下表面约 19.2 mm，继续接近时原夹持滑脱。该路线没有新增计分。可复放的 3,196 个动作和结果见 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-ring-under-stable-route-prefix.npz` 和 `left-return-ring-under-free-run-f.json`。
 
 镊子盘沿接触建立后，左食指从木托另一端开口向外移木托，右食指保持与工具的接触。先退出约 6.42 mm，后续稳定段再退出约 18.80 mm。最佳可复现状态中，木托与托盘沿的承力分别约 0.236、0.217 N，右食指与木托无接触。镊子仍有木托支撑。数据盘 `benchmarks/tea-tool-source-model/scaledTrough/` 中保存了 `source-tool-bimanual-rim-best-checkpoint.npz` 和 `source-tool-bimanual-rim-left-withdraw-summary.md`。
+
+从已倒茶、已归瓶的诊断状态推进右指接触点，木托累计滚转约 23.13°，镊子对木托的最小载荷约 0.253 N，托盘仍未承托镊子。另从上方实际接触镊子，食指峰值约 9.02 N，载荷方向使镊子向下楔入木托，最终仍由木托承重。证据在数据盘 `benchmarks/tea-bottle-native/after-scaled-trough/after-standard-release/tool-cradle-roll/` 的 `tea-mainline-roll16-counterhold-recenter-summary.md` 和 `tea-mainline-roll23-tool-pickup-topology-summary.md`。尚待在倒茶前取到镊子并执行辅助动作。
 
 ### 捡海绵随机摆放的物理基线
 
