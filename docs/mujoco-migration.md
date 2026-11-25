@@ -373,6 +373,8 @@ python -m simulation.rollout "$jar/earplug-jar-centered-complete-reference.hdf5"
 
 同一咖喱盒末态的几何距离为 −39.90 mm，MuJoCo 零检测边距的盒形接触没有返回该对接触点。将主盖板的 `margin` 与 `gap` 同设为盖板半厚 1.5 mm 后，同一状态得到四个有效接触点。两实体仍有 0.5 mm 净空时，检测点不产生求解器约束。生产模型用此配置从初态复放八条轨迹，咖喱盒实际挡住盖板，最终约 **148.60°**，判定未成功。红银包装、蓝积木、绿罐、绿梨、卷尺、红苹果和耳塞罐全部重新通过，无机械臂接触、双手碰撞或物理警告。数据盘 `benchmarks/packaging-lid-contact-corrected/summary.json` 汇总标准结果，`replay-lid-contact-corrected.sh` 保存各条命令。原接触分析见咖喱盒目录的 `collision-debug-agent/diagnosis.json`。 [MuJoCo 接触边距](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-geom)
 
+从咖喱盒实际立放的积分态继续，右手先推倒盒体，再沿长边解开卡在箱壁上的边角，最后从露出的端面向内下方推。盒体在盒底自由静置，距平放约 0.010°，竖向包络为 1.37–31.37 mm。合并原前缀与这些手指动作后，标准 EGL 入口从默认初态复放 **10,857 步**，实际入盒、居中及双手闭盖均通过，机械臂接触和双手间碰撞均为零，没有物理警告。逐 2 ms 审计记录双手连续承力 1.044 s、累计 1.278 s，独立复放的末态与生成轨迹的积分末态一致。此回放的 `object_grasped` 仍为假，只有入盒、释放及合盖通过当前计分。咖喱盒目录中的 `golden-curry-flat-complete-reference.hdf5`、`golden-curry-flat-complete-egl.json` 及 `golden-curry-flat-complete-egl-contacts.json` 保存完整轨迹和报告。
+
 在加入移盒居中条件前，以相同 MuJoCo 和 EGL 入口复放四条动作。蓝积木的 1,977 步和红纸盒的 8,364 步双手参考均计为整轮成功。蓝积木的 1,237 步及绿罐的 1,322 步单手参考均入盒并合盖，双手闭盖字段为假。四次复放均无物理警告。报告在数据盘 `benchmarks/packaging-bimanual-score/`。上文 75 轮 SetXF 结果全部未入盒，因此使用新判据时完整成功数仍为 0。
 
 按加入居中条件前的计分，在绿罐实测入盒后，让右食指顶住箱体低处，左手带动盖板。盖板转到约 62.03° 后，右手向外斜上撤离，再让左手跨过盖板的闭合中点。这段撤离避免了早期试验在 136–144° 发生的机械臂接触。用标准 EGL 入口从默认初态复放 **2,076 步**，罐子仍在盒内，盒盖闭合，`bimanual_lid_closure` 和 `sim_success` 均为真。每 2 ms 的接触审计记录双手连续承力最长 0.384 s、累计 1.484 s，右食指峰值 3.58 N、左手对盖板峰值 8.43 N，右手未碰盖。没有机械臂、双手间或同手碰撞和物理警告。这段绿罐参考用默认外盒摆放，盒体仅平移约 0.47 mm。数据盘 `benchmarks/packaging-green-current/corrected-height/` 保存了 `green-can-bimanual-reference.hdf5`、标准报告 `green-can-bimanual-egl.json` 和逐物理步汇总 `green-can-bimanual-egl-contacts.json`。
