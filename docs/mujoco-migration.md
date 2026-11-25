@@ -1521,3 +1521,19 @@ Wiping 的标准输出增加 `plate_held` 和 `sponge_held`。两项报告当前
 擦盘从双持越沿轨迹的第 3,191 个控制目标接续，保留左腕已验证的路径，再由右腕让实测盘向海绵移动约 27–33 mm。四条物理路线进入盘局部半径 76.4–79.5 mm 的投影范围，均保持当前双持，续段无机器人碰撞、物体相互接触或物理警告。再推进一段，水平路线首次接触为盘外缘约 0.327 N，严切向路线达到约 62.0 mm、仍未碰盘时左手失去海绵。有效擦拭尚待通过调整左手夹持和海绵入盘朝向实现。记录为 `benchmarks/wiping-coordinated-grasp/stroke-support/wiping-meet-{held-sponge,low-edge}-summary.json`。
 
 备茶操作按论文使用左手持瓶并倒茶、右手拿镊子辅助，茶壶作为接收容器。实测瓶体纵向持握位移约 11.8 mm，释放后在托盘上回弹。用实际瓶内半径确认此段前后均保留 108 粒茶。镊子桥端已实际升高约 12.12 mm，右食指与中指的新对夹路线分别受壶嘴和木托口阻挡，尚未抬离木托。证据 `benchmarks/tea-bottle-native/tea-{park-bottle-corridor-longitudinal-contents,raised-bridge-regrasp-index-middle-stowed}.json`。 [DexCap 任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6)
+
+### 完整点云导出与标准回放
+
+蓝积木种子 5 已完成整条真实点云导出。HDF5 包含 1,928 帧 `10000 × 6` 点云、同样长度的动作标签及 1,586 个保留原时序的回放目标。不指定种子的标准回放读取原来的种子 5 摆放，在 96.4 s 物理时间内再次达到居中入盒和双手合盖。该测试摆放含约 18.66 mm 的最大同手接触穿透，保留用于验证回放，未纳入训练。数据位于 `benchmarks/packaging-material-calibrated-setxf/observations-20hz/blue-block-seed5-grouped*`。
+
+未见胶带座全轨迹也已导出并从导出的 HDF5 标准重放。10,416 帧真实点云，物体重新达到居中入盒和双手合盖，无求解器警告。原始轨迹每个目标正好一个控制周期。数据位于 `benchmarks/packaging-unseen-replay/tape-dispenser/observations-20hz/tape-dispenser-full*`。
+
+### 捡海绵的早期闭环结果
+
+使用相同的 4 个独立测试摆放 3001–3004，PointNet 第 1,500 轮权重 900 步闭环成功 **1/4**，仅 3002 达到 320.97 mm，其余三次未抓起。相机反馈参考策略成功 **4/4**，其中 3001 与 3004 实际选择左手。对应的四次均无机器人碰撞或求解器警告。对照保存在 `benchmarks/sponge-seeded-reference/common-start/controller-rate/pointnet-epoch1500-evaluation/paired-visual-feedback-versus-pointnet-1500.json`。两项 PointNet 训练继续按 3,000 轮配置运行。
+
+在相互独立的训练预备摆放上，生成 9 条实体左手轨迹。从真实相向受力超过 30 cm 的连续区间保留到有效持握结束，物理有效区间为 56–83 个周期，即 2.8–4.15 s。未使用 3001–3004 的测试摆放。对 7023、7040、7123、7180 录制真实 20 Hz 点云，训练预备数据和生成报告位于同目录 `left-augmentation-20hz/`。既有训练输入及运行中的进程未改动。
+
+### 剪纸的标准控制前缀
+
+右手先接触活动柄、将剪刀落稳在原托盘支点上，然后撤回。左食指从新的物理支撑姿态进入固定环。将该分段控制通过 Panda 正向运动学转为仓库原有的 20 Hz 腕位与手指目标，标准入口从共同初态回放共 458 步。几何诊断确认末 18 个周期左食指严格占孔，无机械臂接触、双手接触、同手穿透或求解器警告。另在真实状态下减轻食指锚点载荷、从侧面接近后，拇指仍触到活动环下缘，尚未同时进入两个环。文件位于数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/scissor-right-present-osc20-*`。
