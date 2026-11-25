@@ -353,6 +353,14 @@ python -m simulation.rollout "$apple/red-apple-centered-complete-reference.hdf5"
   --task packaging --object red-apple --output "$apple/red-apple-centered-complete-replay.json"
 ```
 
+**耳塞罐完整居中回放。** 从未见物件的默认摆放执行 **9,132 步**，左手先把盒移动约 **91.51 mm**，右手相向夹起罐子并在保持夹持时转腕。选择在实际箱口上方仍保持夹持、罐轴已接近水平的状态松手。罐子在重力和碰撞下横卧在盒底，罐轴离水平约 **0.07°**。右手稳盒、左手合盖时连续同时承力 **1.038 s**。末态盖板约 **180.00°**，`sim_success=true`。全程机械臂接触和双手碰撞为零，同手采样最大穿透约 0.53 mm，无物理警告。该参考采用现有 70 mm 直径、118 mm 高的圆柱近似。标准 EGL 复放和逐子步审计见数据目录的 `earplug-jar-centered-complete-egl{,-contacts}.json`。
+
+```bash
+jar=/data/dexcap-repro/benchmarks/packaging-unseen-replay/earplug-jar
+python -m simulation.rollout "$jar/earplug-jar-centered-complete-reference.hdf5" \
+  --task packaging --object earplug-jar --output "$jar/earplug-jar-centered-complete-replay.json"
+```
+
 **弹簧夹活动关节。** 复用原有外形和 120 g 总质量。销轴和一侧夹臂随自由物体主体运动，另一侧通过一个相对铰链连接。夹臂和夹嘴仍与桌面、手指和箱体发生碰撞。全部九块实体表面参与抓持和盒内包络判断，铰链运动也参与静置判据。最大开角 44° 参照同尺寸夹具的约 65 mm 开口选取，预紧、0.30 N·m/rad 弹簧刚度和 0.01 N·m·s/rad 阻尼为估计值。两手柄分别施加 5 N 相向载荷，实测最大开角约 **24.93°**，卸载后回到距零位约 **0.022°**，无物理警告。隔离物理试验见数据盘 `benchmarks/packaging-spring-clamp/measure-spring-clamp-handle-response.json`。 [同尺寸夹具参考](https://ronixtools.com/en/product/6-inch-spring-clamp/) · [MuJoCo 铰链与弹簧](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-joint)
 
 ### 包装整轮计分
