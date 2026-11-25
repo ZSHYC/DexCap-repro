@@ -1477,3 +1477,19 @@ envs/train/bin/python -m simulation.ball_retarget "$ball" --first-seed 61 --tria
 捡海绵的高位左手参考在最后上提阶段增加向左臂安装座方向的平移。第 194 号从照相选择参考，真实抬升 327.5 mm 且无机器人碰撞。其他几种位置仍受夹持敏感性限制。初始定位校准及双点预演未能救回第 229 号。数据盘 `benchmarks/sponge-seeded-reference/common-start/controller-rate/left-workspace/left-{inward,calibrated}-seed-*.json`。
 
 限位预演与连续肘部轨迹已进入收球仓库入口。使用 `--guarded-transport` 从当前 EGL 首帧和实际关节观测运行，命令为 `envs/train/bin/python -m simulation.ball_retarget "$ball" --first-seed 81 --trials 20 --guarded-transport --output "$ball/at-20hz/ball-retarget-guarded-81-100.json"`。在相同 81–100 布局复现 **20/20**，仍只在 87、95、98 触发。三次释放腕位误差均和冻结版本相差不到 0.001 mm，全部无机器人碰撞或物理警告。无参数的原入口继续执行冻结的常规搬运动作，第 44 号的逐项结果保持一致。集成复盘为 `at-20hz/ball-retarget-cli/guarded-seeds81-100-summary.json`。
+
+在第二批独立摆放 101–120 上，收球用相同初始 RGB-D 做配对回放，原方案 **19/20**，绕行方案 **20/20**。四次触发中，第 108 号由失败变为成功，释放腕位误差从约 112.61 mm 降至 8.41 mm。两组均未记录到机械臂、双手、同手碰撞或物理警告。数据盘汇总为 `benchmarks/ball-simulation-policy/at-20hz/ball-retarget-cli/paired-seeds101-120-summary.json`。
+
+捡海绵的残差策略入口现在可以用实际 Panda 关节状态与 RGB-D 估计右手抓取位的可达性。右腕位置残差超过 10 mm 且第 7 轴距上限不足 0.020 rad 时，按初始相机观测从训练掩码选择附近参考，将轨迹镜像到真实左手。独立的 MuJoCo 预演也只使用 RGB-D 估计的海绵位置。预演达到 305 mm 且无机器人碰撞才执行左手路线，其他回合继续执行右手策略。左手路线在末段向左臂底座收拢、微收拇指、减速停留。命令示例为第 468 号摆放。
+
+```bash
+sponge=/data/dexcap-repro/benchmarks/sponge-seeded-reference/common-start/controller-rate
+envs/train/bin/python -m simulation.sponge_residual_bc evaluate \
+  "$sponge/../common-sponge-01.hdf5" "$sponge/sponge-residual-bc-tracked.pth" \
+  --left-reference-dataset "$sponge/sponge-20hz-seeds-01-16.hdf5" --first-seed 468 \
+  --output "$sponge/left-workspace/tracked-seed-468.json"
+```
+
+在八个新远端摆放（468、486、491、498、531、542、568、576）上，右手原策略 **1/8**，加入换手 **8/8**，所有回合均无机器人碰撞或物理警告。七个左手回合抬升约 359.2–360.1 mm，四个保持到末段最后 1 s 结束，三个在末段滑脱。第 576 号保持原右手策略，抬升约 340.6 mm。仓库入口的抬升结果与预先保存的控制实验差异小于 0.001 mm。逐回合结果在捡海绵数据目录 `left-workspace/tracked-hand-choice-summary.json`。
+
+另外对连续种子 601–620 做配对回放，两个入口均为 **20/20** 且逐回合原有指标相同。这批摆放均未触发左手路线。两组都在第 614 号记录到 59 个机械臂接触周期，因此按无机器人碰撞的要求是 **19/20**。数据盘汇总为 `left-workspace/tracked-paired-601-620-summary.json`。

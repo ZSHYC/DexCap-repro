@@ -7,11 +7,11 @@ from pathlib import Path
 import h5py
 import mujoco
 import numpy as np
-from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation, Slerp
 
 from simulation import mujoco_ball_collecting as task
 from simulation.frames import AXES, TABLE_SHIFT
+from simulation.mujoco_control import wrist_ik
 from simulation.mujoco_scene import MujocoScene
 from simulation.rollout import ASSET_ROOT, load_demo
 
@@ -87,18 +87,6 @@ def retarget(references, layout):
             shift = basket_delta
         action[:2] += shift
     return seed, targets, (transfer_start, transfer_end, release)
-
-
-def wrist_ik(model, arm, work, position, rotation, previous, weight=0.001, max_evaluations=240):
-    def residual(q):
-        work.qpos[arm.pos] = q
-        mujoco.mj_kinematics(model, work)
-        error = arm.error(work, position, rotation)
-        return np.r_[error[:3], 0.22 * error[3:], weight * (q - previous)]
-
-    fit = least_squares(residual, np.clip(previous, arm.lower, arm.upper),
-                        bounds=(arm.lower, arm.upper), max_nfev=max_evaluations)
-    return fit.x, float(np.linalg.norm(fit.fun[:3]))
 
 
 def transport_risk(scene, targets, start, release):

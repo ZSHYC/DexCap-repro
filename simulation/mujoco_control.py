@@ -27,6 +27,18 @@ def wrist_ramp(position, rotation, target_position, target_rotation, fractions):
     return list(zip(positions, rotations.as_matrix()))
 
 
+def wrist_ik(model, arm, work, position, rotation, previous, weight=0.001, max_evaluations=240):
+    def residual(q):
+        work.qpos[arm.pos] = q
+        mujoco.mj_kinematics(model, work)
+        error = arm.error(work, position, rotation)
+        return np.r_[error[:3], 0.22 * error[3:], weight * (q - previous)]
+
+    fit = least_squares(residual, np.clip(previous, arm.lower, arm.upper),
+                        bounds=(arm.lower, arm.upper), max_nfev=max_evaluations)
+    return fit.x, float(np.linalg.norm(fit.fun[:3]))
+
+
 class Arm:
     def __init__(self, model, side):
         self.site = model.site(f"{side}_wrist").id

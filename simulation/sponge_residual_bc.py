@@ -5,15 +5,18 @@ import json
 from pathlib import Path
 
 import h5py
+import mujoco
 import numpy as np
-from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Rotation, Slerp
 import torch
 from torch import nn
 
 from simulation.frames import AXES, TABLE_SHIFT, ActionFrames
+from simulation.hand_joints import decode_leap_joints, encode_leap_joints
+from simulation.mujoco_control import ARM_HOME, wrist_ik
 from simulation.mujoco_scene import MujocoScene
 from simulation.mujoco_sponge import SPONGE_HALF_XY, SPONGE_YAW
-from simulation.mujoco_sponge_picking import sample_object_xy
+from simulation.mujoco_sponge_picking import MIN_LIFT_M, sample_object_xy
 from simulation.rollout import ASSET_ROOT, PROPRIOCEPTION, load_demo
 
 
@@ -32,6 +35,9 @@ phase = cycle / cycle[-1]
 harmonics = np.pi * phase[:, None] * np.arange(1, 7)
 CLOCK = np.column_stack((phase, np.sin(harmonics), np.cos(harmonics)))
 SPONGE_AXES = Rotation.from_euler("z", -SPONGE_YAW).as_matrix()
+LEFT_REFLECTION = SPONGE_AXES.T @ np.diag([1, -1, 1]) @ SPONGE_AXES
+APPROACH_CYCLES = 185
+GRASP_CYCLE = 351
 
 
 def camera_center(points):
@@ -134,7 +140,109 @@ def train(dataset, output, device):
     print(json.dumps({"epoch": best_epoch, "validation_loss": best}), flush=True)
 
 
-def evaluate(reference, checkpoint, first_seed, trials, device):
+def left_references(dataset, native_directory):
+    references = []
+    with h5py.File(dataset, "r") as source:
+        for name in source["mask/train"][:]:
+            demo = source["data"][name.decode()]
+            seed = int(demo.attrs["source_seed"])
+            center = camera_center(demo["obs/pointcloud"][0])
+            native = native_directory / f"common-sponge-{seed:02d}.hdf5"
+            _, _, _, actions = load_demo(native)
+            with h5py.File(native, "r") as recording:
+                cycles = recording["data/demo_0"].attrs["control_cycles_per_action"]
+            references.append((seed, center, np.repeat(actions, cycles, axis=0)[APPROACH_CYCLES:]))
+    return references
+
+
+def right_grasp_reach(scene, prior, center):
+    target = prior[GRASP_CYCLE].copy()
+    target[:2] += center * LAYOUT_BLEND[GRASP_CYCLE]
+    rotation = Rotation.from_quat(target[6:10], scalar_first=True).as_matrix()
+    arm = scene.control.arms[0]
+    work = mujoco.MjData(scene.model)
+    raised = ARM_HOME.copy()
+    raised[[0, 1, 5]] = [.8, 1.0, 2.35]
+    fits = [wrist_ik(scene.model, arm, work, target[:3], rotation, guess,
+                     weight=.0002, max_evaluations=100)
+            for guess in (scene.data.qpos[arm.pos].copy(), ARM_HOME, raised)]
+    q, error = min(fits, key=lambda fit: fit[1])
+    margin = float(arm.upper[-1] - q[-1])
+    return dict(wrist_error_m=error, q7_margin_rad=margin, try_left=error > .010 and margin < .020)
+
+
+def interpolate_targets(start, goal, steps):
+    progress = np.arange(1, steps + 1) / steps
+    blend = progress * progress * (3 - 2 * progress)
+    actions = (1 - blend[:, None]) * start + blend[:, None] * goal
+    for part in (slice(6, 10), slice(10, 14)):
+        rotations = Rotation.from_quat(np.stack((start[part], goal[part])), scalar_first=True)
+        actions[:, part] = Slerp([0, 1], rotations)(blend).as_quat(scalar_first=True)
+    return actions
+
+
+def left_pick_targets(start, left_base, center, donor_center, right):
+    left = np.repeat(start[None], len(right), axis=0)
+    offset = right[:, :3] - np.r_[donor_center, 0.]
+    left[:, 3:6] = offset @ LEFT_REFLECTION.T + np.r_[center, 0.]
+    rotations = Rotation.from_quat(right[:, 6:10], scalar_first=True).as_matrix()
+    mirrored = LEFT_REFLECTION @ rotations @ np.diag([1, -1, 1])
+    left[:, 10:14] = Rotation.from_matrix(mirrored).as_quat(canonical=True, scalar_first=True)
+    left[:, 30:46] = [encode_leap_joints(decode_leap_joints(fingers, False), True)
+                      for fingers in right[:, 14:30]]
+
+    phase = APPROACH_CYCLES + np.arange(len(left))
+    left[:, 5] += .035 * smooth_progress((phase - max(APPROACH_CYCLES, phase[-1] - 99)) / 99)
+    toward_base = left_base[:2] - center
+    toward_base /= np.linalg.norm(toward_base)
+    left[:, 3:5] += .070 * smooth_progress((phase - 620) / 120)[:, None] * toward_base
+    grip = np.clip((phase - 700) / 50, 0, 1)
+    left[:, 44] += .009 * grip * grip * (3 - 2 * grip)
+
+    # Brake before the donor's fastest late lift and give the loaded pads time to settle.
+    elapsed = np.clip((phase - 790) / 40, 0, 1)
+    position = np.where(phase < 790, phase, 790 + 20 * (2 * elapsed - elapsed**2))
+    left = np.column_stack([np.interp(position, phase, column) for column in left.T])
+    left = np.vstack((left, np.repeat(left[-1:], 20, axis=0)))
+
+    high_start, high_goal = start.copy(), left[0].copy()
+    high_start[5] = high_goal[5] = max(start[5], left[0, 5]) + .060
+    targets = np.vstack((interpolate_targets(start, high_start, 32),
+                         interpolate_targets(high_start, high_goal, 85),
+                         interpolate_targets(high_goal, left[0], 40),
+                         np.repeat(left[:1], 28, axis=0), left))
+    targets[32:117, 35] += .08 * np.sin(np.pi * np.linspace(0, 1, 85))**2
+    return targets
+
+
+def execute_targets(scene, targets):
+    for steps, target in enumerate(targets, 1):
+        metrics, _, _ = scene.step(target, control_cycles=1)
+        if scene.invalid_hand_motion or scene.data.warning.number.any():
+            metrics["sim_success"] = False
+            break
+    return steps, metrics
+
+
+def choose_left_reference(frames, start, camera, scene, center, references):
+    # Construct the preview's sponge from RGB-D so the task's true placement stays private to evaluation.
+    nearest = sorted(references, key=lambda row: np.linalg.norm(center - row[1]))[:3]
+    for seed, donor_center, right in nearest:
+        targets = left_pick_targets(start, scene.base_positions[1], center, donor_center, right)
+        preview = MujocoScene(ASSET_ROOT, frames, camera, "sponge-picking", center[None], None)
+        try:
+            preview.reset(start)
+            _, metrics = execute_targets(preview, targets)
+            clean = not (preview.arm_contact_steps or preview.hand_collision_steps
+                         or preview.same_hand_max_penetration_m)
+            if clean and metrics["sim_success"] and metrics["sponge_lift_m"] > MIN_LIFT_M + .005:
+                return seed, targets
+        finally:
+            preview.close()
+    return None, None
+
+
+def evaluate(reference, checkpoint, first_seed, trials, device, left_reference_dataset=None):
     state = torch.load(checkpoint, map_location="cpu", weights_only=True)
     model = network(len(state["x_center"])).to(device).eval()
     model.load_state_dict(state["model"])
@@ -144,6 +252,8 @@ def evaluate(reference, checkpoint, first_seed, trials, device):
     bounds = {key: state[key].numpy() for key in ("prior", "observation_prior", "layout_low", "layout_high",
                                                   "obs_low", "obs_high", "action_low", "action_high")}
     frames, start, camera, _ = load_demo(reference)
+    references = (left_references(left_reference_dataset, reference.parent)
+                  if left_reference_dataset is not None else None)
     results = []
     for seed in range(first_seed, first_seed + trials):
         placement = sample_object_xy(np.random.default_rng(seed))
@@ -151,33 +261,45 @@ def evaluate(reference, checkpoint, first_seed, trials, device):
         try:
             scene.reset(start)
             layout = camera_center(scene.camera.capture(scene.data, np.random.default_rng(seed)))
+            reach, donor, targets = None, None, None
+            if references is not None:
+                reach = right_grasp_reach(scene, bounds["prior"], layout)
+                if reach["try_left"]:
+                    donor, targets = choose_left_reference(frames, start, camera, scene, layout, references)
+
             feature_layout = np.clip(layout, bounds["layout_low"], bounds["layout_high"])
             right_offset = layout - scene.base_positions[0, :2]
             close_to_right_base = right_offset[1] < 0.217 and np.linalg.norm(right_offset) < 0.31
-            for i in range(900):
-                k = min(i, FRAMES - 1)
-                obs = scene.control.observed_action()
-                obs[:2] -= LAYOUT_BLEND[k] * layout
-                obs = np.clip(obs, bounds["obs_low"][k], bounds["obs_high"][k])
-                features = np.r_[CLOCK[k], feature_layout, obs - bounds["observation_prior"][k]]
-                features = torch.as_tensor(features, dtype=torch.float32, device=device)
-                with torch.inference_mode():
-                    residual = (model((features - x_center) / x_scale) * y_scale + y_center).cpu().numpy()
-                target = np.clip(bounds["prior"][k] + residual, bounds["action_low"][k], bounds["action_high"][k])
-                target[:2] += LAYOUT_BLEND[k] * layout
-                if close_to_right_base:
-                    # Move the held sponge away from the folded elbow after pinch.
-                    target[:2] += LIFT_ARC[k]
-                    target[18] += MIDDLE_SPLAY[k]
-                metrics, _, _ = scene.step(target, control_cycles=1)
-                if scene.invalid_hand_motion or scene.data.warning.number.any():
-                    metrics["sim_success"] = False
-                    break
-            result = dict(metrics, seed=seed, executed_steps=i + 1,
+            if targets is not None:
+                steps, metrics = execute_targets(scene, targets)
+            else:
+                for i in range(900):
+                    k = min(i, FRAMES - 1)
+                    obs = scene.control.observed_action()
+                    obs[:2] -= LAYOUT_BLEND[k] * layout
+                    obs = np.clip(obs, bounds["obs_low"][k], bounds["obs_high"][k])
+                    features = np.r_[CLOCK[k], feature_layout, obs - bounds["observation_prior"][k]]
+                    features = torch.as_tensor(features, dtype=torch.float32, device=device)
+                    with torch.inference_mode():
+                        residual = (model((features - x_center) / x_scale) * y_scale + y_center).cpu().numpy()
+                    target = np.clip(bounds["prior"][k] + residual, bounds["action_low"][k], bounds["action_high"][k])
+                    target[:2] += LAYOUT_BLEND[k] * layout
+                    if close_to_right_base:
+                        # Move the held sponge away from the folded elbow after pinch.
+                        target[:2] += LIFT_ARC[k]
+                        target[18] += MIDDLE_SPLAY[k]
+                    metrics, _, _ = scene.step(target, control_cycles=1)
+                    if scene.invalid_hand_motion or scene.data.warning.number.any():
+                        metrics["sim_success"] = False
+                        break
+                steps = i + 1
+            result = dict(metrics, seed=seed, executed_steps=steps,
                           arm_contact_steps=scene.arm_contact_steps, hand_collision_steps=scene.hand_collision_steps,
                           same_hand_max_penetration_m=scene.same_hand_max_penetration_m,
                           invalid_hand_motion=scene.invalid_hand_motion,
                           physics_warnings=scene.data.warning.number.tolist())
+            if reach is not None:
+                result.update(right_grasp_reach=reach, left_reference_seed=donor)
             results.append(result)
             print(json.dumps(result), flush=True)
         finally:
@@ -195,6 +317,8 @@ def main():
     rollout = commands.add_parser("evaluate")
     rollout.add_argument("reference", type=Path, help="Native MuJoCo reference carrying the common reset")
     rollout.add_argument("checkpoint", type=Path)
+    rollout.add_argument("--left-reference-dataset", type=Path,
+                         help="Use training RGB-D and native references beside the common reset for left picks")
     rollout.add_argument("--first-seed", type=int, required=True)
     rollout.add_argument("--trials", type=int, default=1)
     rollout.add_argument("--output", type=Path, required=True)
@@ -205,7 +329,8 @@ def main():
     else:
         if args.first_seed < 1 or args.trials < 1:
             parser.error("First seed and trial count must be positive")
-        result = evaluate(args.reference, args.checkpoint, args.first_seed, args.trials, device)
+        result = evaluate(args.reference, args.checkpoint, args.first_seed, args.trials, device,
+                          left_reference_dataset=args.left_reference_dataset)
         args.output.write_text(json.dumps(result, indent=2) + "\n")
 
 
