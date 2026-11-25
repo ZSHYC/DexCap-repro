@@ -1337,6 +1337,8 @@ envs/train/bin/python -m simulation.sponge_residual_bc evaluate \
 
 在额外保留的种子 151–170 上，用同一权重和共同初态做 20 个配对回合。原包络中点通过 **17/20**，相机边缘补全通过 **19/20**。种子 153、156 分别由 297.24、281.54 mm 升至 313.91、315.96 mm。两种估计都未抬起种子 170 的海绵。补全组有 17/20 同时满足抬升与无机器人碰撞。种子 156 的机械臂接触 91 个控制周期、同手穿透峰值约 0.187 mm，种子 168 同手穿透峰值约 0.078 mm。逐回合指标与配对表存于 `camera-boundary-benchmark/paired-seeds151-170-summary.json`。
 
+另采训练种子 43、46、56、112、126 的完整物理动作和本体状态，针对这份行为克隆仅保存首帧相机观测。用扩展训练集重训后，原验证组仍为 3/4，种子 13 的抬升由约 235.51 降到 219.79 mm，留存原权重作为当前对照。扩展 HDF5 与逐回合报告位于 `controller-rate/augmentation/`。
+
 ### 捡球的 20 个随机摆放标准复放
 
 初始收拢无名指后，中指与球的法向载荷曾从约 0.38 N 降至零，导致搬运中滑脱。调整中指的两关节目标，在第 96–140 个动作间逐步增加 0.03 rad，并依据实际持球位置规划两段搬运。闲置左手张开，左腕沿 y 轴移出搬运区 120 mm。第 20 个种子按实测腕位误差额外补偿搬运终点 `[15, -40] mm`。保留各动作实际执行的控制周期数。
@@ -1423,3 +1425,5 @@ envs/train/bin/python "$ball/ball-layout-primitive-egl.py" 41 feedback07
 黄布的真实夹持中加入右中指后，食指、中指、拇指承载分别约 0.65、1.37、7.04 N。中指与食指同侧分载。沿盒方向无碰撞携布的稳定区间从不足 4 mm 延长至至少 8 mm，远边底层仍离桌约 34.10 mm。数据盘 `benchmarks/packaging-yellow-cloth-complete/sponge-guided/yellow-cloth-third-pad-*`。
 
 擦盘的新接续在原第一个左中指托盘位置保持真实上向受力，峰值约 1.93 N。接着右腕随实测盘位置缓慢移动，右食指先接住盘下表面，右手最终连续约 1.048 s 托盘离桌，食指向上约 5.42–5.50 N，拇指向下约 2.97–3.17 N。共 2,954 个原生控制目标，第 205 步后逐 2 ms 无手内、手间穿透；此端点还未抓海绵。数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/first-wipe-left-middle-lift-d.{npz,json}`。
+
+同一持盘前缀已通过标准 EGL 入口从共同初态独立复放 2,954 步。标准结果为 `plate_grasped=true`、`sponge_grasped=false`，无机械臂、双手间接触及物理警告。第 205 步前的左手同手峰值约 1.71 mm。数据盘同目录 `first-wipe-left-middle-lift-follow-{reference.hdf5,egl.json}`。
