@@ -261,6 +261,16 @@ python -m simulation.rollout "$blue/blue-block-complete-reference.hdf5" \
 
 在修正后的场景中，按物体和指垫的实际最近点拟合夹持，再独立求张指下降通道。从张手开始分别执行食指—拇指和中指—拇指路径。157 步、170 步标准 EGL 回放均取得相向夹持并抬离桌面约 39–42 mm，无机械臂接触、双手碰撞或物理警告。原抬升预设的闲置左手仍有约 4.18 mm 采样同手穿透。回放和动作在 `benchmarks/packaging-pear-complete/stable-pose/pear-lift-{4-1-2-0,8-0-0-1}-*`。
 
+右手夹梨越过盒沿后，两个实际释放状态均有盒底支撑。复算中，接触维数 3 和 4 的两份状态在末段 100 个样本均未达到静置判据。仅为梨与盒底指定六维接触，启用已有的滚动阻力系数后，两份状态均达到 100/100。纸盒其他表面与任务判据不参与这项改动。对照见数据盘同目录的 `pear-box-floor-contact-dimension.json`。 [MuJoCo 接触维数和滚动阻力](https://mujoco.readthedocs.io/en/3.6.0/computation/index.html#contact)
+
+从 `demo_100` 对应的默认摆放执行 **8,982 个腕位和手指目标**，标准 EGL 回放确认纸盒移动约 **85.38 mm** 并达到居中判据，右手抓起绿梨、越过盒沿、松手后由盒底承托，右手扶盒、左手合盖，最终 `sim_success=true`。以 2 ms 子步检查，两手连续同时承力 **1.046 s**。机械臂接触和双手间碰撞计数均为零，最大同手采样穿透约 0.53 mm，无物理警告。回放和接触审计为同目录的 `green-pear-centered-complete-egl.json` 与 `green-pear-centered-complete-egl-contacts.json`。
+
+```bash
+pear=/data/dexcap-repro/benchmarks/packaging-pear-complete/stable-pose
+python -m simulation.rollout "$pear/green-pear-centered-complete-reference.hdf5" \
+  --task packaging --object green-pear --output "$pear/green-pear-centered-complete-replay.json"
+```
+
 改用高位预抓，下降中首次检测到手与梨接触时，拇指垫最近间隙约 1.49 mm，中指垫仍约 49.3 mm。停在该处单独合拢中指仍未抓起，梨从初始位置移动约 97.7 mm。记录见 `runs/packaging-green-pear-signed-gap-close-b6d8e6d.json`。
 
 从绿梨长轴上方重拟合夹点时，避开桌面的候选仍出现拇指穿入约 2.54 mm，另一指还差约 5.98 mm，接触法线也未相向。随后高位预抓对照中未抓起梨。记录见 `runs/packaging-green-pear-topdown-longaxis-fit-b6d8e6d.json`。

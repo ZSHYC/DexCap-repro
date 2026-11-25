@@ -285,7 +285,7 @@ def _add_object(spec, xy, object_name, object_yaw):
         kind, size, pos, color, quat = definitions[0]
         mass = 0.118 if object_name == DEFAULT_OBJECT else 0.12
         density = mass / _geom_volume(kind, size)
-        _add_geom(
+        object_geom = _add_geom(
             body,
             name="packaging_object_geom",
             kind=kind,
@@ -295,6 +295,15 @@ def _add_object(spec, xy, object_name, object_yaw):
             rgba=color,
             density=density,
         )
+        if object_name == "green-pear":
+            sliding, torsional, rolling = object_geom.friction
+            spec.add_pair(
+                name="packaging_pear_floor",
+                geomname1=object_geom.name,
+                geomname2="packaging_box_floor",
+                condim=6,
+                friction=[sliding, sliding, torsional, rolling, rolling],
+            )
         if object_name == DEFAULT_OBJECT:
             _add_red_box_hanger(body, color)
             body.add_geom(

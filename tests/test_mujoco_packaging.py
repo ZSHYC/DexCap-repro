@@ -68,6 +68,24 @@ class MujocoPackagingTest(unittest.TestCase):
         self.assertLess(maximum_drift, 0.004)
         self.assertTrue(metrics._object_contacts(data, {metrics.table_geom}))
 
+    def test_pear_settles_after_rolling_on_box_floor(self):
+        model, data, metrics = self.make_scene("green-pear")
+        model.opt.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
+        model.opt.impratio = 12
+        model.opt.tolerance = 1e-10
+        joint = model.joint("packaging_object_free")
+        qpos, dof = joint.qposadr[0], joint.dofadr[0]
+        orientation = np.array([0.04135, -0.20280, -0.95877, -0.19472])
+        orientation /= np.linalg.norm(orientation)
+        data.qpos[qpos:qpos + 7] = [0.002, -0.066, -0.00219, *orientation]
+        data.qvel[dof:dof + 6] = [-0.0563, 0.0967, -0.0086, 2.724, -3.339, -1.077]
+        mujoco.mj_forward(model, data)
+
+        for _ in range(3000):
+            mujoco.mj_step(model, data)
+        mujoco.mj_forward(model, data)
+        self.assertTrue(metrics.update(data)["object_in_box"])
+
     def test_cylinder_uses_asset_height_and_mass(self):
         for object_name, geom_name, radius, half_height in (
             ("green-can", "packaging_object_geom", 0.0405, 0.034),
