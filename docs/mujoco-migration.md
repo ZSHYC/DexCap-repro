@@ -343,6 +343,14 @@ python -m simulation.rollout "$replay/blue-mug-native-entry-reference.hdf5" \
 
 修正苹果静置支撑后，用当前 SetXF 权重运行各 400 步的种子 1–5。三个回合出现右手接触，其中种子 5 曾抓起后脱手。全组入盒和整体成功均为 0/5，无物理警告。报告在同目录 `red-apple-flat-base-policy-seed-{1..5}.json`。
 
+**红苹果完整居中回放。** 从未见物件默认摆放独立执行 **9,066 步**。纸盒移动约 **91.20 mm**，右手相向夹持苹果并实际释放在居中盒底，随后右手稳盒、左手合盖。两手连续同时承力 **0.986 s**。末态盖板约 **176.25°**，满足现行 6° 合盖容差，`sim_success=true`。机械臂和双手间碰撞均为零，同手采样最大穿透约 0.53 mm，无物理警告。标准 EGL 复放和接触审计为同目录 `red-apple-centered-complete-egl{,-contacts}.json`。
+
+```bash
+apple=/data/dexcap-repro/benchmarks/packaging-unseen-replay/red-apple
+python -m simulation.rollout "$apple/red-apple-centered-complete-reference.hdf5" \
+  --task packaging --object red-apple --output "$apple/red-apple-centered-complete-replay.json"
+```
+
 ### 包装整轮计分
 
 包装整轮要求放下物件时，工作区中心 `[0.4, 0.0] m` 落在按实际朝向计算的纸盒内底投影内。论文规定先把盒子移到桌子中间，未给出距离阈值，本项目用实际内底尺寸定义该区域。放置后还要求在同一 2 ms 物理子步里，一只手接触箱体，另一只手接触正向闭合的盒盖或挂片，两处法向载荷均超过 0.05 N。最后物件必须仍在盒内、盖板已合上。独立字段继续记录入盒、合盖和双手承力。 [论文包装流程](https://arxiv.org/html/2403.07788v2#A1.SS6)
@@ -386,6 +394,8 @@ python -m simulation.rollout "$tape/tape-measure-centered-complete-reference.hdf
 随后按三份发布示范中的卷尺点云补上深色外壳、黄色环带和偏置蓝标。黄边和蓝标作为无质量、无碰撞的渲染几何。对 `demo_175`、`demo_176` 和 `demo_180` 共 30 组三帧输入保持摄像机、腕位、随机种子和策略权重配对，卷尺区域的平均绝对 RGB 差中位数由 **0.335 降至 0.116**。相对录制动作的右、左腕误差中位数由 **9.93、9.67 mm** 降至 **6.07、6.46 mm**。壳体厚度仍使用圆柱近似，公开点云没有充分覆盖其底面用于独立标定。采用新外观的 `tape-measure-centered-complete-layered{,-contacts}.json` 复放了同一完整轨迹，整段物理结果、末态和逐子步受力汇总完全相同。数据盘同目录的 `tape-case-offset-rgb-paired-demo_{175,176,180}.json` 保存配对测量。 [MuJoCo 几何体外观与惯量](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#body-geom)
 
 外观更新后，现有 SetXF 权重的五个种子仍均未抓起或入盒。每轮闭环 400 步，只有种子 5 观察到右手接触。逐轮结果为同目录的 `tape-layered-policy-seed-{1..5}.json`。
+
+**黄布边缘剥离参考。** 从 `demo_250` 对应摆放执行 160 个目标和 200 个控制周期。右手抬起布边，布料质心最高上升约 **14.36 mm**，远侧仍由桌面支撑，拇指与中指受力法向变为同向。完整抓持及入盒均未通过。标准复放无机械臂接触、双手碰撞、同手穿透、手指越限或物理警告。HDF5、逐步物理数据和报告见数据盘 `benchmarks/packaging-yellow-cloth-complete/sponge-guided/` 的 `yellow-cloth-edge-peel-clean-*`。
 
 ## Ball Collecting
 
@@ -1071,6 +1081,8 @@ python -m simulation.rollout data/derived/packaging-red-carton-bimanual-closure-
 第一笔后让右腕沿实测盘法向外移约 1.6 mm，可将海绵和盘的载荷从 1.776 N 降至 0.694 N，连续保持双手夹持四个控制周期。用刚完成第一笔的实际世界位移反向，海绵实际只反向约 0.75 mm 后，反向载荷使右手中的盘滚转，盘下净空从约 58 mm 降到 29–36 mm。左腕跟踪误差小于 1.3 mm，第二笔仍未成立。记录见 `benchmarks/wiping-coordinated-grasp/stroke-support/left-return-{outboard-unload-second,early-world-reverse}.json`。
 
 把右手入场时的盘沿抓点提早转动约 4°，右食指的盘局部抓点由约 `[47, -62] mm` 移到 `[39, -65] mm`。3,266 个目标的实际回放记录了 92.47 mm 的第一笔。后续先卸载约 0.8 mm 再开始回程，腕位反向目标累计到 8.5 mm 时仍保持双手持物，累计计分的有效擦拭距离增至 98.85 mm。反向目标到 9 mm 时左手海绵脱夹，右手仍持盘。第二笔尚未计分。实际联合接触和动作位于同目录的 `left-return-shifted-rim-pickup-4deg-early.*` 和 `left-return-shifted-rim-reverse.*`。
+
+将左食指触点加入第一笔的原生轨迹后，食指确实提供抗滚作用，实测峰值约 2.92 N、最大反向力矩约 0.073 N·m。回程约 7 mm 时左中指主斑块滑离，盘仍在右手中。食指原触点在掌坐标只漂移约 1.53 mm，补偿这段漂移和滚转未能恢复夹持，第二笔仍未计分。数据盘同目录 `left-return-shifted-index-tripod-native-f.*` 与 `left-return-shifted-index-follow-i.*` 保存实际动作和接触记录。
 
 ### 剪纸的标准提纸回放
 
