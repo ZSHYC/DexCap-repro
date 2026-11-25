@@ -1426,6 +1426,16 @@ ball=/data/dexcap-repro/benchmarks/ball-simulation-policy/at-20hz
 envs/train/bin/python "$ball/ball-layout-primitive-egl.py" 41 feedback07
 ```
 
+收球的相同 RGB-D 重定向已收进 `simulation/ball_retarget.py`。仓库入口从训练掩码读入原 12 条、从第一帧 RGB-D 选择参考，仅用腕位本体状态补偿搬运。种子 41、44 的成功标志、松手腕误差及峰值载荷与已保存流程一致。随后首次用仓库入口跑种子 61–80，仍是 **17/20**，17 次完成均无机器人碰撞。三个失败是种子 64、66、77，均已抬起并释放球，松手腕误差约 102–136 mm。逐回合指标位于数据盘 `benchmarks/ball-simulation-policy/at-20hz/ball-retarget-cli/seeds61-80-summary.json`。
+
+```bash
+ball=/data/dexcap-repro/benchmarks/ball-simulation-policy
+envs/train/bin/python -m simulation.ball_retarget "$ball" --first-seed 61 --trials 20 \
+  --output "$ball/at-20hz/ball-retarget-61-80.json"
+```
+
+同一份收球 20 Hz 数据另启动绝对坐标 PointNet 的 3,000 轮训练对照，配置和日志为 `at-20hz/pointnet-20hz-config-3000.json` 和 `at-20hz/pointnet-20hz-training-3000.log`。
+
 备茶在真实持盖状态下将盖放至右侧桌面远处 `[0.325,-0.197,-0.016] m` 并撤手，桌面承载约 0.246 N。额外静置 1 s 后仍满足盖已退丝并在右侧的判据，横向漂移约 0.010 mm。右手撤出后，原工具桥侧的 45° 入场方案在 18 层下降和高位进场的完整网格扫描中均有净空。数据盘 `benchmarks/tea-bottle-native/tea-cap-far-park-*`。
 
 黄布的真实夹持中加入右中指后，食指、中指、拇指承载分别约 0.65、1.37、7.04 N。中指与食指同侧分载。沿盒方向无碰撞携布的稳定区间从不足 4 mm 延长至至少 8 mm，远边底层仍离桌约 34.10 mm。数据盘 `benchmarks/packaging-yellow-cloth-complete/sponge-guided/yellow-cloth-third-pad-*`。
