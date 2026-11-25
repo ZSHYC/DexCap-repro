@@ -24,6 +24,14 @@ class MuJoCoCameraTest(unittest.TestCase):
             size=[0.1, 0.1, 0.1],
             rgba=[0.8, 0.1, 0.1, 1],
         )
+        distant_center = WORLD_FROM_MOCAP @ [0.43, 0, 1.25, 1]
+        spec.worldbody.add_geom(
+            name="beyond_dataset_depth_cutoff",
+            type=mujoco.mjtGeom.mjGEOM_BOX,
+            pos=distant_center[:3],
+            size=[0.1, 0.18, 0.12],
+            rgba=[0.1, 0.8, 0.1, 1],
+        )
         model = spec.compile()
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
@@ -35,6 +43,7 @@ class MuJoCoCameraTest(unittest.TestCase):
         self.assertEqual(points.shape, (10_000, 6))
         self.assertEqual(points.dtype, np.float32)
         np.testing.assert_allclose(np.median(points[:, 2]), 0.4, atol=2e-3)
+        self.assertLessEqual(points[:, 2].max(), 1.0)
         self.assertLess(abs(np.median(points[:, 0])), 2e-3)
         self.assertLess(abs(np.median(points[:, 1])), 2e-3)
         self.assertTrue(np.any(points[:, 3:] > 0))

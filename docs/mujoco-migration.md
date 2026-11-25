@@ -287,6 +287,10 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 另在红盒、蓝积木和绿罐各取 13 个时点，共 39 组三帧输入。每组固定录制的关节与腕位观测、策略随机种子和相机标定，只将录制点云替换为对应姿态下的 EGL 点云。右腕和左腕预测分别变化约 18.58 和 13.48 mm（中位数）。相对录制动作，右腕和左腕的中位误差分别从 4.39、3.37 mm 增至 21.07、15.13 mm。场景设置各观测姿态时，腕位最大误差约 0.132 mm。该对照覆盖三份示范的前段，不含闭环接触误差。测量脚本与输出位于数据盘 `benchmarks/packaging-current-noncylinder-policy/paired-reference-camera-probe.py` 和 `benchmarks/packaging-paired-initial-camera-probe.json`。
 
+仿真 RGB-D 按作者数据处理在拼入 LEAP 手部点之前，去除超过 1 m 的场景深度。EGL 回归场景把约 1.15 m 远的盒面排除，近处几何仍正常投影。在上述 39 组配对输入中，裁剪前后的腕位预测相同。逐样本对照位于数据盘 `benchmarks/packaging-paired-depth-ablation.json`。
+
+另对五个物件的 45 个录制时点，按实际渲染几何分区测量。逐组计算仿真点到录制点的最近邻距离，再取各组中位数的中位数，得到手部约 4.2 mm、纸盒盒盖 11.3 mm、盒身 18.4 mm、目标物 13.2 mm。45 个时点中有 19 个在最终点云里留有桌面点。盒身点每帧中位数约 2,755。红盒原始深度的六帧在固定盒心坐标处拟合到约 −41 至 −31 mm 的桌高，在物件处约 −29 至 −19 mm。盒边点云差异还受视角和录制中物件运动影响，单帧测量不足以确定一个公共桌高偏移。区域结果、原始深度拟合分别见 `benchmarks/packaging-paired-surface-regions.json`、`benchmarks/packaging-source-table-planes.json`。
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
@@ -1037,6 +1041,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 从 15 mm 保存点按三个实测指垫斑块继续抬升和转腕。抬升阶段瓶身相对托盘上的初始位置最高上移约 **126 mm**，食指和拇指仍承力，瓶身没有外部支撑。随后瓶口移到壶口上方附近，瓶轴相对竖直倾斜约 **53°**，仍朝上。下一步左拇指触及壶壁并触发停止，入壶粒数为 0。逐步轨迹见同目录 `tea-staged-lift-tip-126.json`。
 
+将更高一组抬升目标用于同一抓持，瓶身最高离初始支撑位置约 **162 mm**，两指仍承力；倾斜后拇指卸载，入壶 0 粒。从抬升段保存的另一积分态，实际收起左中指，同时保留左拇指与食指对瓶的夹持。选中路线连续至少 0.576 s 实测两指有载、第三指和托盘无载荷，末态两指约承力 1.67 和 1.35 N。该状态用于给右手腾出受力空间，记录见 `tea-staged-lift-tip-clear-162-+0.json` 和 `tea-staged-left-middle-clear-2.{json,npz}`。
+
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
 从同一条 223 步抓纸回放重新提前预置左中指，左腕绕世界 X 轴滚转 −7° 后通过了该段进入轨迹。拼接为 345 个 46 维目标，纸带仍由右手相向悬持。再保持 80 个控制周期，纸带仍保持离托，固定柄的瞬态载荷从约 10.11 N 降至 0.016 N，剪刀主体上移约 12.6 mm，随后由转轴与托盘侧边接触承担约 0.368 N。该末态提供了新的进环入口，三指均未达到完整进环。结果在 `runs/scissor_paper_early_middle_c4d447c/` 的 `standard223-middle-waypoint2-roll7-left-reach.json` 与 `standard223-middle-waypoint2-roll7-settle-native.json`。
@@ -1044,6 +1050,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 在上述高位支点沿原路径上撤左腕 60 mm，右手仍悬持纸带。合并进入、保持、撤腕为 465 步，通过标准 EGL 从同一初态独立回放。纸带与剪刀的峰值抬升分别为 57.41 和 28.38 mm，机械臂、双手间接触步数为零，无物理警告。剪刀最后在托盘侧边支点约 50.08 mm 高处静止。回放断键为 0，切纸长度为 0。HDF5 和 EGL 汇总在同一目录的 `standard223-middle-waypoint2-roll7-elevated-position-reference.hdf5` 与 `standard223-middle-waypoint2-roll7-elevated-position-egl.json`。
 
 从真实高位支点改走固定柄侧推。左食指先在完整网格上接触固定环，随后分三段向托盘内侧施力，使剪刀主体过托盘边沿中心线约 2.12 mm。主动撤去食指后，连续 1.082 s 无柄载，沿推动轴回弹约 0.085 mm，终态坐标约 `[0.40045, 0.19797, 0.06984] m`，纸带仍离托。无物理警告或记录到的非目标碰撞。稳定态和逐步输出在同一数据目录的 `second-support-index-release-settle-final-state.npz`、`second-support-index-release-settle.json`，可从这里继续入环。
+
+保留现有 40 × 37 mm 活动环后，完整网格能容纳轴向 +15 mm 的拇指薄段。实际从托盘支撑位走向该端点时，拇指先压活动环外侧，使剪刀移位约 7.38 mm 并打开至 0.568 rad。改由外侧拇指保持接触并沿关合方向施力，两段连续实测使铰链从 **0.35252 rad** 降到 **0.33821 rad**。后段持续负向运动约 23.18 s，拇指峰值约 0.114 N。剪刀由原托盘和隔板承托，纸带 85 条粘结均完好，未切断。状态、动作和实测报告位于数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/` 的 `current-outer-friction-close-continue*`。
 
 擦盘在第 3,259、3,260、3,261 步保存第一笔已计分的积分态，盘和海绵均仍离台。第 3,261 步载荷最低，为约 1.04 N。从此态尝试双腕小幅反向退载，随后接触力由约 1.06 N 回升到 2.55 N。两手仍夹持物体，盘下净空约 58.54 mm，未实测离面。逐步复算确认海绵在盘坐标的法向高度仅变化约 −0.003 mm，而切向位移约 15.5 mm，盘本身同时平移和倾转。按实际斑块反向转动，法向开口约增加 1.03 mm，最深接触仍约 0.74 mm，载荷增至约 3.78 N。下一次接触调整从第一笔更早的轻载状态开始。记录见数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/` 的 `left-return-early-pass-checkpoints.{json,npz}` 与 `left-return-early-light-second-pass-e.json`。
 

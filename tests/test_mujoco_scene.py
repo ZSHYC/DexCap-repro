@@ -26,9 +26,11 @@ class RigCalibrationTest(unittest.TestCase):
         scene.physics_step = scene.metrics.physics_step
         scene.arm_geoms = np.array([True, False, False, False])
         scene.hand_sides = np.array([0, 1, -1, 1])
+        scene.model = SimpleNamespace(geom=lambda index: SimpleNamespace(name=f"geom_{index}"))
         scene.arm_contact_steps = 0
         scene.hand_collision_steps = 0
         scene.hand_max_penetration_m = 0.0
+        scene.same_hand_max_penetration_m = 0.0
         scene.max_hand_limit_excess_rad = 0.0
         pose = np.zeros(2)
         scene.control.track.return_value = iter([(pose, pose)] * 10)
@@ -55,6 +57,8 @@ class RigCalibrationTest(unittest.TestCase):
         scene.step("opposite hand contact", control_cycles=2)
         self.assertEqual(scene.hand_collision_steps, 2)
         self.assertAlmostEqual(scene.hand_max_penetration_m, .0038)
+        self.assertAlmostEqual(scene.same_hand_max_penetration_m, .04)
+        self.assertEqual(scene.same_hand_max_penetration_pair, ("geom_3", "geom_1"))
         self.assertEqual(scene.arm_contact_steps, 2)
 
         scene.data.contact.dist[0] = .0002

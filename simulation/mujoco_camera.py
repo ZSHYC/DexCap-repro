@@ -12,6 +12,7 @@ PRINCIPAL = np.array([657.498, 364.310])
 CAMERA_NAME = "dexcap_camera"
 POINTS = 10_000
 HAND_POINTS = 80_000
+MAX_DEPTH_M = 1.0  # DexCap discards raw depth above 1000 mm before adding hand points.
 
 
 def _camera_pose(mocap_from_camera, world_from_mocap):
@@ -177,13 +178,10 @@ class DexCapCamera:
         rgb_image, depth, segmentation = self._render(data)
         geom_ids = segmentation[:, :, 0]
         object_types = segmentation[:, :, 1]
-        rows, cols = np.nonzero(
-            (object_types == mujoco.mjtObj.mjOBJ_FLEX)
-            | (
-                (object_types == mujoco.mjtObj.mjOBJ_GEOM)
-                & ~np.isin(geom_ids, tuple(self.robot_geoms))
-            )
+        scene_surfaces = (object_types == mujoco.mjtObj.mjOBJ_FLEX) | (
+            (object_types == mujoco.mjtObj.mjOBJ_GEOM) & ~np.isin(geom_ids, tuple(self.robot_geoms))
         )
+        rows, cols = np.nonzero(scene_surfaces & (depth <= MAX_DEPTH_M))
         z = depth[rows, cols]
         xyz = np.column_stack((
             (cols + 0.5 - PRINCIPAL[0]) * z / FOCAL[0],
