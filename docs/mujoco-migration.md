@@ -309,7 +309,7 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 与旧材质配对比较，右手接触物件的回合由 27 增至 37，抓起后脱手由 6 增至 8，有机械臂接触的回合由 20 降至 11，合盖由 22 降至 16。75 轮无物理警告或越限终止。实际评估仍未产生入盒。汇总、逐回合引用和合并脚本位于数据盘 `benchmarks/packaging-material-calibrated-setxf/` 的 `all-objects-summary.json`、`summarize-material-rollouts.py`。
 
-蓝积木的种子 5 另做了从实际 SetXF 抓持状态开始的物理接续。保留原 27 个策略动作，后续用有限力腕位与指关节目标调整夹持，右手再抬升约 96.6 mm。左手沿已抓住的箱壁向工作区中心拖盒，右手在约 5.4 s 的移盒、松手及撤离阶段始终持物。盒体实测平移约 164.2 mm，移盒过程中最接近中心约 2.7 mm，撤手后距中心 26.2 mm。76 步标准 EGL 复放得到相同物理末态，无机械臂触碰、双手碰撞或物理警告。原策略前 27 步有约 15.36 mm 的采样同手最大穿透，复放继承了该过程。HDF5 与标准报告在 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-center-and-lift-{reference.hdf5,egl.json}`。这组接续使用仿真状态选择动作。
+蓝积木的种子 5 另做了从实际 SetXF 抓持状态开始的物理接续。保留原 27 个策略动作，后续用有限力腕位与指关节目标调整夹持，右手再抬升约 96.6 mm。左手沿已抓住的箱壁向工作区中心拖盒，右手在约 5.4 s 的移盒、松手及撤离阶段始终持物。盒体实测平移约 164.2 mm，移盒过程中最接近中心约 2.7 mm，撤手后距中心 26.2 mm。76 步标准 EGL 复放得到相同物理末态，无机械臂触碰、双手碰撞或物理警告。原策略前 27 步有约 15.36 mm 的采样同手最大穿透，复放继承了该过程。HDF5 与标准报告在 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-center-and-lift-{reference.hdf5,egl.json}`。这组接续使用仿真状态选择动作。让左臂短程撤开并绕右末关节的实际轴调整腕姿后，另一段 **115 步**标准 EGL 回放把积木运至 `[0.5444, -0.0345, 0.1315] m`，终态仍有两个不同手指相向承力，较小的接触力为 7.69 N，右末关节限位余量 0.323 rad，机械臂和双手间碰撞为零。积木包络距完全跨入盒口仍差约 63.7 mm。复放与逐步试算见同目录 `blue-block-seed5-centered-transfer-{reference.hdf5,egl.json}` 和 `blue-block-seed5-joint7-reclamp-1-12mm.json`。
 
 ### 包装整轮计分
 
