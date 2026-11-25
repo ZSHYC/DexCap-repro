@@ -12,7 +12,7 @@ from torch import nn
 
 from simulation.frames import AXES, TABLE_SHIFT, ActionFrames
 from simulation.mujoco_scene import MujocoScene
-from simulation.mujoco_sponge import SPONGE_YAW
+from simulation.mujoco_sponge import SPONGE_HALF_XY, SPONGE_YAW
 from simulation.mujoco_sponge_picking import sample_object_xy
 from simulation.rollout import ASSET_ROOT, PROPRIOCEPTION, load_demo
 
@@ -36,7 +36,18 @@ def camera_center(points):
     planar = (world[visible] @ SPONGE_AXES.T)[:, :2]
     if len(planar) < 20:
         raise ValueError(f"Sponge not visible in the initial RGB-D observation ({len(planar)} points)")
-    return ((planar.min(axis=0) + planar.max(axis=0)) * 0.5) @ SPONGE_AXES[:2, :2]
+    low, high = planar.min(axis=0), planar.max(axis=0)
+    center = (low + high) * 0.5
+    # A visible side wall leaves a denser band than a camera-clipped edge.
+    half = np.asarray(SPONGE_HALF_XY) + 0.0016
+    low_density = (abs(planar - low) < 0.0015).sum(axis=0)
+    high_density = (abs(planar - high) < 0.0015).sum(axis=0)
+    clipped = high - low < 0.85 * (2 * half)
+    use_low = clipped & (low_density > 2 * high_density)
+    use_high = clipped & (high_density > 2 * low_density)
+    center[use_low] = (low + half)[use_low]
+    center[use_high] = (high - half)[use_high]
+    return center @ SPONGE_AXES[:2, :2]
 
 
 def network(inputs):
