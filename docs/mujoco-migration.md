@@ -257,6 +257,10 @@ python -m simulation.rollout "$blue/blue-block-complete-reference.hdf5" \
 
 用 `demo_100` 的参考摆放对绿梨做椭球短轴两侧接近。受力前两指垫的纵向位置仍偏高约 19 mm，实际下降时两侧没形成对向夹持。绿梨向盒壁移动，始终由桌面支撑。见 `runs/packaging-green-pear-fit-66b7507.json`。
 
+隔离对照发现，旧绿梨把中间长度的半轴 27 mm 设在竖直方向，构成不稳定的静置姿态。4.5 s 内，即使双手始终不接触，绿梨也会滚约 103.46 mm。生产模型保留原三个半轴，将最短的 25 mm 轴设为竖直。相同的无手接触试验记录最大漂移 0.49 mm，加 1° 复位扰动时为 1.35 mm。发布 `demo_100` 的可见点云没有完整露出底面，因此这里确定的是现行椭球的物理静置朝向。数据盘 `benchmarks/packaging-pear-complete/` 保存对照 `pear-resting-pose-physical-comparison.json` 及更新后 `stable-pose/pear-stable-production-rest.json`。
+
+在修正后的场景中，按物体和指垫的实际最近点拟合夹持，再独立求张指下降通道。从张手开始分别执行食指—拇指和中指—拇指路径。157 步、170 步标准 EGL 回放均取得相向夹持并抬离桌面约 39–42 mm，无机械臂接触、双手碰撞或物理警告。原抬升预设的闲置左手仍有约 4.18 mm 采样同手穿透。回放和动作在 `benchmarks/packaging-pear-complete/stable-pose/pear-lift-{4-1-2-0,8-0-0-1}-*`。
+
 改用高位预抓，下降中首次检测到手与梨接触时，拇指垫最近间隙约 1.49 mm，中指垫仍约 49.3 mm。停在该处单独合拢中指仍未抓起，梨从初始位置移动约 97.7 mm。记录见 `runs/packaging-green-pear-signed-gap-close-b6d8e6d.json`。
 
 从绿梨长轴上方重拟合夹点时，避开桌面的候选仍出现拇指穿入约 2.54 mm，另一指还差约 5.98 mm，接触法线也未相向。随后高位预抓对照中未抓起梨。记录见 `runs/packaging-green-pear-topdown-longaxis-fit-b6d8e6d.json`。
@@ -368,7 +372,7 @@ python -m simulation.rollout data/derived/ball-collecting-compound-palm-referenc
 
 碰撞回放将上述 69 个采样定位到入盒后的关盖弧线。右手先真实上抬 90 mm 并撤至安全位，左手再接触折舌和关盖。610 步回放确认物体留在盒内、盒盖闭合、`sim_success=true`，双手碰撞和机械臂环境碰撞均为零，无物理警告。纸盒约移动 0.79 mm。记录见 `runs/packaging-red-scripted-lid-right-retreat-6dd459f-rollout.json`。
 
-另一物体绿梨（`demo_100`）的真实几何能拟合出台面净空为正的中指和拇指相向目标。原直接高位接近在张指前就扫动梨约 103 mm，后续未抓起。红银包装的抓取轨迹也不能直接移植到绿梨。证据见 `runs/packaging-green-pear-{radial-pad-fit,retracted-transit}-9003771.json`。
+另一物体绿梨（`demo_100`）的真实几何能拟合出台面净空为正的中指和拇指相向目标。原直接高位接近在张指前记录到绿梨移动约 103 mm，后续未抓起。红银包装的抓取轨迹也不能直接移植到绿梨。证据见 `runs/packaging-green-pear-{radial-pad-fit,retracted-transit}-9003771.json`。
 
 ```bash
 python -m simulation.rollout data/derived/packaging-red-carton-scripted-lid-right-retreat-6dd459f.hdf5   --task packaging --output runs/packaging-red-scripted-lid-right-retreat-6dd459f-rollout.json
