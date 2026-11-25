@@ -1564,3 +1564,9 @@ PointNet 第 1,500 轮在此前未用于训练的摆放 3001–3004 各闭环 1,
 从第 3,259 个目标的已验证单笔前缀接续，两腕同时抬高并保持海绵与盘内接触。标准 EGL 从共同初态复放全部 3,275 个目标，盘和海绵在终点均被持住，盘未触桌，内盘接触力 1.875 N。累计擦拭路径从约 71.84 mm 增至 86.83 mm，**仍只完成一笔**。全段无机械臂或双手间碰撞、关节越限及物理警告。前缀最大同手穿透约 1.71 mm。
 
 下一周期的真实物理试验记录到右拇指和左食指之间约 0.29 mm 穿透，盘和海绵仍在手中。证据位于 `benchmarks/wiping-coordinated-grasp/stroke-support/wiping-inplane-lift-both-clean-prefix-{reference.hdf5,standard.json}` 和同目录 `wiping-inplane-next-contact.json`。
+
+将左食指沿实测接触法向收回后，标准 EGL 从共同初态再次复放 3,277 个目标。双持与内盘接触继续成立，累计擦拭路径达 90.03 mm。整轮仍为一笔，无机械臂或双手间碰撞及物理警告。文件为同目录 `wiping-inplane-separated-index-{reference.hdf5,standard.json}`。
+
+### 剪纸的右手抓纸与送纸
+
+右手将剪刀移到同一托盘内的另一处支撑姿态，再撤开。固定刃和柄在托盘中自由落稳，一秒漂移约 0.077 mm。从该实体状态，用 223 个右手目标让拇指和食指相向夹起纸带，纸失去托盘支撑，85 条粘结保持完整。随后 200 个 20 Hz 周期把纸带中段送到刀刃中心上方，末段稳定持纸约 1 s，载荷约 0.089 N。从右手抓纸到停放，按已验证左食指入环的三处位置检查双手机械几何，侵入为零。该分段还未完成左手双环或剪断。原生分段与结果在数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/scissor-wallpark-paper-{pickup,centerpark}.*`。
