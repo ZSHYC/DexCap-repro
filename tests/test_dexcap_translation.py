@@ -6,6 +6,8 @@ import h5py
 import numpy as np
 
 from robomimic.config import config_factory
+from robomimic.utils.dataset import action_stats_to_normalization_stats
+from robomimic.utils.obs_utils import normalize_dict, unnormalize_dict
 from robomimic.utils.train_utils import load_data_for_training
 from simulation.frames import AXES
 
@@ -15,6 +17,7 @@ class DexCapTranslationTest(unittest.TestCase):
         keys = ("robot0_eef_pos", "pointcloud")
         length = 7
         actions = np.linspace(0, 1, length)[:, None] * np.linspace(0.15, 0.65, 46)
+        actions[:, 3] = 0.25
         points = np.linspace(-0.4, 0.5, length * 5 * 6).reshape(length, 5, 6)
         with TemporaryDirectory() as directory:
             path = Path(directory) / "demo.hdf5"
@@ -40,6 +43,9 @@ class DexCapTranslationTest(unittest.TestCase):
             np.testing.assert_array_equal(
                 scale, augmented.get_action_normalization_stats()["actions"]["scale"]
             )
+            self.assertEqual(stats["actions"]["denormalization_scale"][0, 3], 0.0)
+            augmented_stats = augmented.get_action_normalization_stats()["actions"]
+            self.assertEqual(augmented_stats["denormalization_scale"][0, 3], scale[0, 3])
             np.random.seed(7)
             for index in (0, 2, length - 1):
                 baseline, shifted = plain[index], augmented[index]
@@ -64,6 +70,19 @@ class DexCapTranslationTest(unittest.TestCase):
                 np.testing.assert_array_equal(points[..., 3:], original[..., 3:])
             plain.close_and_delete_hdf5_handle()
             augmented.close_and_delete_hdf5_handle()
+
+
+    def test_constant_min_max_action_stays_fixed_during_rollout(self):
+        stats = action_stats_to_normalization_stats(
+            {"actions": {"min": np.array([[0.25, -1.0]]), "max": np.array([[0.25, 3.0]])}},
+            {"actions": {"normalization": "min_max"}},
+        )
+        targets = np.array([[0.25, -1.0], [0.25, 3.0]])
+        normalized = normalize_dict({"actions": targets}, stats)["actions"]
+        np.testing.assert_array_equal(normalized[:, 0], [0.0, 0.0])
+        normalized[:, 0] = [-0.8, 0.9]
+        restored = unnormalize_dict({"actions": normalized}, stats)["actions"]
+        np.testing.assert_allclose(restored, targets, atol=1e-12)
 
 
     def test_training_accepts_disjoint_demonstration_masks_in_each_dataset(self):

@@ -263,6 +263,12 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
         meta_ds_kwargs=meta_ds_kwargs,
     )
 
+    if dexcap_xy_translation_m:
+        stats = dataset.get_action_normalization_stats()["actions"]
+        if "denormalization_scale" in stats:
+            # The augmented training targets can vary along these wrist axes.
+            wrist_xy = [0, 1, 3, 4]
+            stats["denormalization_scale"][..., wrist_xy] = stats["scale"][..., wrist_xy]
     return dataset
 
 

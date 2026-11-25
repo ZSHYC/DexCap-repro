@@ -518,8 +518,8 @@ def unnormalize_dict(dict, normalization_stats):
             torch.Tensor. Leading batch dimensions are optional.
 
         normalization_stats (dict): this should map keys to dicts
-            with a "offset" and "scale" of shape (1, ...) where ... is the default
-            shape for the dict value.
+            with "offset" and "scale" of shape (1, ...) where ... is the default
+            shape for the dict value. "denormalization_scale" overrides "scale" if provided.
 
     Returns:
         dict (dict): obs dict with normalized arrays
@@ -530,8 +530,9 @@ def unnormalize_dict(dict, normalization_stats):
 
     for m in dict:
         # get rid of extra dimension - we will pad for broadcasting later
-        offset = normalization_stats[m]["offset"][0]
-        scale = normalization_stats[m]["scale"][0]
+        stats = normalization_stats[m]
+        offset = stats["offset"][0]
+        scale = stats.get("denormalization_scale", stats["scale"])[0]
 
         # shape consistency checks
         m_num_dims = len(offset.shape)

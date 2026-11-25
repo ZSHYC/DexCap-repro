@@ -1157,7 +1157,9 @@ def action_stats_to_normalization_stats(action_stats, action_config):
 
             action_normalization_stats[action_key] = {
                 "scale": scale,
-                "offset": offset
+                "offset": offset,
+                # Unit normalization scale avoids division by zero for constant targets.
+                "denormalization_scale": np.where(input_min == input_max, 0.0, scale),
             }
         elif norm_method == "gaussian":
             # normalize to zero mean unit variance
