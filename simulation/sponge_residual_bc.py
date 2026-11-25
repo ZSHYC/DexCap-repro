@@ -17,11 +17,17 @@ from simulation.mujoco_sponge_picking import sample_object_xy
 from simulation.rollout import ASSET_ROOT, PROPRIOCEPTION, load_demo
 
 
+def smooth_progress(progress):
+    progress = np.clip(progress, 0, 1)
+    return progress**2 * (3 - 2 * progress)
+
+
 # These references use 32 cycles of vertical clearance and 85 of horizontal travel.
 FRAMES = 844
 cycle = np.arange(FRAMES)
-transit = np.clip((cycle + 1 - 32) / 85, 0, 1)
-LAYOUT_BLEND = transit**2 * (3 - 2 * transit)
+LAYOUT_BLEND = smooth_progress((cycle + 1 - 32) / 85)
+LIFT_ARC = smooth_progress((cycle - 580) / 53)[:, None] * 0.035 * np.array([0.75, 0.66])
+MIDDLE_SPLAY = 0.008 * smooth_progress((cycle - 501) / 19) * smooth_progress((596 - cycle) / 18)
 phase = cycle / cycle[-1]
 harmonics = np.pi * phase[:, None] * np.arange(1, 7)
 CLOCK = np.column_stack((phase, np.sin(harmonics), np.cos(harmonics)))
@@ -146,6 +152,8 @@ def evaluate(reference, checkpoint, first_seed, trials, device):
             scene.reset(start)
             layout = camera_center(scene.camera.capture(scene.data, np.random.default_rng(seed)))
             feature_layout = np.clip(layout, bounds["layout_low"], bounds["layout_high"])
+            right_offset = layout - scene.base_positions[0, :2]
+            close_to_right_base = right_offset[1] < 0.217 and np.linalg.norm(right_offset) < 0.31
             for i in range(900):
                 k = min(i, FRAMES - 1)
                 obs = scene.control.observed_action()
@@ -157,6 +165,10 @@ def evaluate(reference, checkpoint, first_seed, trials, device):
                     residual = (model((features - x_center) / x_scale) * y_scale + y_center).cpu().numpy()
                 target = np.clip(bounds["prior"][k] + residual, bounds["action_low"][k], bounds["action_high"][k])
                 target[:2] += LAYOUT_BLEND[k] * layout
+                if close_to_right_base:
+                    # Move the held sponge away from the folded elbow after pinch.
+                    target[:2] += LIFT_ARC[k]
+                    target[18] += MIDDLE_SPLAY[k]
                 metrics, _, _ = scene.step(target, control_cycles=1)
                 if scene.invalid_hand_motion or scene.data.warning.number.any():
                     metrics["sim_success"] = False

@@ -1339,6 +1339,12 @@ envs/train/bin/python -m simulation.sponge_residual_bc evaluate \
 
 另采训练种子 43、46、56、112、126 的完整物理动作和本体状态，针对这份行为克隆仅保存首帧相机观测。用扩展训练集重训后，原验证组仍为 3/4，种子 13 的抬升由约 235.51 降到 219.79 mm，留存原权重作为当前对照。扩展 HDF5 与逐回合报告位于 `controller-rate/augmentation/`。
 
+靠近右 Panda 安装座的摆放中，第 156 号原策略起升时第 4 轴到限位，随后右手与自己的第 2 臂段接触。继续使用原训练权重，在起升时把腕位沿工作台向外移约 35 mm，并在夹持形成前给中指加入约 0.016 rad 侧摆。第 156、168 号实测抬升 311.12、315.74 mm，无机器人碰撞。规则仅用于初始 RGB-D 定位落在右臂安装座约 310 mm 内、靠近内侧角落的摆放。将规则冻结，六个新边缘摆放上，从原控制的 5/6 任务通过、0/6 无碰撞通过，提升为 **6/6 任务通过且无机器人碰撞**。逐 2 ms 接触和控制记录位于 `sponge-workspace-{trace,splay-and-lift}-*.json`，原策略对照为 `left-workspace/edge-right-base-*.json`。
+
+另一侧工作区的第 170 号未形成有效夹持。右腕期望位姿用完整 Panda 关节范围拟合时仍有约 45–55 mm 的平移误差。将示范的单手动作沿海绵局部对称平面转移给左手，保留同一个双臂初态。修正左手入场预形后，标准 EGL 从初态实测抬升 **310.25 mm**，机器人碰撞为零。左手对照在八个新边缘摆放以初始 EGL 估计位置预演、选择训练示范实际执行，通过 **4/8**，同批原右手策略为 **1/8**。右手唯一成功的种子 257 改用左手后未通过，因此保留这份对照作为分开的规划实验。见 `left-workspace/left-pick-170-preshape-5-80-egl.json`、`left-blind-seed-*.json`。
+
+同一 16 个摆放另做 PointNet 扩散对照，用海绵相对坐标的训练动作中位数作为参考，保留逐步 XYZRGB 点云、本体观测，并输入初始相机位置与时间相位。训练 90 轮，已保存的最小验证损失为 0.00717。四个留出摆放按真实 20 Hz 执行，扩散残差通过 2/4，直接执行中位数参考通过 3/4，现用视觉行为克隆继续保留。数据构建脚本、配置、权重和结果位于 `diffusion-relative-sponge/`。另已启动原绝对坐标 PointNet 的 3,000 轮训练对照，采用论文附录的训练轮数及当前仿真数据，配置和日志见 `pointnet-20hz-config-3000.json`、`pointnet-20hz-training-3000.log`。 [DexCap 训练参数](https://arxiv.org/html/2403.07788v2#A1.SS5)
+
 ### 捡球的 20 个随机摆放标准复放
 
 初始收拢无名指后，中指与球的法向载荷曾从约 0.38 N 降至零，导致搬运中滑脱。调整中指的两关节目标，在第 96–140 个动作间逐步增加 0.03 rad，并依据实际持球位置规划两段搬运。闲置左手张开，左腕沿 y 轴移出搬运区 120 mm。第 20 个种子按实测腕位误差额外补偿搬运终点 `[15, -40] mm`。保留各动作实际执行的控制周期数。
@@ -1427,3 +1433,13 @@ envs/train/bin/python "$ball/ball-layout-primitive-egl.py" 41 feedback07
 擦盘的新接续在原第一个左中指托盘位置保持真实上向受力，峰值约 1.93 N。接着右腕随实测盘位置缓慢移动，右食指先接住盘下表面，右手最终连续约 1.048 s 托盘离桌，食指向上约 5.42–5.50 N，拇指向下约 2.97–3.17 N。共 2,954 个原生控制目标，第 205 步后逐 2 ms 无手内、手间穿透；此端点还未抓海绵。数据盘 `benchmarks/wiping-coordinated-grasp/stroke-support/first-wipe-left-middle-lift-d.{npz,json}`。
 
 同一持盘前缀已通过标准 EGL 入口从共同初态独立复放 2,954 步。标准结果为 `plate_grasped=true`、`sponge_grasped=false`，无机械臂、双手间接触及物理警告。第 205 步前的左手同手峰值约 1.71 mm。数据盘同目录 `first-wipe-left-middle-lift-follow-{reference.hdf5,egl.json}`。
+
+收球种子 44、59 的释放错位均开始于右 Panda 第 6 轴接近 3.7525 rad 上限。当时球仍由手持有。为 44 从真实携球态加入抬升、滚腕和高位绕行，释放腕误差由 141.14 mm 降至 1.05 mm，实际无碰撞入篮。为 59 把闲置左腕实际撤离，再用连续关节解对应的腕位序列走过肘部转向，同样无碰撞入篮，释放误差约 0.99 mm。种子 60 的球在搬运启动时受到篮沿约 1.11 N 侧向接触，随后在开手前失持。原冻结 20 次的结果保持原样。这些诊断在 `benchmarks/ball-simulation-policy/at-20hz/ball-layout-primitive-{transport,stow-arc,weak-release}-summary.json`。
+
+擦盘从已经复现的右手持盘端点接续左手抓海绵，得到两手分别持物约 0.5 s 的真实状态。续段同手与双手间接触均为零，无物理警告。可继续接续的 3,089 步在擦盘数据目录 `first-wipe-left-middle-lift-follow-a.{hdf5,npz,json}`。
+
+剪纸采用实际环中心更新入口，已在真实物理状态让中指进入固定环，工具漂移约 1.43 mm。维持中指占位继续推进拇指时，因腕位与手指耦合跟踪误差在固定环测得 0.54 N，拇指仍未进入活动环。放开中指的多余姿态约束后，静态筛查允许拇指路径推进到 60%，随后中指完整截面会出环。见数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/scissor-live-middle-thumb-*` 与 `scissor-middle-region-thumb-*`。
+
+备茶远置瓶盖后实际执行了工具入场，工具在抓取前自然沉降。双垫有实际载荷，但最佳接触法向点积约 +0.51，镊子仍由外部支撑。尝试用单侧下压形成翘起支点时，拇指先被托盘唇挡住。详见 `benchmarks/tea-bottle-native/tea-far-cap-tool-native-*` 和 `tea-tool-lip-pivot-*`。
+
+打包长颈鹿用真实盒沿支点滚转，最小瞬时竖直包络约 77.85 mm。物体当时仍架在盒沿，顶部实际高 113.62 mm，比闭盖面高 37.12 mm，随后两个夹垫均失载。进一步侧推仍有部分物体越过盒口。数据盘 `benchmarks/packaging-unseen-replay/giraffe/giraffe-rim-reorient-*`。
