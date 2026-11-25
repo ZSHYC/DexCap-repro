@@ -1143,6 +1143,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 从真实高位支点改走固定柄侧推。左食指先在完整网格上接触固定环，随后分三段向托盘内侧施力，使剪刀主体过托盘边沿中心线约 2.12 mm。主动撤去食指后，连续 1.082 s 无柄载，沿推动轴回弹约 0.085 mm，终态坐标约 `[0.40045, 0.19797, 0.06984] m`，纸带仍离托。无物理警告或记录到的非目标碰撞。稳定态和逐步输出在同一数据目录的 `second-support-index-release-settle-final-state.npz`、`second-support-index-release-settle.json`，可从这里继续入环。
 
+从右手保持纸带、左食指和拇指已进环的真实状态，先收左食指，再让中指接触剪刀固定环。中指实测峰值约 0.0628 N。中指和拇指同时施力时产生约 0.0050 N·m 的转矩，但合计法向载荷约 0.0716 N，剪刀自身重量约 0.2727 N，托盘仍承力。重新接回食指的路径出现约 1.04 mm 的食指与中指网格交叠，未达成三指同时承力或持续离托。记录为数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/left-threepoint-middle-optimized-lift-v3.*`。
+
 保留现有 40 × 37 mm 活动环后，完整网格能容纳轴向 +15 mm 的拇指薄段。实际从托盘支撑位走向该端点时，拇指先压活动环外侧，使剪刀移位约 7.38 mm 并打开至 0.568 rad。改由外侧拇指保持接触并沿关合方向施力，两段连续实测使铰链从 **0.35252 rad** 降到 **0.33821 rad**。后段持续负向运动约 23.18 s，拇指峰值约 0.114 N。剪刀由原托盘和隔板承托，纸带 85 条粘结均完好，未切断。状态、动作和实测报告位于数据盘 `runs/mujoco/scissor_left_first_then_paper_a8c3318/` 的 `current-outer-friction-close-continue*`。
 
 再从同一个物理状态连续执行右手抓纸、搬运和向刀口进给，同时左拇指对活动柄施力。100 个目标内铰链实测关合约 0.03654 rad，固定刀刃实际触纸。活动刀刃离纸约 1.88 mm，尚未形成双刀刃夹压。纸带仍为 85 条完整粘结。记录见同目录 `current-carry-close-combined.json`、`current-carry-close-combined-state.npz`。
@@ -1171,6 +1173,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 
 另从已开盖并把盖子放在右侧的真实倒茶前状态继续，先做原生沉降再从两侧接近镊子桥端。两指峰值约 0.362 N、0.647 N，实测法向点积最低约 −0.101，工具未形成相向夹持。托盘一度受力，但木托最小承力仍约 0.256 N。备用中指或无名指下托的完整手路径也会与盘底或闲置手指干涉。数据盘 `benchmarks/tea-bottle-native/` 保存了 `tea-prepour-tool-acquisition-summary.md` 和 `tea-prepour-underside-topology-summary.md`。
 
+从已开盖且盖子在右侧的倒茶前积分态，右食指先真实沿木托开口外推，工具在第一段连续接触时相对木托外移约 2.89 mm。接续按实际指垫法向小幅转腕，沿开口方向的法向分量从约 0.042 增到 0.185，再使工具外移约 1.65 mm。末态木臂从最后承力点外露约 38.5 mm，仍由木托承重。其余指垫在此腕位离工具约 69–96 mm，需要重新预抓。实测文件见数据盘 `benchmarks/tea-bottle-native/` 的 `tea-prepour-tip-outward-slide-normal-corrected.json` 和 `tea-prepour-tip-refit-continuation-dynamic-contact.json`。
+
 ### 捡海绵随机摆放的物理基线
 
 使用 305 步、默认摆放可抬升 310.51 mm 的参考，以摆放差平移右腕初态和目标轨迹。在 x 轴 ±0.20 m、y 轴 ±0.35 m 的场景分布内，20 个种子的无相机标准动力学复放完成 10 个任务，重放与生成的物理结果一致。右食指与中指最大采样穿透约 13.49 mm，多个种子右臂与闲置左手接触。这批数据用于定位手指与双腕的调整位置。汇总见 `benchmarks/sponge-seeded-reference/sponge-seeded-reference-summary.json`。
@@ -1183,7 +1187,7 @@ python -m simulation.rollout "$sponge/default-three-pad-clean-pick-reference.hdf
   --task sponge-picking --output "$sponge/default-three-pad-clean-pick-egl.json"
 ```
 
-三个代表性随机摆放也已用真实 EGL 独立回放。种子 1、7、19 分别抬升 **304.27、324.12、318.00 mm**，均为 532 个动作和 659 个控制周期，机械臂、双手间、同手及手部越限计数均为零。种子 1 修正接近海绵的腕位，种子 7 重定向抬升通道，种子 19 在抬升后段逐步调整拇指闭合和腕位。各自的 HDF5 和 `*-egl.json` 在相同数据目录的 `seed-{01,07,19}-three-pad-clean-*`。最终种子 1–20 的 **20/20** 个随机摆放均独立 EGL 通过，抬升 **304.27–368.10 mm**，无物理警告及上述碰撞和越限。种子 5 和 15 在第 331 个目标后调整了抬升通道。种子 8、12、13 各自调整了进入路线，其中种子 8 与 13 还分别调整了抬升路线和后段夹持。逐种子 HDF5 和 EGL 记录的路径见 `sponge-clean-egl-summary.json`。
+三个代表性随机摆放也已用真实 EGL 独立回放。种子 1、7、19 分别抬升 **304.27、324.12、318.00 mm**，均为 532 个动作和 659 个控制周期，机械臂、双手间、同手及手部越限计数均为零。种子 1 修正接近海绵的腕位，种子 7 重定向抬升通道，种子 19 在抬升后段逐步调整拇指闭合和腕位。各自的 HDF5 和 `*-egl.json` 在相同数据目录的 `seed-{01,07,19}-three-pad-clean-*`。最终种子 1–20 的 **20/20** 个随机摆放均独立 EGL 通过，抬升 **304.27–368.10 mm**，无物理警告及上述碰撞和越限。种子 5 和 15 在第 331 个目标后调整了抬升通道。种子 8、12、13 各自调整了进入路线，其中种子 8 与 13 还分别调整了抬升路线和后段夹持。逐种子 HDF5 和 EGL 报告见 `sponge-clean-egl-summary.json`。按种子选定的动作、回放与抬升量另见 `sponge-clean-seeds-01-20-summary.json`。
 
 ### 捡球的 20 个随机摆放标准复放
 
