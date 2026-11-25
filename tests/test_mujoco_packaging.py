@@ -20,6 +20,10 @@ class MujocoPackagingTest(unittest.TestCase):
         spec = mujoco.MjSpec()
         spec.option.timestep = 0.002
         spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
+        spec.option.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
+        spec.option.impratio = 12
+        spec.option.iterations = 80
+        spec.option.tolerance = 1e-10
         spec.worldbody.add_geom(
             name="table",
             type=mujoco.mjtGeom.mjGEOM_PLANE,
@@ -203,36 +207,65 @@ class MujocoPackagingTest(unittest.TestCase):
         model, data, metrics = self.make_scene("yellow-cloth")
         flex = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_FLEX, "packaging_object")
         self.assertGreaterEqual(flex, 0)
+        self.assertEqual(model.opt.timestep, 0.001)
         start = model.flex_vertadr[flex]
         count = model.flex_vertnum[flex]
         initial = data.flexvert_xpos[start:start + count].copy()
-        np.testing.assert_allclose(np.ptp(initial, axis=0), [0.15, 0.13, 0.04])
+        self.assertEqual(count, 160)
+        np.testing.assert_allclose(
+            np.ptp(initial, axis=0), [0.139002429, 0.114833459, 0.0495], atol=1e-8,
+        )
 
-        # Press one half while the folded bundle rests on the table.
-        for _ in range(500):
+        # The settled vertex distribution retains demo_250's measured mid and
+        # upper vertical envelope. Camera-visible coverage is checked by EGL.
+        for _ in range(4000):
             mujoco.mj_step(model, data)
         settled = data.flexvert_xpos[start:start + count].copy()
+        heights = settled[:, 2] + 0.03
+        self.assertAlmostEqual(np.quantile(heights, 0.5), 0.0268, delta=0.006)
+        self.assertAlmostEqual(np.quantile(heights, 0.95), 0.0444, delta=0.006)
+        self.assertFalse(np.any(data.warning.number))
+        table_contacts = metrics._object_contacts(data, {metrics.table_geom})
+        self.assertTrue(table_contacts)
+        native_table_contacts = [
+            index for index, contact in enumerate(data.contact[:data.ncon])
+            if (
+                contact.geom[0] == metrics.table_geom
+                and (contact.flex[1] == flex or contact.geom[1] in metrics.object_geoms)
+            ) or (
+                contact.geom[1] == metrics.table_geom
+                and (contact.flex[0] == flex or contact.geom[0] in metrics.object_geoms)
+            )
+        ]
+        self.assertEqual(len(table_contacts), len(native_table_contacts))
+        self.assertTrue(any(
+            contact.geom1 in metrics.object_geoms or contact.geom2 in metrics.object_geoms
+            for contact, _ in table_contacts
+        ))
+        force = np.empty(6)
+        normal_forces = []
+        for index in native_table_contacts:
+            mujoco.mj_contactForce(model, data, index, force)
+            normal_forces.append(force[0])
+        self.assertGreater(max(normal_forces), 0)
+
+        # A bounded 100 mN total load moves the physically free outer hem.
+        hem = np.arange(start + count - 4, start + count)
+        hem_bodies = np.unique(model.flex_vertbodyid[hem])
+        before = settled[-4:, 2].mean()
+        for _ in range(200):
+            data.xfrc_applied[hem_bodies, 2] = 0.1 / len(hem_bodies)
+            mujoco.mj_step(model, data)
+        lifted = data.flexvert_xpos[start:start + count]
+        self.assertGreater(lifted[-4:, 2].mean() - before, 0.02)
+        self.assertFalse(np.any(data.warning.number))
+        data.xfrc_applied.fill(0)
+
         centers = {
             body: model.body_pos[body, 0]
             for body in range(model.nbody)
             if model.body(body).name.startswith("packaging_object_")
         }
-        for body, x in centers.items():
-            if x > np.median(list(centers.values())):
-                data.xfrc_applied[body, 2] = -1.0
-        for _ in range(250):
-            mujoco.mj_step(model, data)
-        bent = data.flexvert_xpos[start:start + count]
-        top = initial[:, 2] == initial[:, 2].max()
-        sides = initial[:, 0] > np.median(initial[:, 0])
-        self.assertGreater(
-            abs(bent[top & sides, 2].mean() - bent[top & ~sides, 2].mean()),
-            0.002,
-        )
-        self.assertGreater(
-            settled[top & sides, 2].mean() - bent[top & sides, 2].mean(),
-            0.001,
-        )
 
         # Reinitialize above the box: it is not placed until it settles on the box floor.
         data = mujoco.MjData(model)
@@ -249,8 +282,9 @@ class MujocoPackagingTest(unittest.TestCase):
                 data.qpos[qpos] += np.dot(shift, model.jnt_axis[joint])
         mujoco.mj_forward(model, data)
         self.assertFalse(metrics.update(data)["object_in_box"])
-        for _ in range(500):
+        for _ in range(1000):
             mujoco.mj_step(model, data)
+        self.assertFalse(np.any(data.warning.number))
         self.assertTrue(metrics.update(data)["object_in_box"])
 
     def test_scene_uses_two_free_bodies_and_an_unactuated_lid_hinge(self):

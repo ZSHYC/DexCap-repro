@@ -38,12 +38,39 @@ CARDBOARD = (0.62, 0.54, 0.43, 1.0)
 RED_BOX_TOP_COLOR = (0.93, 0.20, 0.06, 1.0)
 WORKSPACE_CENTER = np.array([0.4, 0.0])
 CLOTH_OBJECT = "yellow-cloth"
-CLOTH_SIZE = (0.15, 0.13, 0.04)
-CLOTH_RADIUS = 0.003
-# The release measures shape but does not provide folded-textile material calibration.
-CLOTH_YOUNG_MODULUS_PA = 10_000
+CLOTH_HALF_XY = (0.06950121451927635, 0.05741672959751279)
+CLOTH_RADIUS = 0.00265
+CLOTH_LAYER_GAP = 0.0055
+CLOTH_LAYER_COUNT = 10
+CLOTH_GRID_SIZE = 4
+CLOTH_LAYER_XY_FRACTIONS = (
+    (1.00, 1.00),
+    (1.00, 1.00),
+    (1.00, 1.00),
+    (0.95, 0.84),
+    (0.90, 0.72),
+    (0.82, 0.68),
+    (0.75, 0.60),
+    (0.68, 0.49),
+    (0.40, 0.50),
+    (0.20, 0.20),
+)
+CLOTH_LAYER_CENTER_OFFSETS = (
+    (0.000, 0.000),
+    (0.000, 0.000),
+    (0.000, 0.000),
+    (-0.003, -0.003),
+    (-0.006, -0.005),
+    (-0.010, -0.007),
+    (-0.017, -0.009),
+    (-0.022, -0.011),
+    (-0.040, -0.012),
+    (-0.040, -0.012),
+)
+CLOTH_YOUNG_MODULUS_PA = 1_000
 CLOTH_POISSON_RATIO = 0.2
-CLOTH_DAMPING_S = 0.05
+CLOTH_DAMPING_S = 0.2
+CLOTH_THICKNESS = 0.0008
 # The comparable 6-inch clamp has a 65 mm jaw opening. Spring force is estimated.
 SPRING_CLAMP_MAX_ANGLE = np.deg2rad(44)
 SPRING_CLAMP_PRELOAD_ANGLE = np.deg2rad(8)
@@ -215,19 +242,68 @@ def _object_definition(object_name):
 
 
 def _add_cloth(spec, xy):
+    # The published RGB-D footprint and height describe a folded textile, not
+    # a solid cuboid. Ten connected accordion plies preserve that measured
+    # spatial envelope while leaving both boundaries physically free; camera
+    # visibility depends on the view and is validated separately.
+    spec.option.timestep = 0.001
+
+    half_x, half_y = CLOTH_HALF_XY
+    vertices = []
+    previous_end_y = None
+    previous_xs = None
+    row_count = 0
+    for layer in range(CLOTH_LAYER_COUNT):
+        x_fraction, y_fraction = CLOTH_LAYER_XY_FRACTIONS[layer]
+        x_offset, y_offset = CLOTH_LAYER_CENTER_OFFSETS[layer]
+        layer_xs = np.linspace(
+            xy[0] + x_offset - half_x * x_fraction,
+            xy[0] + x_offset + half_x * x_fraction,
+            CLOTH_GRID_SIZE,
+        )
+        panel_ys = np.linspace(
+            xy[1] + y_offset - half_y * y_fraction,
+            xy[1] + y_offset + half_y * y_fraction,
+            CLOTH_GRID_SIZE,
+        )
+        if layer % 2:
+            panel_ys = panel_ys[::-1]
+        z = TABLE_HEIGHT + CLOTH_RADIUS + 0.0007 + layer * CLOTH_LAYER_GAP
+        if layer:
+            vertices.extend((x, previous_end_y, z) for x in previous_xs)
+            row_count += 1
+            panel_ys = panel_ys[1:]
+        for y in panel_ys:
+            vertices.extend((x, y, z) for x in layer_xs)
+            row_count += 1
+        previous_end_y = panel_ys[-1]
+        previous_xs = layer_xs
+
+    elements = []
+    for row in range(row_count - 1):
+        for column in range(CLOTH_GRID_SIZE - 1):
+            a = row * CLOTH_GRID_SIZE + column
+            b = a + 1
+            c = a + CLOTH_GRID_SIZE
+            d = c + 1
+            elements.extend(((a, b, d), (a, d, c)))
+    points_xml = " ".join(f"{value:.9g}" for vertex in vertices for value in vertex)
+    elements_xml = " ".join(str(value) for face in elements for value in face)
     color = PACKAGING_OBJECTS[CLOTH_OBJECT][2]
     child = mujoco.MjSpec.from_string(
         f"""
         <mujoco model="dexcap_packaging_cloth">
           <worldbody>
-            <flexcomp name="packaging_object" type="grid" count="6 6 3"
-                      spacing="0.03 0.026 0.02" dim="3" radius="{CLOTH_RADIUS}"
-                      pos="{xy[0]} {xy[1]} {TABLE_HEIGHT + CLOTH_SIZE[2] / 2 + CLOTH_RADIUS}"
-                      mass="0.12" dof="trilinear" rgba="{' '.join(map(str, color))}">
+            <flexcomp name="packaging_object" type="direct" dim="2"
+                      point="{points_xml}" element="{elements_xml}"
+                      radius="{CLOTH_RADIUS}" mass="0.12" dof="full"
+                      rgba="{' '.join(map(str, color))}">
               <elasticity young="{CLOTH_YOUNG_MODULUS_PA}" poisson="{CLOTH_POISSON_RATIO}"
-                          damping="{CLOTH_DAMPING_S}"/>
-              <contact selfcollide="none" friction="1.0 0.01 0.001"
-                       solref="0.005 1" solimp="0.9 0.99 0.001"/>
+                          damping="{CLOTH_DAMPING_S}" thickness="{CLOTH_THICKNESS}"
+                          elastic2d="both"/>
+              <contact selfcollide="auto" vertcollide="true" activelayers="0"
+                       contype="1" conaffinity="1" friction="1.0 0.01 0.001"
+                       solref="0.018 1" solimp="0.95 0.99 0.001"/>
             </flexcomp>
           </worldbody>
         </mujoco>
@@ -422,6 +498,9 @@ class PackagingMetrics:
                 for body in range(model.nbody)
                 if model.body(body).name.startswith("packaging_object_")
             ])
+            for body in range(model.nbody):
+                if model.body(body).name.startswith("packaging_object_"):
+                    self.object_geoms.update(self._body_geoms(body, collidable_only=True))
         else:
             self.object_body = model.body("packaging_object").id
             object_joint = model.body_jntadr[self.object_body]
@@ -478,19 +557,22 @@ class PackagingMetrics:
     def _flex_vertices(self, data):
         return data.flexvert_xpos[self.flex_start:self.flex_start + self.flex_count]
 
-    def _flex_contacts(self, data, geoms):
-        result = []
-        for index in range(data.ncon):
-            contact = data.contact[index]
-            if contact.geom[0] in geoms and contact.flex[1] == self.object_flex:
-                result.append((contact, np.asarray(contact.frame[:3])))
-            elif contact.geom[1] in geoms and contact.flex[0] == self.object_flex:
-                result.append((contact, -np.asarray(contact.frame[:3])))
-        return result
-
     def _object_contacts(self, data, geoms):
         if self.object_flex >= 0:
-            return self._flex_contacts(data, geoms)
+            result = []
+            for index in range(data.ncon):
+                contact = data.contact[index]
+                first_is_object = (
+                    contact.flex[0] == self.object_flex or contact.geom[0] in self.object_geoms
+                )
+                second_is_object = (
+                    contact.flex[1] == self.object_flex or contact.geom[1] in self.object_geoms
+                )
+                if contact.geom[0] in geoms and second_is_object:
+                    result.append((contact, np.asarray(contact.frame[:3])))
+                elif contact.geom[1] in geoms and first_is_object:
+                    result.append((contact, -np.asarray(contact.frame[:3])))
+            return result
         return self._contacts(data, geoms, self.object_geoms)
 
     def _object_center(self, data):
@@ -529,7 +611,7 @@ class PackagingMetrics:
             lower = np.min(local, axis=0) - self.flex_radius
             upper = np.max(local, axis=0) + self.flex_radius
             inside = np.all(lower[:2] >= -inner_half) and np.all(upper[:2] <= inner_half)
-            supported = bool(self._flex_contacts(data, {self.floor_geom}))
+            supported = bool(self._object_contacts(data, {self.floor_geom}))
             settled = np.max(np.abs(data.qvel[self.object_dofs])) < 0.05
             return bool(inside and supported and settled)
 
