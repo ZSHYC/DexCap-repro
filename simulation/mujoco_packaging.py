@@ -98,6 +98,9 @@ def _add_geom(body, *, name, kind, size, pos=(0, 0, 0), quat=(1, 0, 0, 0),
         "cylinder": mujoco.mjtGeom.mjGEOM_CYLINDER,
         "ellipsoid": mujoco.mjtGeom.mjGEOM_ELLIPSOID,
     }
+    if kind == "cylinder":
+        # Convert the authored half-extents to MuJoCo radius and half-length.
+        size = (size[0], size[2], 0.0)
     return body.add_geom(
         name=name,
         type=geom_types[kind],

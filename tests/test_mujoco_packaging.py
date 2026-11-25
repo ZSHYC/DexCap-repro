@@ -52,6 +52,17 @@ class MujocoPackagingTest(unittest.TestCase):
                     mujoco.mj_step(model, data)
                 self.assertTrue(np.isfinite(data.qpos).all())
 
+    def test_cylinder_uses_asset_height_and_mass(self):
+        for object_name, geom_name, radius, half_height in (
+            ("green-can", "packaging_object_geom", 0.0405, 0.034),
+            ("blue-mug", "packaging_object_part_0", 0.0475, 0.003),
+        ):
+            with self.subTest(object=object_name):
+                model, _, metrics = self.make_scene(object_name)
+                geom = model.geom(geom_name).id
+                np.testing.assert_allclose(model.geom_size[geom, :2], [radius, half_height])
+                self.assertAlmostEqual(model.body_mass[metrics.object_body], 0.12)
+
     def test_red_carton_has_a_thin_hanger_with_an_open_slot(self):
         model, data, metrics = self.make_scene()
         body_geom = model.geom("packaging_object_geom").id
