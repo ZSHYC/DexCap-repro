@@ -247,6 +247,10 @@ python -m simulation.rollout "$blue/blue-block-complete-reference.hdf5" \
 
 随后把右食指稳盒的接触点下移到箱壁局部高度约 32 mm，避开盒盖的实际翻转区域。按实际接触力调节右腕位置，同时用左手合盖。**1,977 步**标准 EGL 回放完成入盒、合盖与双腕撤离。每 2 ms 的物理记录显示，右食指顶箱壁、左手接触盒盖连续同时承力 2,116 个子步，为 **4.232 s**。右食指峰值 2.61 N，右手未接触盖板。终态仍为 `sim_success=true`，机械臂、双手间和同手采样碰撞均为零，无物理警告。回放数据为 `blue-block-bimanual-reference.hdf5`，结果与逐子步受力汇总为 `blue-block-bimanual-egl.json`、`blue-block-bimanual-egl-contacts.json`，均位于上述目录。
 
+绿罐采用校正后的 68 mm 全高和 120 g 质量。首次实物动作放入后，盒底单点接触使罐子持续摇摆。在相同运动末态上，MuJoCo 原生多点碰撞检测将盒底最大接触贯入从约 3.15 mm 减至约 0.105 mm，罐子随即稳定在盒底。多点检测在包含圆柱零件的 Packaging 场景装配时启用，已有尺寸、质量与任务计分条件保持原值。数据盘 `benchmarks/packaging-green-current/corrected-height/green-can-collision-manifolds.json` 记录了该对照。 [MuJoCo 多点碰撞说明](https://mujoco.readthedocs.io/en/3.6.0/XMLreference.html#option-flag-multiccd)
+
+校正模型从绿罐的发布摆放 `demo_150` 执行右手抓取、转运、竖直放入、撤手和左手闭盖。**1,322 步**完整 EGL 复放得到 `object_in_box=true`、`lid_closed=true` 和 `sim_success=true`，无物理警告，机械臂、双手间和同手采样碰撞均为零。该参考的右手撤离后由左手完成闭盖。HDF5 与回放结果在绿罐同目录的 `green-can-complete-reference.hdf5`、`green-can-complete-egl.json`。
+
 蓝积木接近纸盒时还需要最低角增加约 49 mm 净空。试验中沿当前箱缘跨入需要纸盒倾斜约 31°，所执行的左手路线未接触到箱壁。单独保持右手末动作 0.30 s 时蓝积木失去夹持，随后将左手接近与原拾取动作同步，首次碰撞出现在左臂下降阶段，右手随后失去夹持。未执行放入。记录见 `runs/packaging-blue-{box-tip,apex-brace-feasibility,sync-left-prepose}-66b7507.json`。
 
 用 `demo_100` 的参考摆放对绿梨做椭球短轴两侧接近。受力前两指垫的纵向位置仍偏高约 19 mm，实际下降时两侧没形成对向夹持。绿梨向盒壁移动，始终由桌面支撑。见 `runs/packaging-green-pear-fit-66b7507.json`。
@@ -1040,6 +1044,8 @@ sponge=/data/dexcap-repro/benchmarks/sponge-seeded-reference
 python -m simulation.rollout "$sponge/default-three-pad-clean-pick-reference.hdf5" \
   --task sponge-picking --output "$sponge/default-three-pad-clean-pick-egl.json"
 ```
+
+三个代表性随机摆放也已用真实 EGL 独立回放。种子 1、7、19 分别抬升 **304.27、324.12、318.00 mm**，均为 532 个动作和 659 个控制周期，机械臂、双手间、同手及手部越限计数均为零。种子 1 修正接近海绵的腕位，种子 7 重定向抬升通道，种子 19 在抬升后段逐步调整拇指闭合和腕位。各自的 HDF5 和 `*-egl.json` 在相同数据目录的 `seed-{01,07,19}-three-pad-clean-*`。其余 17 个随机摆放尚待在这一无穿透参考上复验。
 
 ### 捡球的 20 个随机摆放标准复放
 

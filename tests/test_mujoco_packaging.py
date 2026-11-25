@@ -63,6 +63,24 @@ class MujocoPackagingTest(unittest.TestCase):
                 np.testing.assert_allclose(model.geom_size[geom, :2], [radius, half_height])
                 self.assertAlmostEqual(model.body_mass[metrics.object_body], 0.12)
 
+    def test_rolling_can_settles_on_the_box_floor(self):
+        model, data, metrics = self.make_scene("green-can")
+        model.opt.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
+        model.opt.impratio = 12
+        model.opt.tolerance = 1e-10
+        joint = model.joint("packaging_object_free").id
+        qpos = model.jnt_qposadr[joint]
+        dof = model.jnt_dofadr[joint]
+        # Reproduce the small upright wobble observed after a physical release.
+        data.qpos[qpos:qpos + 3] = data.xpos[metrics.box_body] + [-0.021, -0.060, 0.0326]
+        data.qpos[qpos + 3:qpos + 7] = [0.803785, 0.002030, 0.002030, 0.594913]
+        data.qvel[dof:dof + 6] = [0.00262, -0.03522, 0.00027, 0.394, -1.015, 0.00054]
+        mujoco.mj_forward(model, data)
+        for _ in range(500):
+            mujoco.mj_step(model, data)
+        mujoco.mj_forward(model, data)
+        self.assertTrue(metrics.update(data)["object_in_box"])
+
     def test_red_carton_has_a_thin_hanger_with_an_open_slot(self):
         model, data, metrics = self.make_scene()
         body_geom = model.geom("packaging_object_geom").id

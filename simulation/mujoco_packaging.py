@@ -251,6 +251,9 @@ def _add_object(spec, xy, object_name, object_yaw):
         _add_cloth(spec, xy)
         return
     definitions, support_height = _object_definition(object_name)
+    if any(part[0] == "cylinder" for part in definitions):
+        # Flat cylinder ends need several contact points to avoid rocking on a single point.
+        spec.option.enableflags |= int(mujoco.mjtEnableBit.mjENBL_MULTICCD)
     if object_yaw is None:
         object_yaw = RED_BOX_YAW if object_name == DEFAULT_OBJECT else 0
     body = spec.worldbody.add_body(
