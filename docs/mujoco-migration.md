@@ -359,6 +359,14 @@ python -m simulation.rollout "$green/green-can-centered-complete-reference.hdf5"
   --task packaging --object green-can --output "$green/green-can-centered-complete-replay.json"
 ```
 
+**卷尺完整居中回放。** 采用 `demo_175` 的发布摆放。用食指与拇指的真实相向接触夹住圆周，转运到居中纸盒上方再张手，选取由盒底承托、桌面无载荷的放置状态继续合盖。**9,023 步**标准 EGL 从初态独立复放，纸盒实测移动 **91.48 mm**，释放、居中入盒、合盖和整轮计分均通过。合盖时两手连续同时承力 **1.048 s**，机械臂接触和双手间碰撞均为零，同手采样最大穿透约 0.53 mm，无物理警告。本次使用当前圆柱卷尺模型。完整报告和逐 2 ms 子步接触审计为 `tape-measure-centered-complete-egl{,-contacts}.json`。
+
+```bash
+tape=/data/dexcap-repro/benchmarks/packaging-tape-measure-complete
+python -m simulation.rollout "$tape/tape-measure-centered-complete-reference.hdf5" \
+  --task packaging --object tape-measure --output "$tape/tape-measure-centered-complete-replay.json"
+```
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
