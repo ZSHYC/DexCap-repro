@@ -103,7 +103,6 @@ def rollout(args):
             max_angle_error = initial_angle.copy()
             position_errors = []
             physics_warnings = {}
-            simulation_time = float(scene.data.time)
             if policy is not None:
                 torch.manual_seed(seed)
                 policy.start_episode()
@@ -115,7 +114,8 @@ def rollout(args):
                     batch = {key: np.stack([frame[key] for frame in history]) for key in observation}
                     with torch.inference_mode():
                         targets = frames.to_world(policy(batch))
-                cycles = None
+                # Each policy target is held for one 20 Hz robot command.
+                cycles = 1 if policy is not None else None
                 if control_cycles is not None:
                     cycles = int(control_cycles[i] if control_cycles.ndim else control_cycles)
                 info, position_error, angle_error = scene.step(targets, control_cycles=cycles)
@@ -132,7 +132,6 @@ def rollout(args):
                     break
                 if scene.invalid_hand_motion:
                     break
-                simulation_time = float(scene.data.time)
                 if policy is not None and i + 1 < steps:
                     history.append(observe(scene, frames, rng))
             return {
@@ -150,7 +149,7 @@ def rollout(args):
                 "invalid_hand_motion": scene.invalid_hand_motion,
                 "executed_steps": len(position_errors),
                 "physics_warnings": physics_warnings,
-                "simulation_time_s": simulation_time,
+                "simulation_time_s": float(scene.data.time),
                 **info,
             }
         finally:
@@ -185,7 +184,9 @@ def rollout(args):
     }
     if native_recording:
         result["robot_frame"] = robot_frame
-    if control_cycles is not None:
+    if policy is not None:
+        result["control_cycles_per_action"] = 1
+    elif control_cycles is not None:
         result["control_cycles_per_action"] = control_cycles.tolist()
     if packaging:
         seen = object_name in mujoco_packaging.PACKAGING_OBJECTS
