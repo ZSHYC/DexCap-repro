@@ -285,6 +285,8 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 有 20 轮出现机械臂接触，采样到的最大同手穿透约 15.75 mm。75 轮均无物理求解器警告或手指越限触发。蓝积木和绿罐的完整参考回放使用各自专门生成的动作。闭环逐轮结果和评估参数见数据盘 `benchmarks/packaging-current-policy-summary.json` 及其中引用的 15 个报告。
 
+另在红盒、蓝积木和绿罐各取 13 个时点，共 39 组三帧输入。每组固定录制的关节与腕位观测、策略随机种子和相机标定，只将录制点云替换为对应姿态下的 EGL 点云。右腕和左腕预测分别变化约 18.58 和 13.48 mm（中位数）。相对录制动作，右腕和左腕的中位误差分别从 4.39、3.37 mm 增至 21.07、15.13 mm。场景设置各观测姿态时，腕位最大误差约 0.132 mm。该对照覆盖三份示范的前段，不含闭环接触误差。测量脚本与输出位于数据盘 `benchmarks/packaging-current-noncylinder-policy/paired-reference-camera-probe.py` 和 `benchmarks/packaging-paired-initial-camera-probe.json`。
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
@@ -1032,6 +1034,8 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 接续向壶口移动时，茶瓶滑脱并在托盘上近乎竖直落稳，距壶口中心的水平距离约 114 mm。撤手后，托盘约承力 1.02 N，双手对瓶载荷为零，108 粒茶叶均仍在瓶内，盖子保持放在右侧。实际积分态和从前一状态接续的执行器记录见同目录的 `tea-staged-upright-near-pot.{json,npz}`。随后打开左手并保持腕位，清除了无名指与手掌残余接触，瓶身位置变化小于 0.1 mm，108 粒茶叶仍在瓶内。较干净的接续状态保存在 `tea-staged-upright-near-pot-clear.{json,npz}`。
 
 从该状态重新形成左拇指、食指和中指三点抓持。瓶身离开托盘最高 **18.59 mm**，最长连续离托且三指有载荷的区间为 **1.136 s**。在抬升约 15.02 mm 的保存点，三指约承力 1.46、0.60、0.85 N，拇指和食指接触法线点积约 −0.89。实测与带载积分态见同目录 `tea-near-pot-three-pad-bottle-lift.json` 和 `tea-near-pot-three-pad-held-15mm.npz`。
+
+从 15 mm 保存点按三个实测指垫斑块继续抬升和转腕。抬升阶段瓶身相对托盘上的初始位置最高上移约 **126 mm**，食指和拇指仍承力，瓶身没有外部支撑。随后瓶口移到壶口上方附近，瓶轴相对竖直倾斜约 **53°**，仍朝上。下一步左拇指触及壶壁并触发停止，入壶粒数为 0。逐步轨迹见同目录 `tea-staged-lift-tip-126.json`。
 
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 
