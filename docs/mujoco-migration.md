@@ -1320,6 +1320,19 @@ envs/train/bin/python "$w/sponge-visible-planned.py" "$w" 21
 
 独立行为克隆对照用训练组的海绵相对动作中位数作参考，学习腕位和手形残差。输入为初始相机估计位置、50 ms 周期相位和每步实际本体观测，模型运行时持续使用本体反馈。训练 60 轮，用验证组损失选第 16 轮权重。种子 17–20 各运行 900 步，17、18、20 分别真实抬升 312.82、333.03、311.21 mm 且无机器人碰撞，种子 19 无抬升并发生约 2.18 mm 的同手穿透。代码、权重和逐回合报告位于同一数据目录的 `sponge-camera-residual-bc*`。该网络是独立的视觉行为克隆对照，扩散模型的成绩单独记录。
 
+行为克隆的种子 19 失败发生在接触前。右腕目标相对于成功的原生参考，在第 250 步偏约 27 mm，到第 265 步偏约 629 mm，随后持续远离海绵，未产生任何手指载荷。用第 16 轮原权重，将输入本体状态与输出目标分别限制在各控制相位的训练组实测范围，保留相机估计的海绵位置用于动作还原。种子 19 以此执行 900 步，实际抬升 316.86 mm，机器人碰撞与物理警告为零。种子 17–20 用同一规则重测为 4/4，其中 19 已用于故障诊断。
+
+固定这条规则后，对未用于训练、权重选择或确定约束的种子 21–40，分别从共同初态物理执行 900 步，**17/20** 成功。失败种子 25、28、34 分别抬升 **283.25、18.85、88.32 mm**。成功回合无机械臂、双手间和同手碰撞，无越限及物理警告。20 个回合均无机械臂和双手间接触或物理警告。带约束的视觉行为克隆代码位于 `simulation/sponge_residual_bc.py`，归档汇总为 `sponge-residual-bounded-new-21-40.json`。从训练 HDF5 重新训练得到第 16 轮权重，并用仓库入口复跑 19、28、40，复现两次成功、一次失败及各自的抬升量。
+
+```bash
+w=/data/dexcap-repro/benchmarks/sponge-seeded-reference/common-start/controller-rate
+envs/train/bin/python -m simulation.sponge_residual_bc train \
+  "$w/sponge-20hz-seeds-01-16.hdf5" "$w/sponge-residual-bc-tracked.pth"
+envs/train/bin/python -m simulation.sponge_residual_bc evaluate \
+  "${w%/controller-rate}/common-sponge-01.hdf5" "$w/sponge-residual-bc-tracked.pth" \
+  --first-seed 21 --trials 20 --output "$w/sponge-residual-bc-21-40.json"
+```
+
 ### 捡球的 20 个随机摆放标准复放
 
 初始收拢无名指后，中指与球的法向载荷曾从约 0.38 N 降至零，导致搬运中滑脱。调整中指的两关节目标，在第 96–140 个动作间逐步增加 0.03 rad，并依据实际持球位置规划两段搬运。闲置左手张开，左腕沿 y 轴移出搬运区 120 mm。第 20 个种子按实测腕位误差额外补偿搬运终点 `[15, -40] mm`。保留各动作实际执行的控制周期数。
