@@ -1333,6 +1333,6 @@ python -m simulation.rollout "$ball/seed-20-three-pad-open-left-reference.hdf5" 
 
 在实测无桌面承托后，加入 36 个周期的短程上提目标，手指动作仍由同一权重预测。两个 650 步回合分别实际升高 46.43、45.85 mm 并通过抬球判据，均未入篮，无机械臂或双手间碰撞、手指越限或物理警告。文件为同目录 `bc-camera-aligned-lift-{approach,rollout}-{17,21}.json`。
 
-在恢复数据上用原 BC 配置训练 45 轮，完全关闭腕位辅助后，种子 17、21 的 650 步闭环分别采样 596 次和 0 次触球，均无抬球和落篮。直接干净动作扩散对照的第 60 轮在验证种子 13、16 的接触阶段，右腕目标误差中位数分别为 11.4、12.9 mm。对照文件为 `bc-camera-recovery-epoch45-rollout-{17,21}.json`、`diffusion-camera-recovery-epoch60-wrists.json`。
+在恢复数据上用原 BC 配置训练 45 轮，完全关闭腕位辅助后，种子 17、21 的 650 步闭环分别采样 596 次和 0 次触球，均无抬球和落篮。直接干净动作扩散对照的第 60 轮在验证种子 13、16 的接触阶段，右腕目标误差中位数分别为 11.4、12.9 mm。对照文件为 `bc-camera-recovery-epoch45-rollout-{17,21}.json`、`diffusion-camera-recovery-epoch60-wrists.json`。 该扩散权重在种子 17、22 的各 650 步无辅助闭环中均未触球，实际指尖最近仍距球约 153.8、151.1 mm。见 `diffusion-camera-recovery-epoch60-rollout-{17,22}.json`。
 
 从上述短程上提结束时的真实三指抓持继续，以实际抓持相对位姿、机械臂关节范围和篮网几何求搬运路径。保持当时策略输出的有限力手形，实际越过篮沿后用训练示范的张手目标释放。种子 17 保持腕朝向，种子 21 绕世界 x 轴逐步转腕 24°。两个 560 步回合均完成抬球、释放与物理篮底静置。保存实际执行的 20 Hz 命令后，从同一初态用标准 EGL 入口独立复放，均推进 28.0 s，产生 `10000 × 6` 点云，触球采样数与原回合一致，均无臂、双手间、同手碰撞、越限或物理警告。这里验证的是用学习策略产生抓持手形并辅助腕位和搬运的执行。工件为同目录 `bc-camera-assisted-transfer-{rollout,replay}-{17,21}.json`、`bc-camera-assisted-transfer-reference-{17,21}.hdf5` 及搬运的轨迹规划记录。
