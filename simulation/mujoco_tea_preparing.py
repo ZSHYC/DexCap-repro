@@ -329,6 +329,8 @@ def add_tea_preparing_scene(spec: mujoco.MjSpec, object_xy=DEMO_OBJECT_XY):
     if positions.shape != (4, 2) or not np.isfinite(positions).all():
         raise ValueError("object_xy must contain finite tray, bottle, teapot, tweezers XY")
     spec.compiler.degree = False
+    # Implicitly integrate the gyroscopic forces of fast-spinning tea grains.
+    spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICIT
     _add_tray(spec, positions[0])
     _add_bottle_cap_and_tea(spec, positions[1])
     _add_teapot(spec, positions[2])

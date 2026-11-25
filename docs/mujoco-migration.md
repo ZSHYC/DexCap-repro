@@ -295,6 +295,8 @@ python -m simulation.rollout data/derived/packaging-red-carton-live-timed-refere
 
 在另外三个留出物件绿梨、卷尺和黄布的 39 组输入中，生产材质相对旧材质的右、左腕误差中位数分别由 32.13、19.74 mm 降到 12.60、8.60 mm。对红盒、蓝积木、绿罐各重跑种子 1 和 5，数据、权重、初始摆放和 400 步保持配对。实际曾抓起物件的轮数由 1/6 增至 3/6，三次抓起均发生于种子 5，结束前均失去抓持。入盒 0/6，合盖 1/6，六轮无数值警告或手指越限终止。蓝积木种子 1 出现 245 个有机械臂接触的控制周期。配对记录在 `benchmarks/packaging-paired-calibrated-material-holdout.json` 和 `benchmarks/packaging-material-calibrated-setxf/summary.json`。
 
+对蓝积木种子 5 的 400 步重复评估添加实际接触力记录。第 27 步有且仅有一个目标采样检测到不同手指实测相向承力，食指与中指组合的法线点积约 −0.743，成对法向载荷的较小值最高约 8.30 N。第 28 步两指已失去物件接触，积木与盒心仍相距数十厘米。含接触力记录的实际评估与原配对试验完全一致。报告和第 27 步积分态位于 `benchmarks/packaging-material-calibrated-setxf/` 的 `blue-block-seed5-physical-grasp-trace.json` 和 `blue-block-seed5-grip-checkpoint.npz`。
+
 ## Ball Collecting
 
 `python -m simulation.rollout --task ball-collecting` 使用双 Franka 与 LEAP、右侧的球和左侧的自由线篮。两处各在论文规定的 40 × 30 cm 区域采样。直径 67 mm、质量 57.7 g 的球用网球标准范围中值。篮子约 230 × 150 × 130 mm，按照图中球径比例估计，用 50 根可碰撞圆柱组成交叉底网和侧壁，保留开口和线间空隙。篮重和表面摩擦为假设。 [论文图 5 与任务定义](https://arxiv.org/html/2403.07788v2#A1.SS6) · [ITF 网球规格](https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf)
@@ -1054,6 +1056,10 @@ python -m simulation.rollout "$tea/tea-standard-osc-cap-unthread-reference.hdf5"
 从壶沿承重的物理状态继续转腕，按食指和中指网格净空调节闲置中指，之后用两指夹住茶瓶并越过水平。将瓶口向实际移动后的壶口平移，从 160 号保存状态接续时，第 53 个控制目标首次得到 `tea_deposited_count=1`。实测粒子 83 同时由壶底和壶壁支持，保存点瓶轴倾斜约 **106.5°**，左拇指和食指约承力 **1.06、1.82 N**。壶本身在接触过程中倾斜约 62°。入壶后的茶粒在最后交互末态仍在壶内，末周期未满足静置计分条件。该段没有完成镊子辅助、两件物体归位或整轮计分。
 
 首次入壶结果和实际积分态位于同一数据目录的 `tea-staged-lift-tip-live-mouth-128-49--17-160-32-127.json`、`tea-staged-lift-tip-live-mouth-128-49--17-160-32-127-best.npz`。颗粒身份、速度与接触力审计在 `tea-first-actuated-pour-grain-audit.json`。核对截面接续物理的脚本为 `position-live-tilted-bottle-over-pot.py`。
+
+归位动作中茶瓶从左手滑落并接触托盘。两个实际落瓶积分态用 `implicitfast` 和 2 ms 子步续跑时，快速翻滚的非轴对称茶粒均触发 `mjWARN_BADQACC`。从同一状态执行同样的撤手时序，完整隐式积分在 2 ms 下跑完 **3.608 s**，两个场景均无警告、壶体回正，最后约 1 s 分别稳定保留 **1 粒和 2 粒**。1 ms 也通过这两组对照。生产 Tea 场景采用完整隐式积分和原来的 2 ms 子步。独立回归用实际量级的三轴角速度验证同种椭球茶粒，旧积分在 32 步触发警告，新的积分执行 400 步。结果与积分态在同目录 `tea-post-release-integrator-*-*ms.{json,npz}`。 [MuJoCo 积分器与陀螺力](https://mujoco.readthedocs.io/en/3.6.0/computation/index.html#numerical-integration)
+
+从保留 2 粒的稳定状态继续，左手到达横放瓶身底部，用食指沿托盘实际推移约 105 mm，再撤离。两份终态都由托盘承托，茶瓶离原始瓶位的平面距离分别为 **33.22 和 33.56 mm**，仍横放，满足当前 35 mm 归位条件并已完全脱手。壶直立且各保有 2 粒茶叶。连续动作和终态审计在同目录 `tea-post-pour-bottle-return-{0,3}-terminal.npz` 和 `tea-post-pour-bottle-return-{0,3}-terminal-audit.json`，其中归位和脱手结果继承同链前段真实的提瓶计分。完整备茶尚需要右手取用镊子、在倒茶中辅助并归还。 [论文备茶流程](https://arxiv.org/html/2403.07788v2#A1.SS6)
 
 从右手实际悬持整条纸带的标准回放接续，左食指完整截面在固定环内、左拇指完整截面在活动环内同时维持 0.200 s，左食指在末态约有 0.0693 N 载荷。中指有静态完整进环解，直线路径在左食指近端与左中指末端之间测到约 1.00 mm 穿透和 7.62 N 法向力。另规划的五点绕行总关节路径长约 2.054 rad，在实际执行 1.614 s 后，纸带一部分重新接触托盘。此时食指和拇指仍入环，纸带仍由右两指相向持有。中指未完成入环，剪刀未离托盘或切纸。数据见 `runs/scissor_paper_left_functional_c4d447c/` 的 `left-thumb-preshape-after-middle-clear.json` 和 `left-middle-rrt-tactile-servo.json`。
 

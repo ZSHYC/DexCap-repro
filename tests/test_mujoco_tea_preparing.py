@@ -53,6 +53,28 @@ class MujocoTeaPreparingTest(unittest.TestCase):
             metrics.physics_step(data)
         return model, data, metrics
 
+    def test_spinning_tea_grain_stays_stable_at_the_production_timestep(self):
+        from simulation.mujoco_tea_preparing import TEA_PARTICLES, add_tea_preparing_scene
+
+        spec = mujoco.MjSpec()
+        spec.option.timestep = .002
+        spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
+        add_tea_preparing_scene(spec)
+        for index in range(1, TEA_PARTICLES):
+            spec.delete(spec.body(f"tea_particle_{index}"))
+        grain = spec.body("tea_particle_0")
+        grain.pos = [.54, .005, .32]
+        grain.quat = [1, 0, 0, 0]
+        model = spec.compile()
+        data = mujoco.MjData(model)
+        dof = model.joint("tea_particle_free_0").dofadr[0]
+        # Angular velocity measured when the bottle rolled onto the tray.
+        data.qvel[dof + 3:dof + 6] = [-322., -288., 107.]
+        for _ in range(400):
+            mujoco.mj_step(model, data)
+            self.assertFalse(data.warning.number.any())
+        self.assertAlmostEqual(data.time, .8)
+
     def test_two_turn_thread_rises_by_pitch_then_releases_a_free_cap(self):
         from simulation.mujoco_tea_preparing import THREAD_PITCH
 
